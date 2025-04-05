@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use std::mem::MaybeUninit;
 use std::ops::RangeBounds;
 
-array_vec_struct! { CopyArrayVec, where T: Copy }
+array_vec_struct! { CopyArrayVec, Copy }
 
 impl<T, const N: usize> CopyArrayVec<T, N>
 where

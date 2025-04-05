@@ -3,11 +3,11 @@ pub(super) const fn const_assert<const N: usize, const M: usize>() {
 }
 
 macro_rules! array_vec_struct {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         /// [`Vec`]
         pub struct $vec<T, const N: usize>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             data: [MaybeUninit<T>; N],
             len: usize,
