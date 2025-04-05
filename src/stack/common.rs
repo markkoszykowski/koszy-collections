@@ -256,10 +256,10 @@ macro_rules! impl_split_off {
 }
 
 macro_rules! impl_dedup {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T, const N: usize> $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::dedup_by_key`]
             #[inline]
@@ -300,7 +300,7 @@ macro_rules! impl_dedup {
 
                 struct FillGapOnDrop<'a, T, const N: usize>
                 where
-                    $($ty: $bound)?
+                    $(T: $bound,)?
                 {
                     read: usize,
                     write: usize,
@@ -309,7 +309,7 @@ macro_rules! impl_dedup {
 
                 impl<T, const N: usize> Drop for FillGapOnDrop<'_, T, N>
                 where
-                    $($ty: $bound)?
+                    $(T: $bound,)?
                 {
                     fn drop(&mut self) {
                         unsafe {
@@ -366,8 +366,7 @@ macro_rules! impl_dedup {
 
         impl<T, const N: usize> $vec<T, N>
         where
-            T: PartialEq,
-            $($ty: $bound)?
+            T: PartialEq $(+ $bound)?,
         {
             /// [`Vec::dedup`]
             #[inline]
@@ -379,7 +378,7 @@ macro_rules! impl_dedup {
 }
 
 macro_rules! impl_retain {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         /// [`Vec::retain`]
         #[inline]
         pub fn retain<F>(&mut self, mut f: F)
@@ -404,7 +403,7 @@ macro_rules! impl_retain {
 
             struct BackshiftOnDrop<'a, T, const N: usize>
             where
-                $($ty: $bound)?
+                $(T: $bound,)?
             {
                 v: &'a mut $vec<T, N>,
                 processed_len: usize,
@@ -414,7 +413,7 @@ macro_rules! impl_retain {
 
             impl<T, const N: usize> Drop for BackshiftOnDrop<'_, T, N>
             where
-                $($ty: $bound)?
+                $(T: $bound,)?
             {
                 fn drop(&mut self) {
                     if 0 < self.deleted_cnt {
@@ -446,7 +445,7 @@ macro_rules! impl_retain {
                 g: &mut BackshiftOnDrop<'_, T, N>,
             ) where
                 F: FnMut(&mut T) -> bool,
-                $($ty: $bound)?
+                $(T: $bound,)?
             {
                 while g.processed_len != original_len {
                     let cur: &mut T = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
@@ -512,10 +511,10 @@ macro_rules! impl_resize_with {
 }
 
 macro_rules! impl_default {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T, const N: usize> Default for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::default`]
             #[inline]
@@ -527,10 +526,10 @@ macro_rules! impl_default {
 }
 
 macro_rules! impl_debug {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T: core::fmt::Debug, const N: usize> core::fmt::Debug for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::fmt`]
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -541,10 +540,10 @@ macro_rules! impl_debug {
 }
 
 macro_rules! impl_as_ref {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T, const N: usize> AsRef<$vec<T, N>> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::as_ref`]
             fn as_ref(&self) -> &$vec<T, N> {
@@ -554,7 +553,7 @@ macro_rules! impl_as_ref {
 
         impl<T, const N: usize> AsMut<$vec<T, N>> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::as_mut`]
             fn as_mut(&mut self) -> &mut $vec<T, N> {
@@ -564,7 +563,7 @@ macro_rules! impl_as_ref {
 
         impl<T, const N: usize> AsRef<[T]> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::as_ref`]
             fn as_ref(&self) -> &[T] {
@@ -574,7 +573,7 @@ macro_rules! impl_as_ref {
 
         impl<T, const N: usize> AsMut<[T]> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::as_mut`]
             fn as_mut(&mut self) -> &mut [T] {
@@ -585,10 +584,10 @@ macro_rules! impl_as_ref {
 }
 
 macro_rules! impl_deref {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T, const N: usize> core::ops::Deref for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             type Target = [T];
 
@@ -601,7 +600,7 @@ macro_rules! impl_deref {
 
         impl<T, const N: usize> core::ops::DerefMut for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::deref_mut`]
             #[inline]
@@ -613,10 +612,10 @@ macro_rules! impl_deref {
 }
 
 macro_rules! impl_borrow {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T, const N: usize> core::borrow::Borrow<[T]> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::borrow`]
             #[inline]
@@ -627,7 +626,7 @@ macro_rules! impl_borrow {
 
         impl<T, const N: usize> core::borrow::BorrowMut<[T]> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::borrow_mut`]
             #[inline]
@@ -639,10 +638,10 @@ macro_rules! impl_borrow {
 }
 
 macro_rules! impl_slice {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T, I: std::slice::SliceIndex<[T]>, const N: usize> core::ops::Index<I> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             type Output = I::Output;
 
@@ -655,7 +654,7 @@ macro_rules! impl_slice {
 
         impl<T, I: std::slice::SliceIndex<[T]>, const N: usize> core::ops::IndexMut<I> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::index_mut`]
             fn index_mut(&mut self, index: I) -> &mut I::Output {
@@ -682,10 +681,10 @@ macro_rules! impl_slice_eq {
     }
 }
 macro_rules! impl_hash {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T: core::hash::Hash, const N: usize> core::hash::Hash for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::hash`]
             #[inline]
@@ -697,10 +696,10 @@ macro_rules! impl_hash {
 }
 
 macro_rules! impl_ord {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T: core::cmp::PartialOrd, const N: usize, const M: usize> core::cmp::PartialOrd<$vec<T, M>> for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::partial_cmp`]
             #[inline]
@@ -711,7 +710,7 @@ macro_rules! impl_ord {
 
         impl<T: core::cmp::Ord, const N: usize> core::cmp::Ord for $vec<T, N>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::cmp`]
             #[inline]
@@ -722,10 +721,10 @@ macro_rules! impl_ord {
     };
 }
 macro_rules! impl_from {
-    ($vec:ident $(, where $ty:ty: $bound:ident)?) => {
+    ($vec:ident $(, $bound:ident)?) => {
         impl<T, const N: usize, const M: usize> From<[T; N]> for $vec<T, M>
         where
-            $($ty: $bound)?
+            $(T: $bound,)?
         {
             /// [`Vec::from`]
             #[inline]
@@ -745,8 +744,7 @@ macro_rules! impl_from {
 
         impl<T, const N: usize, const M: usize> From<&[T; N]> for $vec<T, M>
         where
-            T: Clone,
-            $($ty: $bound)?
+            T: Clone $(+ $bound)?,
         {
             /// [`Vec::from`]
             #[inline]
@@ -759,8 +757,7 @@ macro_rules! impl_from {
         }
         impl<T, const N: usize, const M: usize> From<&mut [T; N]> for $vec<T, M>
         where
-            T: Clone,
-            $($ty: $bound)?
+            T: Clone $(+ $bound)?,
         {
             /// [`Vec::from`]
             #[inline]
@@ -774,8 +771,7 @@ macro_rules! impl_from {
 
         impl<T, const N: usize> TryFrom<&[T]> for $vec<T, N>
         where
-            T: Clone,
-            $($ty: $bound)?
+            T: Clone $(+ $bound)?,
         {
             type Error = OutOfMemoryError;
 
@@ -791,8 +787,7 @@ macro_rules! impl_from {
 
         impl<T, const N: usize> TryFrom<&mut [T]> for $vec<T, N>
         where
-            T: Clone,
-            $($ty: $bound)?
+            T: Clone $(+ $bound)?,
         {
             type Error = OutOfMemoryError;
 
@@ -862,13 +857,13 @@ macro_rules! impl_write {
 }
 macro_rules! impl_traits {
     ($vec:ident $(, $bound:ident)?) => {
-        impl_default! { $vec $(, where T: $bound)? }
-        impl_debug! { $vec $(, where T: $bound)? }
+        impl_default! { $vec $(, $bound)? }
+        impl_debug! { $vec $(, $bound)? }
 
-        impl_as_ref! { $vec $(, where T: $bound)? }
-        impl_deref! { $vec $(, where T: $bound)? }
-        impl_borrow! { $vec $(, where T: $bound)? }
-        impl_slice! { $vec $(, where T: $bound)? }
+        impl_as_ref! { $vec $(, $bound)? }
+        impl_deref! { $vec $(, $bound)? }
+        impl_borrow! { $vec $(, $bound)? }
+        impl_slice! { $vec $(, $bound)? }
 
         impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, $vec<U, M> $(, where T: $bound)? $(, where U: $bound)? }
 
@@ -887,11 +882,11 @@ macro_rules! impl_traits {
 
         impl<T: Eq, const N: usize> Eq for $vec<T, N> $(where T: $bound)? {}
 
-        impl_hash! { $vec $(, where T: $bound)? }
+        impl_hash! { $vec $(, $bound)? }
 
-        impl_ord! { $vec $(, where T: $bound)? }
+        impl_ord! { $vec $(, $bound)? }
 
-        impl_from! { $vec $(, where T: $bound)? }
+        impl_from! { $vec $(, $bound)? }
 
         impl_write! { $vec }
     };

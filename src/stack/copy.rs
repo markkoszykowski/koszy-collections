@@ -38,7 +38,7 @@ where
 
     impl_split_off! { CopyArrayVec, const }
     impl_resize_with! { CopyArrayVec }
-    impl_retain! { CopyArrayVec, where T: Copy }
+    impl_retain! { CopyArrayVec, Copy }
 
     /// [`Vec::extend_from_within`]
     #[inline]
@@ -50,7 +50,7 @@ where
     }
 }
 
-impl_dedup! { CopyArrayVec, where T: Copy }
+impl_dedup! { CopyArrayVec, Copy }
 
 impl<T, const N: usize> CopyArrayVec<T, N>
 where
