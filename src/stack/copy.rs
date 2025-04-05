@@ -5,7 +5,6 @@ use crate::stack::common::{
     impl_traits, impl_write,
 };
 use crate::stack::error::OutOfMemoryError;
-use std::borrow::Cow;
 use std::mem::MaybeUninit;
 use std::ops::RangeBounds;
 

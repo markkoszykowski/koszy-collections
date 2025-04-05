@@ -875,7 +875,7 @@ macro_rules! impl_traits {
         impl_slice_eq! { [const N: usize], $vec<T, N>, [U] $(, where T: $bound)? }
         impl_slice_eq! { [const N: usize], [T], $vec<U, N> $(, where U: $bound)? }
 
-        impl_slice_eq! { [const N: usize], Cow<'_, [T]>, $vec<U, N>, where T: Clone $(, where T: $bound)? $(, where U: $bound)? }
+        impl_slice_eq! { [const N: usize], std::borrow::Cow<'_, [T]>, $vec<U, N>, where T: Clone $(, where T: $bound)? $(, where U: $bound)? }
 
         impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, [U; M] $(, where T: $bound)? }
         impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, &[U; M] $(, where T: $bound)? }
