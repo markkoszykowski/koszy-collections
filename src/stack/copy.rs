@@ -1,8 +1,6 @@
 use crate::stack::common::{
-    array_vec_struct, check_capacity, const_assert, impl_addition, impl_as_ref, impl_borrow,
-    impl_common, impl_debug, impl_dedup, impl_default, impl_deref, impl_from, impl_hash, impl_ord,
-    impl_resize_with, impl_retain, impl_slice, impl_slice_eq, impl_split_off, impl_subtraction,
-    impl_traits, impl_write,
+    array_vec_struct, check_capacity, const_assert, impl_addition, impl_common, impl_dedup,
+    impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits,
 };
 use crate::stack::error::OutOfMemoryError;
 use std::mem::MaybeUninit;
@@ -89,12 +87,6 @@ where
     }
 }
 
-trait ConvertArrayVec<const N: usize> {
-    fn to_array_vec(s: &[Self]) -> CopyArrayVec<Self, N>
-    where
-        Self: Copy + Sized;
-}
-
 impl<T, const N: usize> ConvertArrayVec<N> for T
 where
     T: Copy,
@@ -110,13 +102,6 @@ where
     }
 }
 
-trait SpecCloneIntoArrayVec<T, const N: usize>
-where
-    T: Copy,
-{
-    fn clone_into(&self, target: &mut CopyArrayVec<T, N>);
-}
-
 impl<T, const N: usize> SpecCloneIntoArrayVec<T, N> for [T]
 where
     T: Copy,
@@ -127,23 +112,6 @@ where
             Ok(_) => {}
             Err(_) => panic!(),
         }
-    }
-}
-
-impl<T, const N: usize> Clone for CopyArrayVec<T, N>
-where
-    T: Copy,
-{
-    /// [`Vec::clone`]
-    #[track_caller]
-    fn clone(&self) -> CopyArrayVec<T, N> {
-        T::to_array_vec(&**self)
-    }
-
-    /// [`Vec::clone_from`]
-    #[track_caller]
-    fn clone_from(&mut self, source: &CopyArrayVec<T, N>) {
-        SpecCloneIntoArrayVec::clone_into(source.as_slice(), self);
     }
 }
 
