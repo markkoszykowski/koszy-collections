@@ -1,6 +1,6 @@
 use crate::stack::common::{
     array_vec_struct, check_capacity, const_assert, impl_addition, impl_common, impl_dedup,
-    impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits,
+    impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits, SetLenOnDrop,
 };
 use crate::stack::error::OutOfMemoryError;
 use std::mem::MaybeUninit;
@@ -34,7 +34,7 @@ impl<T, const N: usize> ArrayVec<T, N> {
     /// [`Vec::clear`]
     #[inline]
     pub fn clear(&mut self) {
-        let slice: *mut [T] = self.as_mut_slice();
+        let slice: *mut [T] = self.as_mut_slice() as *mut [T];
 
         unsafe {
             self.len = 0;
@@ -74,12 +74,13 @@ where
         if len < new_len {
             unsafe {
                 let ptr: *mut T = self.as_mut_ptr();
+                let mut local_len: SetLenOnDrop = SetLenOnDrop::new(&mut self.len);
                 for _ in 0..(new_len - len - 1) {
-                    std::ptr::write(ptr.add(self.len), value.clone());
-                    self.len += 1
+                    std::ptr::write(ptr.add(local_len.current_len()), value.clone());
+                    local_len.increment_len(1);
                 }
-                std::ptr::write(ptr.add(self.len), value);
-                self.len += 1
+                std::ptr::write(ptr.add(local_len.current_len()), value);
+                local_len.increment_len(1);
             }
         } else {
             self.truncate(new_len);
@@ -95,9 +96,10 @@ where
 
         unsafe {
             let ptr: *mut T = self.as_mut_ptr();
+            let mut local_len: SetLenOnDrop = SetLenOnDrop::new(&mut self.len);
             for element in other {
-                std::ptr::write(ptr.add(self.len), element.clone());
-                self.len += 1
+                std::ptr::write(ptr.add(local_len.current_len()), element.clone());
+                local_len.increment_len(1);
             }
         }
         Ok(())
