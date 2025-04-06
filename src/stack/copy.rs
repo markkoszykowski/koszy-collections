@@ -66,6 +66,7 @@ where
                 let mut i: usize = 0;
                 while i < (new_len - len) {
                     std::ptr::write(ptr.add(i), value);
+                    i += 1;
                 }
                 self.len = new_len
             }
@@ -90,14 +91,13 @@ impl<T, const N: usize> ConvertArrayVec<N> for T
 where
     T: Copy,
 {
-    #[inline]
     fn to_array_vec(s: &[T]) -> CopyArrayVec<T, N> {
-        let mut v: CopyArrayVec<T, N> = CopyArrayVec::new();
+        let mut vec: CopyArrayVec<T, N> = CopyArrayVec::new();
         unsafe {
-            std::ptr::copy_nonoverlapping(s.as_ptr(), v.as_mut_ptr(), s.len());
-            v.set_len(s.len());
+            std::ptr::copy_nonoverlapping(s.as_ptr(), vec.as_mut_ptr(), s.len());
+            vec.set_len(s.len());
         }
-        v
+        vec
     }
 }
 
@@ -109,7 +109,7 @@ where
         target.clear();
         match target.extend_from_slice(self) {
             Ok(_) => {}
-            Err(_) => panic!(),
+            Err(_) => unreachable!(),
         }
     }
 }

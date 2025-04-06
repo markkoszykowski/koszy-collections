@@ -110,7 +110,6 @@ impl<T, const N: usize> ConvertArrayVec<N> for T
 where
     T: Clone,
 {
-    #[inline]
     fn to_array_vec(s: &[T]) -> ArrayVec<T, N> {
         struct DropGuard<'a, T, const N: usize> {
             vec: &'a mut ArrayVec<T, N>,
@@ -153,7 +152,7 @@ where
         target.clone_from_slice(init);
         match target.extend_from_slice(tail) {
             Ok(_) => {}
-            Err(_) => panic!(),
+            Err(_) => unreachable!(),
         }
     }
 }

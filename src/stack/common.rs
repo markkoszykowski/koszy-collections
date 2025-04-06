@@ -564,12 +564,14 @@ macro_rules! impl_clone {
             T: Clone $(+ $bound,)?
         {
             /// [`Vec::clone`]
+            #[inline]
             #[track_caller]
             fn clone(&self) -> $vec<T, N> {
                 T::to_array_vec(&**self)
             }
 
             /// [`Vec::clone_from`]
+            #[inline]
             #[track_caller]
             fn clone_from(&mut self, source: &$vec<T, N>) {
                 SpecCloneIntoArrayVec::clone_into(source.as_slice(), self);
@@ -600,6 +602,7 @@ macro_rules! impl_debug {
             $(T: $bound,)?
         {
             /// [`Vec::fmt`]
+            #[inline]
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 core::fmt::Debug::fmt(&**self, f)
             }
@@ -614,6 +617,7 @@ macro_rules! impl_as_ref {
             $(T: $bound,)?
         {
             /// [`Vec::as_ref`]
+            #[inline]
             fn as_ref(&self) -> &$vec<T, N> {
                 self
             }
@@ -624,6 +628,7 @@ macro_rules! impl_as_ref {
             $(T: $bound,)?
         {
             /// [`Vec::as_mut`]
+            #[inline]
             fn as_mut(&mut self) -> &mut $vec<T, N> {
                 self
             }
@@ -634,6 +639,7 @@ macro_rules! impl_as_ref {
             $(T: $bound,)?
         {
             /// [`Vec::as_ref`]
+            #[inline]
             fn as_ref(&self) -> &[T] {
                 self
             }
@@ -644,6 +650,7 @@ macro_rules! impl_as_ref {
             $(T: $bound,)?
         {
             /// [`Vec::as_mut`]
+            #[inline]
             fn as_mut(&mut self) -> &mut [T] {
                 self
             }
@@ -725,6 +732,7 @@ macro_rules! impl_slice {
             $(T: $bound,)?
         {
             /// [`Vec::index_mut`]
+            #[inline]
             fn index_mut(&mut self, index: I) -> &mut I::Output {
                 core::ops::IndexMut::index_mut(&mut **self, index)
             }
