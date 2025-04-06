@@ -881,7 +881,7 @@ macro_rules! impl_from {
         {
             type Error = $vec<T, N>;
 
-            /// [`[T; N]::try_from`]
+            /// [`TryFrom::try_from`] for `[T; N]`
             #[inline]
             #[track_caller]
             fn try_from(mut vec: $vec<T, N>) -> Result<[T; M], $vec<T, N>> {
