@@ -2,6 +2,38 @@ pub(super) const fn const_assert<const N: usize, const M: usize>() {
     assert!(N <= M, "N should be <= M");
 }
 
+pub(super) struct SetLenOnDrop<'a> {
+    len: &'a mut usize,
+    local_len: usize,
+}
+
+impl<'a> SetLenOnDrop<'a> {
+    #[inline]
+    pub(super) fn new(len: &'a mut usize) -> SetLenOnDrop<'a> {
+        SetLenOnDrop {
+            local_len: *len,
+            len,
+        }
+    }
+
+    #[inline]
+    pub(super) fn increment_len(&mut self, increment: usize) {
+        self.local_len += increment;
+    }
+
+    #[inline]
+    pub(super) fn current_len(&self) -> usize {
+        self.local_len
+    }
+}
+
+impl Drop for SetLenOnDrop<'_> {
+    #[inline]
+    fn drop(&mut self) {
+        *self.len = self.local_len;
+    }
+}
+
 macro_rules! array_vec_struct {
     ($vec:ident $(, $bound:ident)?) => {
         /// [`Vec`]
@@ -9,7 +41,7 @@ macro_rules! array_vec_struct {
         where
             $(T: $bound,)?
         {
-            data: [MaybeUninit<T>; N],
+            data: [std::mem::MaybeUninit<T>; N],
             len: usize,
         }
     };
@@ -21,14 +53,14 @@ macro_rules! impl_common {
         #[inline]
         pub $($is_const)? fn new() -> $vec<T, N> {
             $vec {
-                data: [const { MaybeUninit::uninit() }; N],
+                data: [const { std::mem::MaybeUninit::uninit() }; N],
                 len: 0,
             }
         }
 
         /// [`Vec::from_raw_parts`]
         #[inline]
-        pub $($is_const)? unsafe fn from_raw_parts(data: [MaybeUninit<T>; N], len: usize) -> $vec<T, N> {
+        pub $($is_const)? unsafe fn from_raw_parts(data: [std::mem::MaybeUninit<T>; N], len: usize) -> $vec<T, N> {
             $vec { data, len }
         }
 
@@ -84,13 +116,10 @@ macro_rules! impl_common {
 
         /// [`Vec::spare_capacity_mut`]
         #[inline]
-        pub $($is_const)? fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
+        pub $($is_const)? fn spare_capacity_mut(&mut self) -> &mut [std::mem::MaybeUninit<T>] {
             let len: usize = self.len;
             unsafe {
-                std::slice::from_raw_parts_mut(
-                    self.as_mut_ptr().add(len) as *mut MaybeUninit<T>,
-                    N - len,
-                )
+                std::slice::from_raw_parts_mut(self.data.as_mut_ptr().add(len), N - len)
             }
         }
     };
@@ -131,6 +160,7 @@ macro_rules! impl_addition {
 
         /// [`Vec::push`]
         #[inline]
+        #[track_caller]
         pub $($is_const)? fn push(&mut self, value: T) -> Result<(), OutOfMemoryError> {
             let len: usize = self.len;
 
@@ -146,6 +176,7 @@ macro_rules! impl_addition {
 
         /// [`Vec::append`]
         #[inline]
+        #[track_caller]
         pub $($is_const)? fn append<const M: usize>(
             &mut self,
             other: &mut $vec<T, M>,
@@ -215,6 +246,7 @@ macro_rules! impl_subtraction {
 
         /// [`Vec::pop`]
         #[inline]
+        #[track_caller]
         pub $($is_const)? fn pop(&mut self) -> Option<T> {
             match self.len {
                 0 => None,
@@ -497,9 +529,11 @@ macro_rules! impl_resize_with {
             if len < new_len {
                 unsafe {
                     let ptr: *mut T = self.as_mut_ptr();
+                    let mut local_len: $crate::stack::common::SetLenOnDrop =
+                        $crate::stack::common::SetLenOnDrop::new(&mut self.len);
                     for element in core::iter::repeat_with(f).take(new_len - len) {
-                        std::ptr::write(ptr.add(self.len), element);
-                        self.len += 1
+                        std::ptr::write(ptr.add(local_len.current_len()), element);
+                        local_len.increment_len(1);
                     }
                 }
             } else {
@@ -707,10 +741,15 @@ macro_rules! impl_slice_eq {
         {
             /// [`Vec::eq`]
             #[inline]
-            fn eq(&self, other: &$rhs) -> bool { self[..] == other[..] }
+            fn eq(&self, other: &$rhs) -> bool {
+                self[..] == other[..]
+            }
+
             /// [`Vec::ne`]
             #[inline]
-            fn ne(&self, other: &$rhs) -> bool { self[..] != other[..] }
+            fn ne(&self, other: &$rhs) -> bool {
+                self[..] != other[..]
+            }
         }
     }
 }
@@ -762,10 +801,11 @@ macro_rules! impl_from {
         {
             /// [`Vec::from`]
             #[inline]
+            #[track_caller]
             fn from(value: [T; N]) -> $vec<T, M> {
                 const_assert::<N, M>();
 
-                let mut data: [MaybeUninit<T>; M] = [const { MaybeUninit::uninit() }; M];
+                let mut data: [std::mem::MaybeUninit<T>; M] = [const { std::mem::MaybeUninit::uninit() }; M];
                 unsafe {
                     std::ptr::copy_nonoverlapping(value.as_ptr(), data.as_mut_ptr() as *mut T, N);
                 }
@@ -832,6 +872,27 @@ macro_rules! impl_from {
                 check_capacity!(value.len());
 
                 Ok(T::to_array_vec(value))
+            }
+        }
+
+        impl<T, const N: usize, const M: usize> TryFrom<$vec<T, N>> for [T; M]
+        where
+            $(T: $bound,)?
+        {
+            type Error = $vec<T, N>;
+
+            /// [`[T; N]::try_from`]
+            #[inline]
+            #[track_caller]
+            fn try_from(mut vec: $vec<T, N>) -> Result<[T; M], $vec<T, N>> {
+                if vec.len() != M {
+                    return Err(vec);
+                }
+
+                unsafe {
+                    vec.set_len(0);
+                    Ok(std::ptr::read(vec.as_ptr() as *const [T; M]))
+                }
             }
         }
     };

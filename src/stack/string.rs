@@ -271,7 +271,7 @@ impl<const N: usize> Default for ArrayString<N> {
 impl<const N: usize> Clone for ArrayString<N> {
     /// [`String::clone`]
     #[inline]
-    fn clone(&self) -> Self {
+    fn clone(&self) -> ArrayString<N> {
         ArrayString {
             vec: self.vec.clone(),
         }
@@ -279,7 +279,7 @@ impl<const N: usize> Clone for ArrayString<N> {
 
     /// [`String::clone_from`]
     #[inline]
-    fn clone_from(&mut self, source: &Self) {
+    fn clone_from(&mut self, source: &ArrayString<N>) {
         self.vec.clone_from(&source.vec);
     }
 }

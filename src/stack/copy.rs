@@ -3,7 +3,6 @@ use crate::stack::common::{
     impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits,
 };
 use crate::stack::error::OutOfMemoryError;
-use std::mem::MaybeUninit;
 use std::ops::RangeBounds;
 
 array_vec_struct! { CopyArrayVec, Copy }
