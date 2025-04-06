@@ -62,7 +62,7 @@ where
 
         if len < new_len {
             unsafe {
-                let mut ptr: *mut T = self.as_mut_ptr().add(len);
+                let ptr: *mut T = self.as_mut_ptr().add(len);
                 let mut i: usize = 0;
                 while i < (new_len - len) {
                     std::ptr::write(ptr.add(i), value);
