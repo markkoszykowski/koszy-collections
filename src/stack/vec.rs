@@ -1,6 +1,7 @@
 use crate::stack::common::{
     array_vec_struct, check_capacity, const_assert, impl_addition, impl_common, impl_dedup,
-    impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits, SetLenOnDrop,
+    impl_resize, impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits,
+    SetLenOnDrop,
 };
 use crate::stack::error::OutOfMemoryError;
 use std::mem::MaybeUninit;
@@ -44,17 +45,8 @@ impl<T, const N: usize> ArrayVec<T, N> {
     }
 
     impl_split_off! { ArrayVec }
-    impl_resize_with! { ArrayVec }
     impl_retain! { ArrayVec }
-
-    /// [`Vec::extend_from_within`]
-    #[inline]
-    pub fn extend_from_within<R>(&mut self, src: R) -> Result<(), OutOfMemoryError>
-    where
-        R: RangeBounds<usize>,
-    {
-        todo!()
-    }
+    impl_resize_with! { ArrayVec }
 }
 
 impl_dedup! { ArrayVec }
@@ -63,29 +55,22 @@ impl<T, const N: usize> ArrayVec<T, N>
 where
     T: Clone,
 {
-    /// [`Vec::resize`]
+    /// [`Vec::extend_with`]
     #[inline]
     #[track_caller]
-    pub fn resize<F>(&mut self, new_len: usize, value: T) -> Result<(), OutOfMemoryError> {
-        let len: usize = self.len;
-
-        check_capacity!(new_len);
-
-        if len < new_len {
-            unsafe {
-                let ptr: *mut T = self.as_mut_ptr();
-                let mut local_len: SetLenOnDrop = SetLenOnDrop::new(&mut self.len);
-                for _ in 0..(new_len - len - 1) {
-                    std::ptr::write(ptr.add(local_len.current_len()), value.clone());
-                    local_len.increment_len(1);
-                }
+    fn extend_with(&mut self, n: usize, value: T) {
+        unsafe {
+            let ptr: *mut T = self.as_mut_ptr();
+            let mut local_len: SetLenOnDrop = SetLenOnDrop::new(&mut self.len);
+            for _ in 0..(n - 1) {
+                std::ptr::write(ptr.add(local_len.current_len()), value.clone());
+                local_len.increment_len(1);
+            }
+            if 0 < n {
                 std::ptr::write(ptr.add(local_len.current_len()), value);
                 local_len.increment_len(1);
             }
-        } else {
-            self.truncate(new_len);
         }
-        Ok(())
     }
 
     /// [`Vec::extend_from_slice`]
@@ -104,6 +89,17 @@ where
         }
         Ok(())
     }
+
+    /// [`Vec::extend_from_within`]
+    #[inline]
+    pub fn extend_from_within<R>(&mut self, src: R) -> Result<(), OutOfMemoryError>
+    where
+        R: RangeBounds<usize>,
+    {
+        todo!()
+    }
+
+    impl_resize! { ArrayVec }
 }
 
 impl<T, const N: usize> ConvertArrayVec<N> for T
@@ -171,6 +167,19 @@ impl<T, const N: usize> Drop for ArrayVec<T, N> {
 }
 
 impl_traits! { ArrayVec }
+
+// #[macro_export]
+// macro_rules! array_vec {
+//     () => {
+//         $crate::stack::vec::ArrayVec::new()
+//     };
+//     ($elem:expr; $n:expr) => {
+//         $crate::stack::vec::ArrayVec::from_elem($elem, $n)
+//     };
+//     ($($x:expr),+ $(,)?) => {
+//         $crate::stack::vec::ArrayVec::from([$($x),+])
+//     };
+// }
 
 #[cfg(test)]
 mod tests {

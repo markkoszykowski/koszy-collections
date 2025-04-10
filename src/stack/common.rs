@@ -544,6 +544,26 @@ macro_rules! impl_resize_with {
     };
 }
 
+macro_rules! impl_resize {
+    ($vec:ident $(, $is_const:ident)?) => {
+        /// [`Vec::resize`]
+        #[inline]
+        #[track_caller]
+        pub $($is_const)? fn resize(&mut self, new_len: usize, value: T) -> Result<(), OutOfMemoryError> {
+            let len: usize = self.len;
+
+            check_capacity!(new_len);
+
+            if len < new_len {
+                self.extend_with(new_len - len, value);
+            } else {
+                self.truncate(new_len);
+            }
+            Ok(())
+        }
+    };
+}
+
 macro_rules! impl_clone {
     ($vec:ident $(, $bound:ident)?) => {
         trait ConvertArrayVec<const N: usize> {
@@ -561,7 +581,7 @@ macro_rules! impl_clone {
 
         impl<T, const N: usize> Clone for $vec<T, N>
         where
-            T: Clone $(+ $bound,)?
+            T: Clone $(+ $bound)?,
         {
             /// [`Vec::clone`]
             #[inline]
@@ -576,6 +596,36 @@ macro_rules! impl_clone {
             fn clone_from(&mut self, source: &$vec<T, N>) {
                 SpecCloneIntoArrayVec::clone_into(source.as_slice(), self);
             }
+        }
+
+
+        trait SpecFromElem<const N: usize>
+        where
+            Self: Sized $(+ $bound)?,
+        {
+            fn from_elem(elem: Self, n: usize) -> Result<$vec<Self, N>, OutOfMemoryError>;
+        }
+
+        impl<T, const N: usize> SpecFromElem<N> for T
+        where
+            T: Clone $(+ $bound)?,
+        {
+            fn from_elem(elem: T, n: usize) -> Result<$vec<T, N>, OutOfMemoryError> {
+                check_capacity!(n);
+
+                let mut v: $vec<T, N> = $vec::new();
+                v.extend_with(n, elem);
+                Ok(v)
+            }
+        }
+
+        /// [`vec::from_elem`]
+        #[track_caller]
+        pub fn from_elem<T, const N: usize>(elem: T, n: usize) -> Result<$vec<T, N>, OutOfMemoryError>
+        where
+            T: Clone $(+ $bound)?,
+        {
+            T::from_elem(elem, n)
         }
     };
 }
@@ -997,32 +1047,10 @@ macro_rules! impl_traits {
     };
 }
 
-#[macro_export]
-macro_rules! array_vec {
-    () => (
-        $crate::stack::vec::ArrayVec::new()
-    );
-    ($($x:expr),+ $(,)?) => {
-        {
-            // const COPY: bool = true $( && {
-            //     const fn is_copy<T>(t: T) where T: Copy {}
-            //     const _ = is_copy($x);
-            //     true
-            // } )*;
-            const COPY: bool = true;
-
-            if COPY {
-                $crate::stack::copy::CopyArrayVec::from([$($x),+])
-            } else {
-                $crate::stack::vec::ArrayVec::from([$($x),+])
-            }
-        }
-    };
-}
+pub(super) use array_vec_struct;
 
 pub(super) use check_capacity;
 
-pub(super) use array_vec_struct;
 pub(super) use impl_addition;
 pub(super) use impl_as_ref;
 pub(super) use impl_borrow;
@@ -1035,11 +1063,13 @@ pub(super) use impl_deref;
 pub(super) use impl_from;
 pub(super) use impl_hash;
 pub(super) use impl_ord;
+pub(super) use impl_resize;
 pub(super) use impl_resize_with;
 pub(super) use impl_retain;
 pub(super) use impl_slice;
 pub(super) use impl_slice_eq;
 pub(super) use impl_split_off;
 pub(super) use impl_subtraction;
-pub(super) use impl_traits;
 pub(super) use impl_write;
+
+pub(super) use impl_traits;
