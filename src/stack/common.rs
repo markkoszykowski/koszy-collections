@@ -880,12 +880,9 @@ macro_rules! impl_from {
                 <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
                 const fn same_capcity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
-                    union TransmuteUnion<T, const N: usize, const M: usize> {
-                        source: std::mem::ManuallyDrop<[T; N]>,
-                        dest: std::mem::ManuallyDrop<[std::mem::MaybeUninit<T>; M]>,
-                    }
-                    let u: TransmuteUnion<T, N, M> = TransmuteUnion { source: std::mem::ManuallyDrop::new(value) };
-                    return unsafe { std::mem::ManuallyDrop::into_inner(u.dest) };
+                    let data: [std::mem::MaybeUninit<T>; M] = unsafe { std::ptr::read(value.as_ptr() as *const [std::mem::MaybeUninit<T>; M]) };
+                    std::mem::forget(value);
+                    data
                 }
 
                 const fn different_capacity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
