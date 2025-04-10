@@ -1,6 +1,6 @@
 use crate::stack::common::{
-    array_vec_struct, check_capacity, const_assert, impl_addition, impl_common, impl_dedup,
-    impl_resize, impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits,
+    array_vec_struct, check_capacity, impl_addition, impl_common, impl_dedup, impl_resize,
+    impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits,
 };
 use crate::stack::error::OutOfMemoryError;
 use std::ops::RangeBounds;

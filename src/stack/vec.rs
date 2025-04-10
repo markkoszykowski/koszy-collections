@@ -1,7 +1,6 @@
 use crate::stack::common::{
-    array_vec_struct, check_capacity, const_assert, impl_addition, impl_common, impl_dedup,
-    impl_resize, impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits,
-    SetLenOnDrop,
+    array_vec_struct, check_capacity, impl_addition, impl_common, impl_dedup, impl_resize,
+    impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits, SetLenOnDrop,
 };
 use crate::stack::error::OutOfMemoryError;
 use std::mem::MaybeUninit;

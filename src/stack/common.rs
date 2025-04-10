@@ -1,7 +1,3 @@
-pub(super) const fn const_assert<const N: usize, const M: usize>() {
-    assert!(N <= M, "N should be <= M");
-}
-
 pub(super) struct SetLenOnDrop<'a> {
     len: &'a mut usize,
     local_len: usize,
@@ -43,6 +39,22 @@ macro_rules! array_vec_struct {
         {
             data: [std::mem::MaybeUninit<T>; N],
             len: usize,
+        }
+    };
+}
+
+pub(super) const fn const_assert<const N: usize, const M: usize>() {
+    assert!(N <= M, "N should be <= M");
+}
+
+pub(super) trait ConstAssert<const N: usize, const M: usize> {
+    const CONST_ASSERT: ();
+}
+
+macro_rules! check_capacity {
+    ($len:expr) => {
+        if N < $len {
+            return Err(OutOfMemoryError(()));
         }
     };
 }
@@ -121,14 +133,6 @@ macro_rules! impl_common {
             unsafe {
                 std::slice::from_raw_parts_mut(self.data.as_mut_ptr().add(len), N - len)
             }
-        }
-    };
-}
-
-macro_rules! check_capacity {
-    ($len:expr) => {
-        if N < $len {
-            return Err(OutOfMemoryError(()));
         }
     };
 }
@@ -265,7 +269,7 @@ macro_rules! impl_split_off {
         #[inline]
         #[track_caller]
         pub $($is_const)? fn split_off<const M: usize>(&mut self, at: usize) -> $vec<T, M> {
-            const_assert::<N, M>();
+            <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
             let len: usize = self.len;
 
@@ -564,6 +568,17 @@ macro_rules! impl_resize {
     };
 }
 
+macro_rules! impl_assert {
+    ($vec:ident $(, $bound:ident)?) => {
+        impl<T, const N: usize, const M: usize> $crate::stack::common::ConstAssert<N, M> for $vec<T, M>
+        where
+            $(T: $bound,)?
+        {
+            const CONST_ASSERT: () = $crate::stack::common::const_assert::<N, M>();
+        }
+    };
+}
+
 macro_rules! impl_clone {
     ($vec:ident $(, $bound:ident)?) => {
         trait ConvertArrayVec<const N: usize> {
@@ -851,6 +866,7 @@ macro_rules! impl_ord {
         }
     };
 }
+
 macro_rules! impl_from {
     ($vec:ident $(, $bound:ident)?) => {
         impl<T, const N: usize, const M: usize> From<[T; N]> for $vec<T, M>
@@ -861,16 +877,31 @@ macro_rules! impl_from {
             #[inline]
             #[track_caller]
             fn from(value: [T; N]) -> $vec<T, M> {
-                const_assert::<N, M>();
+                <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
-                let mut data: [std::mem::MaybeUninit<T>; M] = [const { std::mem::MaybeUninit::uninit() }; M];
-                unsafe {
-                    std::ptr::copy_nonoverlapping(value.as_ptr(), data.as_mut_ptr() as *mut T, N);
+                const fn same_capcity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
+                    union TransmuteUnion<T, const N: usize, const M: usize> {
+                        source: std::mem::ManuallyDrop<[T; N]>,
+                        dest: std::mem::ManuallyDrop<[std::mem::MaybeUninit<T>; M]>,
+                    }
+                    let u: TransmuteUnion<T, N, M> = TransmuteUnion { source: std::mem::ManuallyDrop::new(value) };
+                    return unsafe { std::mem::ManuallyDrop::into_inner(u.dest) };
                 }
 
-                core::mem::forget(value);
+                const fn different_capacity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
+                    let mut data: [std::mem::MaybeUninit<T>; M] = [const { std::mem::MaybeUninit::uninit() }; M];
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(value.as_ptr(), data.as_mut_ptr() as *mut T, N);
+                    }
+                    std::mem::forget(value);
+                    data
+                }
 
-                unsafe { $vec::from_raw_parts(data, N) }
+                const fn transmute<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
+                    if N == M { same_capcity(value) } else { different_capacity(value) }
+                }
+
+                unsafe { $vec::from_raw_parts(transmute(value), N) }
             }
         }
 
@@ -882,7 +913,7 @@ macro_rules! impl_from {
             #[inline]
             #[track_caller]
             fn from(value: &[T; N]) -> $vec<T, M> {
-                const_assert::<N, M>();
+                <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
                 T::to_array_vec(value.as_slice())
             }
@@ -895,7 +926,7 @@ macro_rules! impl_from {
             #[inline]
             #[track_caller]
             fn from(value: &mut [T; N]) -> $vec<T, M> {
-                const_assert::<N, M>();
+                <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
                 T::to_array_vec(value.as_mut_slice())
             }
@@ -1010,6 +1041,8 @@ macro_rules! impl_write {
 }
 macro_rules! impl_traits {
     ($vec:ident $(, $bound:ident)?) => {
+        $crate::stack::common::impl_assert! { $vec $(, $bound)? }
+
         $crate::stack::common::impl_clone! { $vec $(, $bound)? }
 
         $crate::stack::common::impl_default! { $vec $(, $bound)? }
@@ -1053,6 +1086,7 @@ pub(super) use check_capacity;
 
 pub(super) use impl_addition;
 pub(super) use impl_as_ref;
+pub(super) use impl_assert;
 pub(super) use impl_borrow;
 pub(super) use impl_clone;
 pub(super) use impl_common;
