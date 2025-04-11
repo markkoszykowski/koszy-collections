@@ -34,7 +34,7 @@ impl<T, const N: usize> ArrayVec<T, N> {
     /// [`Vec::clear`]
     #[inline]
     pub fn clear(&mut self) {
-        let slice: *mut [T] = self.as_mut_slice() as *mut [T];
+        let slice: *mut [T] = std::ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len);
 
         unsafe {
             self.len = 0;
@@ -57,15 +57,15 @@ where
     /// [`Vec::extend_with`]
     #[inline]
     #[track_caller]
-    fn extend_with(&mut self, n: usize, value: T) {
+    fn extend_with(&mut self, new_len: usize, value: T) {
         unsafe {
             let ptr: *mut T = self.as_mut_ptr();
-            let mut local_len: SetLenOnDrop = SetLenOnDrop::new(&mut self.len);
-            for _ in 0..(n - 1) {
+            let mut local_len: SetLenOnDrop<'_> = SetLenOnDrop::new(&mut self.len);
+            for _ in 0..(new_len - 1) {
                 std::ptr::write(ptr.add(local_len.current_len()), value.clone());
                 local_len.increment_len(1);
             }
-            if 0 < n {
+            if 0 < new_len {
                 std::ptr::write(ptr.add(local_len.current_len()), value);
                 local_len.increment_len(1);
             }
@@ -80,7 +80,7 @@ where
 
         unsafe {
             let ptr: *mut T = self.as_mut_ptr();
-            let mut local_len: SetLenOnDrop = SetLenOnDrop::new(&mut self.len);
+            let mut local_len: SetLenOnDrop<'_> = SetLenOnDrop::new(&mut self.len);
             for element in other {
                 std::ptr::write(ptr.add(local_len.current_len()), element.clone());
                 local_len.increment_len(1);
@@ -110,7 +110,7 @@ where
             vec: &'a mut ArrayVec<T, N>,
             num_init: usize,
         }
-        impl<'a, T, const N: usize> Drop for DropGuard<'a, T, N> {
+        impl<T, const N: usize> Drop for DropGuard<'_, T, N> {
             fn drop(&mut self) {
                 unsafe {
                     self.vec.set_len(self.num_init);
@@ -156,11 +156,9 @@ impl<T, const N: usize> Drop for ArrayVec<T, N> {
     /// [`Vec::drop`]
     #[inline]
     fn drop(&mut self) {
+        let slice: *mut [T] = std::ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len);
         unsafe {
-            std::ptr::drop_in_place(std::ptr::slice_from_raw_parts_mut(
-                self.as_mut_ptr(),
-                self.len,
-            ))
+            std::ptr::drop_in_place(slice);
         }
     }
 }

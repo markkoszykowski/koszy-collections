@@ -46,15 +46,15 @@ where
     /// [`Vec::extend_with`]
     #[inline]
     #[track_caller]
-    const fn extend_with(&mut self, n: usize, value: T) {
+    const fn extend_with(&mut self, new_len: usize, value: T) {
         unsafe {
             let ptr: *mut T = self.as_mut_ptr().add(self.len);
             let mut i: usize = 0;
-            while i < n {
+            while i < new_len {
                 std::ptr::write(ptr.add(i), value);
                 i += 1;
             }
-            self.len += n;
+            self.len += new_len;
         }
     }
 
@@ -64,7 +64,9 @@ where
     pub const fn extend_from_slice(&mut self, other: &[T]) -> Result<(), OutOfMemoryError> {
         check_capacity!(self.len + other.len());
 
-        unsafe { self.append_elements(other) }
+        unsafe {
+            self.append_elements(other);
+        }
         Ok(())
     }
 

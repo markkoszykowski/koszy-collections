@@ -305,7 +305,10 @@ impl<const N: usize> core::fmt::Debug for ArrayString<N> {
 impl<const N: usize> Hash for ArrayString<N> {
     /// [`String::hash`]
     #[inline]
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
+    fn hash<H>(&self, hasher: &mut H)
+    where
+        H: Hasher,
+    {
         (**self).hash(hasher)
     }
 }

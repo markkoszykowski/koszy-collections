@@ -201,8 +201,8 @@ macro_rules! impl_addition {
             let len: usize = self.len;
             let other_len: usize = other.len();
             unsafe {
-                std::ptr::copy_nonoverlapping(other.as_ptr(), self.as_mut_ptr().add(len), other_len)
-            };
+                std::ptr::copy_nonoverlapping(other.as_ptr(), self.as_mut_ptr().add(len), other_len);
+            }
             self.len += other_len;
         }
     };
@@ -464,7 +464,9 @@ macro_rules! impl_retain {
                         }
                     }
 
-                    self.v.len = self.original_len - self.deleted_cnt;
+                    unsafe {
+                        self.v.len = self.original_len - self.deleted_cnt;
+                    }
                 }
             }
 
@@ -489,7 +491,9 @@ macro_rules! impl_retain {
                         g.processed_len += 1;
                         g.deleted_cnt += 1;
 
-                        unsafe { std::ptr::drop_in_place(cur) };
+                        unsafe {
+                            std::ptr::drop_in_place(cur);
+                        }
 
                         if DELETED {
                             continue;
@@ -533,7 +537,7 @@ macro_rules! impl_resize_with {
             if len < new_len {
                 unsafe {
                     let ptr: *mut T = self.as_mut_ptr();
-                    let mut local_len: $crate::stack::common::SetLenOnDrop =
+                    let mut local_len: $crate::stack::common::SetLenOnDrop<'_> =
                         $crate::stack::common::SetLenOnDrop::new(&mut self.len);
                     for element in core::iter::repeat_with(f).take(new_len - len) {
                         std::ptr::write(ptr.add(local_len.current_len()), element);
@@ -662,9 +666,9 @@ macro_rules! impl_default {
 
 macro_rules! impl_debug {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T: core::fmt::Debug, const N: usize> core::fmt::Debug for $vec<T, N>
+        impl<T, const N: usize> core::fmt::Debug for $vec<T, N>
         where
-            $(T: $bound,)?
+            T: core::fmt::Debug $(+ $bound)?,
         {
             /// [`Vec::fmt`]
             #[inline]
@@ -779,8 +783,9 @@ macro_rules! impl_borrow {
 
 macro_rules! impl_slice {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T, I: std::slice::SliceIndex<[T]>, const N: usize> core::ops::Index<I> for $vec<T, N>
+        impl<T, I, const N: usize> core::ops::Index<I> for $vec<T, N>
         where
+            I: std::slice::SliceIndex<[T]>,
             $(T: $bound,)?
         {
             type Output = I::Output;
@@ -792,8 +797,9 @@ macro_rules! impl_slice {
             }
         }
 
-        impl<T, I: std::slice::SliceIndex<[T]>, const N: usize> core::ops::IndexMut<I> for $vec<T, N>
+        impl<T, I, const N: usize> core::ops::IndexMut<I> for $vec<T, N>
         where
+            I: std::slice::SliceIndex<[T]>,
             $(T: $bound,)?
         {
             /// [`Vec::index_mut`]
@@ -834,7 +840,10 @@ macro_rules! impl_hash {
         {
             /// [`Vec::hash`]
             #[inline]
-            fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+            fn hash<H>(&self, state: &mut H)
+            where
+                H: core::hash::Hasher,
+            {
                 core::hash::Hash::hash(&**self, state)
             }
         }
@@ -843,9 +852,9 @@ macro_rules! impl_hash {
 
 macro_rules! impl_ord {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T: core::cmp::PartialOrd, const N: usize, const M: usize> core::cmp::PartialOrd<$vec<T, M>> for $vec<T, N>
+        impl<T, const N: usize, const M: usize> core::cmp::PartialOrd<$vec<T, M>> for $vec<T, N>
         where
-            $(T: $bound,)?
+            T: core::cmp::PartialOrd $(+ $bound)?,
         {
             /// [`Vec::partial_cmp`]
             #[inline]
@@ -856,7 +865,7 @@ macro_rules! impl_ord {
 
         impl<T: core::cmp::Ord, const N: usize> core::cmp::Ord for $vec<T, N>
         where
-            $(T: $bound,)?
+            T: core::cmp::Ord $(+ $bound)?,
         {
             /// [`Vec::cmp`]
             #[inline]
@@ -879,12 +888,14 @@ macro_rules! impl_from {
             fn from(value: [T; N]) -> $vec<T, M> {
                 <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
+                #[inline]
                 const fn same_capcity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
                     let data: [std::mem::MaybeUninit<T>; M] = unsafe { std::ptr::read(value.as_ptr() as *const [std::mem::MaybeUninit<T>; M]) };
                     std::mem::forget(value);
                     data
                 }
 
+                #[inline]
                 const fn different_capacity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
                     let mut data: [std::mem::MaybeUninit<T>; M] = [const { std::mem::MaybeUninit::uninit() }; M];
                     unsafe {
@@ -894,6 +905,7 @@ macro_rules! impl_from {
                     data
                 }
 
+                #[inline]
                 const fn transmute<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
                     if N == M { same_capcity(value) } else { different_capacity(value) }
                 }
