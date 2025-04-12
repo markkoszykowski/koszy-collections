@@ -130,9 +130,7 @@ macro_rules! impl_common {
         #[inline]
         pub $($is_const)? fn spare_capacity_mut(&mut self) -> &mut [std::mem::MaybeUninit<T>] {
             let len: usize = self.len;
-            unsafe {
-                std::slice::from_raw_parts_mut(self.buf.as_mut_ptr().add(len), N - len)
-            }
+            unsafe { std::slice::from_raw_parts_mut(self.buf.as_mut_ptr().add(len), N - len) }
         }
     };
 }
