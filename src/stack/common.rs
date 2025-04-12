@@ -536,7 +536,8 @@ macro_rules! impl_resize_with {
             if len < new_len {
                 unsafe {
                     let ptr: *mut T = self.as_mut_ptr();
-                    let mut local_len: $crate::stack::common::SetLenOnDrop<'_> = $crate::stack::common::SetLenOnDrop::new(&mut self.len);
+                    let mut local_len: $crate::stack::common::SetLenOnDrop<'_> =
+                        $crate::stack::common::SetLenOnDrop::new(&mut self.len);
                     for value in core::iter::repeat_with(f).take(new_len - len) {
                         std::ptr::write(ptr.add(local_len.current_len()), value);
                         local_len.increment_len(1);
@@ -600,12 +601,14 @@ macro_rules! impl_clone {
             T: Clone $(+ $bound)?,
         {
             /// [`Vec::clone`]
+            #[inline]
             #[track_caller]
             fn clone(&self) -> $vec<T, N> {
                 T::to_array_vec(&**self)
             }
 
             /// [`Vec::clone_from`]
+            #[inline]
             #[track_caller]
             fn clone_from(&mut self, source: &$vec<T, N>) {
                 SpecCloneIntoArrayVec::clone_into(source.as_slice(), self);
@@ -634,11 +637,13 @@ macro_rules! impl_clone {
         }
 
         /// [`vec::from_elem`]
+        #[inline]
         #[track_caller]
         pub fn from_elem<T, const N: usize>(elem: T, n: usize) -> Result<$vec<T, N>, OutOfMemoryError>
         where
             T: Clone $(+ $bound)?,
         {
+            alloc::vec::from_elem()
             T::from_elem(elem, n)
         }
     };
@@ -829,9 +834,9 @@ macro_rules! impl_slice_eq {
 }
 macro_rules! impl_hash {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T: core::hash::Hash, const N: usize> core::hash::Hash for $vec<T, N>
+        impl<T, const N: usize> core::hash::Hash for $vec<T, N>
         where
-            $(T: $bound,)?
+            T: core::hash::Hash $(+ $bound)?,
         {
             /// [`Vec::hash`]
             #[inline]
@@ -858,7 +863,7 @@ macro_rules! impl_ord {
             }
         }
 
-        impl<T: core::cmp::Ord, const N: usize> core::cmp::Ord for $vec<T, N>
+        impl<T, const N: usize> core::cmp::Ord for $vec<T, N>
         where
             T: core::cmp::Ord $(+ $bound)?,
         {
@@ -1037,6 +1042,7 @@ macro_rules! impl_write {
         }
     };
 }
+
 macro_rules! impl_traits {
     ($vec:ident $(, $bound:ident)?) => {
         $crate::stack::common::impl_assert! { $vec $(, $bound)? }
