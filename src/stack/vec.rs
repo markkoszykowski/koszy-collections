@@ -151,6 +151,7 @@ where
 
 impl<T, const N: usize> Drop for ArrayVec<T, N> {
     /// [`Vec::drop`]
+    #[inline]
     fn drop(&mut self) {
         let slice: *mut [T] = std::ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len);
         unsafe {
