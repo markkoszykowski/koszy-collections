@@ -641,7 +641,6 @@ macro_rules! impl_clone {
         where
             T: Clone $(+ $bound)?,
         {
-            alloc::vec::from_elem()
             T::from_elem(elem, n)
         }
     };
