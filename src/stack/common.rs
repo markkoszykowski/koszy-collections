@@ -536,8 +536,8 @@ macro_rules! impl_resize_with {
                     let ptr: *mut T = self.as_mut_ptr();
                     let mut local_len: $crate::stack::common::SetLenOnDrop<'_> =
                         $crate::stack::common::SetLenOnDrop::new(&mut self.len);
-                    for value in core::iter::repeat_with(f).take(new_len - len) {
-                        std::ptr::write(ptr.add(local_len.current_len()), value);
+                    for element in core::iter::repeat_with(f).take(new_len - len) {
+                        std::ptr::write(ptr.add(local_len.current_len()), element);
                         local_len.increment_len(1);
                     }
                 }
