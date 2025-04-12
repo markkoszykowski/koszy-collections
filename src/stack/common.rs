@@ -886,7 +886,7 @@ macro_rules! impl_from {
                 let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
                 #[inline]
-                const fn same_capcity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
+                const fn same_capacity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
                     let buf: [std::mem::MaybeUninit<T>; M] = unsafe { std::ptr::read(value.as_ptr() as *const [std::mem::MaybeUninit<T>; M]) };
                     std::mem::forget(value);
                     buf
@@ -904,7 +904,7 @@ macro_rules! impl_from {
 
                 #[inline]
                 const fn transmute<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
-                    if N == M { same_capcity(value) } else { different_capacity(value) }
+                    if N == M { same_capacity(value) } else { different_capacity(value) }
                 }
 
                 unsafe { $vec::from_raw_parts(transmute(value), N) }
