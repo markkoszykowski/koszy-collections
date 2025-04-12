@@ -14,6 +14,7 @@ impl<T, const N: usize> ArrayVec<T, N> {
     impl_subtraction! { ArrayVec }
 
     /// [`Vec::truncate`]
+    #[inline]
     pub fn truncate(&mut self, new_len: usize) {
         let len: usize = self.len;
 
