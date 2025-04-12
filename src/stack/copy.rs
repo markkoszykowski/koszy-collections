@@ -16,6 +16,7 @@ where
     impl_subtraction! { CopyArrayVec, const }
 
     /// [`Vec::truncate`]
+    #[inline]
     pub const fn truncate(&mut self, new_len: usize) {
         let len: usize = self.len;
         unsafe {
