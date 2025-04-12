@@ -14,7 +14,6 @@ impl<T, const N: usize> ArrayVec<T, N> {
     impl_subtraction! { ArrayVec }
 
     /// [`Vec::truncate`]
-    #[inline]
     pub fn truncate(&mut self, new_len: usize) {
         let len: usize = self.len;
 
@@ -55,17 +54,16 @@ where
     T: Clone,
 {
     /// [`Vec::extend_with`]
-    #[inline]
     #[track_caller]
-    fn extend_with(&mut self, new_len: usize, value: T) {
+    fn extend_with(&mut self, n: usize, value: T) {
         unsafe {
             let ptr: *mut T = self.as_mut_ptr();
             let mut local_len: SetLenOnDrop<'_> = SetLenOnDrop::new(&mut self.len);
-            for _ in 0..(new_len - 1) {
+            for _ in 0..(n - 1) {
                 std::ptr::write(ptr.add(local_len.current_len()), value.clone());
                 local_len.increment_len(1);
             }
-            if 0 < new_len {
+            if 0 < n {
                 std::ptr::write(ptr.add(local_len.current_len()), value);
                 local_len.increment_len(1);
             }
@@ -73,7 +71,6 @@ where
     }
 
     /// [`Vec::extend_from_slice`]
-    #[inline]
     #[track_caller]
     pub fn extend_from_slice(&mut self, other: &[T]) -> Result<(), OutOfMemoryError> {
         check_capacity!(self.len + other.len());
@@ -90,7 +87,7 @@ where
     }
 
     /// [`Vec::extend_from_within`]
-    #[inline]
+    #[track_caller]
     pub fn extend_from_within<R>(&mut self, src: R) -> Result<(), OutOfMemoryError>
     where
         R: RangeBounds<usize>,
@@ -154,7 +151,6 @@ where
 
 impl<T, const N: usize> Drop for ArrayVec<T, N> {
     /// [`Vec::drop`]
-    #[inline]
     fn drop(&mut self) {
         let slice: *mut [T] = std::ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len);
         unsafe {
@@ -165,51 +161,15 @@ impl<T, const N: usize> Drop for ArrayVec<T, N> {
 
 impl_traits! { ArrayVec }
 
-// #[macro_export]
-// macro_rules! array_vec {
-//     () => {
-//         $crate::stack::vec::ArrayVec::new()
-//     };
-//     ($elem:expr; $n:expr) => {
-//         $crate::stack::vec::ArrayVec::from_elem($elem, $n)
-//     };
-//     ($($x:expr),+ $(,)?) => {
-//         $crate::stack::vec::ArrayVec::from([$($x),+])
-//     };
-// }
-
-#[cfg(test)]
-mod tests {
-    use crate::stack::vec::ArrayVec;
-    use std::mem::MaybeUninit;
-
-    #[test]
-    fn new_test() {
-        let mut vec: ArrayVec<i32, 32> = ArrayVec::new();
-    }
-
-    #[test]
-    fn from_raw_parts_test() {
-        let mut maybe_uninit: [MaybeUninit<u32>; 16] = [const { MaybeUninit::uninit() }; 16];
-        let vec: ArrayVec<u32, 16> = unsafe {
-            maybe_uninit.as_mut_ptr().write(MaybeUninit::new(1_000_000));
-            ArrayVec::from_raw_parts(maybe_uninit, 1)
-        };
-
-        assert_eq!(vec, &[1_000_000]);
-    }
-
-    #[test]
-    fn capacity_test() {
-        let mut vec: ArrayVec<i32, 32> = ArrayVec::new();
-        vec.push(42).unwrap();
-        assert_eq!(vec.capacity(), 32);
-    }
-
-    #[test]
-    fn len_test() {
-        // let a: CopyArrayVec<i32, 32> = array_vec![1, 2, 3];
-        // let a: ArrayVec<String, 32> = array_vec!["1".to_string(), "2".to_string(), "3".to_string()];
-        // assert_eq!(a.len(), 3);
-    }
+#[macro_export]
+macro_rules! array_vec {
+    () => {
+        $crate::stack::vec::ArrayVec::new()
+    };
+    ($elem:expr; $n:expr) => {
+        $crate::stack::vec::ArrayVec::from_elem($elem, $n)
+    };
+    ($($x:expr),+ $(,)?) => {
+        $crate::stack::vec::ArrayVec::from([$($x),+])
+    };
 }

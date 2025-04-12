@@ -37,7 +37,7 @@ macro_rules! array_vec_struct {
         where
             $(T: $bound,)?
         {
-            data: [std::mem::MaybeUninit<T>; N],
+            buf: [std::mem::MaybeUninit<T>; N],
             len: usize,
         }
     };
@@ -65,15 +65,15 @@ macro_rules! impl_common {
         #[inline]
         pub $($is_const)? fn new() -> $vec<T, N> {
             $vec {
-                data: [const { std::mem::MaybeUninit::uninit() }; N],
+                buf: [const { std::mem::MaybeUninit::uninit() }; N],
                 len: 0,
             }
         }
 
         /// [`Vec::from_raw_parts`]
         #[inline]
-        pub $($is_const)? unsafe fn from_raw_parts(data: [std::mem::MaybeUninit<T>; N], len: usize) -> $vec<T, N> {
-            $vec { data, len }
+        pub $($is_const)? unsafe fn from_raw_parts(buf: [std::mem::MaybeUninit<T>; N], len: usize) -> $vec<T, N> {
+            $vec { buf, len }
         }
 
         /// [`Vec::capacity`]
@@ -105,13 +105,13 @@ macro_rules! impl_common {
         /// [`Vec::as_ptr`]
         #[inline]
         pub $($is_const)? fn as_ptr(&self) -> *const T {
-            self.data.as_ptr() as *const T
+            self.buf.as_ptr() as *const T
         }
 
         /// [`Vec::as_mut_ptr`]
         #[inline]
         pub $($is_const)? fn as_mut_ptr(&mut self) -> *mut T {
-            self.data.as_mut_ptr() as *mut T
+            self.buf.as_mut_ptr() as *mut T
         }
 
         /// [`Vec::as_slice`]
@@ -131,7 +131,7 @@ macro_rules! impl_common {
         pub $($is_const)? fn spare_capacity_mut(&mut self) -> &mut [std::mem::MaybeUninit<T>] {
             let len: usize = self.len;
             unsafe {
-                std::slice::from_raw_parts_mut(self.data.as_mut_ptr().add(len), N - len)
+                std::slice::from_raw_parts_mut(self.buf.as_mut_ptr().add(len), N - len)
             }
         }
     };
@@ -140,9 +140,8 @@ macro_rules! impl_common {
 macro_rules! impl_addition {
     ($vec:ident $(, $is_const:ident)?) => {
         /// [`Vec::insert`]
-        #[inline]
         #[track_caller]
-        pub $($is_const)? fn insert(&mut self, index: usize, element: T) -> Result<(), OutOfMemoryError> {
+        pub $($is_const)? fn insert(&mut self, index: usize, value: T) -> Result<(), OutOfMemoryError> {
             let len: usize = self.len;
 
             if len < index {
@@ -156,14 +155,13 @@ macro_rules! impl_addition {
                 if index < len {
                     std::ptr::copy(ptr, ptr.add(1), len - index);
                 }
-                std::ptr::write(ptr, element);
+                std::ptr::write(ptr, value);
                 self.len += 1;
             }
             Ok(())
         }
 
         /// [`Vec::push`]
-        #[inline]
         #[track_caller]
         pub $($is_const)? fn push(&mut self, value: T) -> Result<(), OutOfMemoryError> {
             let len: usize = self.len;
@@ -179,12 +177,8 @@ macro_rules! impl_addition {
         }
 
         /// [`Vec::append`]
-        #[inline]
         #[track_caller]
-        pub $($is_const)? fn append<const M: usize>(
-            &mut self,
-            other: &mut $vec<T, M>,
-        ) -> Result<(), OutOfMemoryError> {
+        pub $($is_const)? fn append<const M: usize>(&mut self, other: &mut $vec<T, M>) -> Result<(), OutOfMemoryError> {
             check_capacity!(self.len + other.len);
 
             unsafe {
@@ -195,7 +189,6 @@ macro_rules! impl_addition {
         }
 
         /// [`Vec::append_elements`]
-        #[inline]
         #[track_caller]
         $($is_const)? unsafe fn append_elements(&mut self, other: &[T]) {
             let len: usize = self.len;
@@ -211,7 +204,6 @@ macro_rules! impl_addition {
 macro_rules! impl_subtraction {
     ($vec:ident $(, $is_const:ident)?) => {
         /// [`Vec::swap_remove`]
-        #[inline]
         #[track_caller]
         pub $($is_const)? fn swap_remove(&mut self, index: usize) -> T {
             let len: usize = self.len;
@@ -221,16 +213,15 @@ macro_rules! impl_subtraction {
             }
 
             unsafe {
-                let value: T = std::ptr::read(self.as_ptr().add(index));
-                let ptr: *mut T = self.as_mut_ptr();
-                std::ptr::copy(ptr.add(len - 1), ptr.add(index), 1);
+                let ptr: *mut T = self.as_mut_ptr().add(index);
+                let value: T = std::ptr::read(ptr);
+                std::ptr::copy(ptr.add(len - index - 1), ptr, 1);
                 self.len -= 1;
                 value
             }
         }
 
         /// [`Vec::remove`]
-        #[inline]
         #[track_caller]
         pub $($is_const)? fn remove(&mut self, index: usize) -> T {
             let len: usize = self.len;
@@ -249,7 +240,6 @@ macro_rules! impl_subtraction {
         }
 
         /// [`Vec::pop`]
-        #[inline]
         #[track_caller]
         pub $($is_const)? fn pop(&mut self) -> Option<T> {
             match self.len {
@@ -260,16 +250,25 @@ macro_rules! impl_subtraction {
                 },
             }
         }
+
+        /// [`Vec::pop_if`]
+        #[track_caller]
+        pub fn pop_if<F>(&mut self, predicate: F) -> Option<T>
+        where
+            F: FnOnce(&mut T) -> bool
+        {
+            let last: &mut T = self.last_mut()?;
+            if predicate(last) { self.pop() } else { None }
+        }
     };
 }
 
 macro_rules! impl_split_off {
     ($vec:ident $(, $is_const:ident)?) => {
         /// [`Vec::split_off`]
-        #[inline]
         #[track_caller]
         pub $($is_const)? fn split_off<const M: usize>(&mut self, at: usize) -> $vec<T, M> {
-            <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
+            let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
             let len: usize = self.len;
 
@@ -298,7 +297,7 @@ macro_rules! impl_dedup {
             $(T: $bound,)?
         {
             /// [`Vec::dedup_by_key`]
-            #[inline]
+            #[track_caller]
             pub fn dedup_by_key<F, K>(&mut self, mut key: F)
             where
                 F: FnMut(&mut T) -> K,
@@ -308,6 +307,7 @@ macro_rules! impl_dedup {
             }
 
             /// [`Vec::dedup_by`]
+            #[track_caller]
             pub fn dedup_by<F>(&mut self, mut same_bucket: F)
             where
                 F: FnMut(&mut T, &mut T) -> bool,
@@ -405,7 +405,7 @@ macro_rules! impl_dedup {
             T: PartialEq $(+ $bound)?,
         {
             /// [`Vec::dedup`]
-            #[inline]
+            #[track_caller]
             pub fn dedup(&mut self) {
                 self.dedup_by(|a, b| a == b)
             }
@@ -416,7 +416,7 @@ macro_rules! impl_dedup {
 macro_rules! impl_retain {
     ($vec:ident $(, $bound:ident)?) => {
         /// [`Vec::retain`]
-        #[inline]
+        #[track_caller]
         pub fn retain<F>(&mut self, mut f: F)
         where
             F: FnMut(&T) -> bool,
@@ -425,6 +425,7 @@ macro_rules! impl_retain {
         }
 
         /// [`Vec::retain_mut`]
+        #[track_caller]
         pub fn retain_mut<F>(&mut self, mut f: F)
         where
             F: FnMut(&mut T) -> bool,
@@ -435,7 +436,9 @@ macro_rules! impl_retain {
                 return;
             }
 
-            self.len = 0;
+            unsafe {
+                self.len = 0;
+            }
 
             struct BackshiftOnDrop<'a, T, const N: usize>
             where
@@ -456,9 +459,7 @@ macro_rules! impl_retain {
                         unsafe {
                             std::ptr::copy(
                                 self.v.as_ptr().add(self.processed_len),
-                                self.v
-                                    .as_mut_ptr()
-                                    .add(self.processed_len - self.deleted_cnt),
+                                self.v.as_mut_ptr().add(self.processed_len - self.deleted_cnt),
                                 self.original_len - self.processed_len,
                             );
                         }
@@ -474,7 +475,7 @@ macro_rules! impl_retain {
                 v: self,
                 processed_len: 0,
                 deleted_cnt: 0,
-                original_len,
+                original_len: original_len,
             };
 
             fn process_loop<F, T, const N: usize, const DELETED: bool>(
@@ -503,8 +504,7 @@ macro_rules! impl_retain {
                     }
                     if DELETED {
                         unsafe {
-                            let hole_slot: *mut T =
-                                g.v.as_mut_ptr().add(g.processed_len - g.deleted_cnt);
+                            let hole_slot: *mut T = g.v.as_mut_ptr().add(g.processed_len - g.deleted_cnt);
                             std::ptr::copy_nonoverlapping(cur, hole_slot, 1);
                         }
                     }
@@ -524,7 +524,6 @@ macro_rules! impl_retain {
 macro_rules! impl_resize_with {
     ($vec:ident) => {
         /// [`Vec::resize_with`]
-        #[inline]
         #[track_caller]
         pub fn resize_with<F>(&mut self, new_len: usize, f: F) -> Result<(), OutOfMemoryError>
         where
@@ -537,10 +536,9 @@ macro_rules! impl_resize_with {
             if len < new_len {
                 unsafe {
                     let ptr: *mut T = self.as_mut_ptr();
-                    let mut local_len: $crate::stack::common::SetLenOnDrop<'_> =
-                        $crate::stack::common::SetLenOnDrop::new(&mut self.len);
-                    for element in core::iter::repeat_with(f).take(new_len - len) {
-                        std::ptr::write(ptr.add(local_len.current_len()), element);
+                    let mut local_len: $crate::stack::common::SetLenOnDrop<'_> = $crate::stack::common::SetLenOnDrop::new(&mut self.len);
+                    for value in core::iter::repeat_with(f).take(new_len - len) {
+                        std::ptr::write(ptr.add(local_len.current_len()), value);
                         local_len.increment_len(1);
                     }
                 }
@@ -555,7 +553,6 @@ macro_rules! impl_resize_with {
 macro_rules! impl_resize {
     ($vec:ident $(, $is_const:ident)?) => {
         /// [`Vec::resize`]
-        #[inline]
         #[track_caller]
         pub $($is_const)? fn resize(&mut self, new_len: usize, value: T) -> Result<(), OutOfMemoryError> {
             let len: usize = self.len;
@@ -603,14 +600,12 @@ macro_rules! impl_clone {
             T: Clone $(+ $bound)?,
         {
             /// [`Vec::clone`]
-            #[inline]
             #[track_caller]
             fn clone(&self) -> $vec<T, N> {
                 T::to_array_vec(&**self)
             }
 
             /// [`Vec::clone_from`]
-            #[inline]
             #[track_caller]
             fn clone_from(&mut self, source: &$vec<T, N>) {
                 SpecCloneIntoArrayVec::clone_into(source.as_slice(), self);
@@ -883,26 +878,25 @@ macro_rules! impl_from {
             $(T: $bound,)?
         {
             /// [`Vec::from`]
-            #[inline]
             #[track_caller]
             fn from(value: [T; N]) -> $vec<T, M> {
-                <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
+                let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
                 #[inline]
                 const fn same_capcity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
-                    let data: [std::mem::MaybeUninit<T>; M] = unsafe { std::ptr::read(value.as_ptr() as *const [std::mem::MaybeUninit<T>; M]) };
+                    let buf: [std::mem::MaybeUninit<T>; M] = unsafe { std::ptr::read(value.as_ptr() as *const [std::mem::MaybeUninit<T>; M]) };
                     std::mem::forget(value);
-                    data
+                    buf
                 }
 
                 #[inline]
                 const fn different_capacity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
-                    let mut data: [std::mem::MaybeUninit<T>; M] = [const { std::mem::MaybeUninit::uninit() }; M];
+                    let mut buf: [std::mem::MaybeUninit<T>; M] = [const { std::mem::MaybeUninit::uninit() }; M];
                     unsafe {
-                        std::ptr::copy_nonoverlapping(value.as_ptr(), data.as_mut_ptr() as *mut T, N);
+                        std::ptr::copy_nonoverlapping(value.as_ptr(), buf.as_mut_ptr() as *mut T, N);
                     }
                     std::mem::forget(value);
-                    data
+                    buf
                 }
 
                 #[inline]
@@ -919,10 +913,9 @@ macro_rules! impl_from {
             T: Clone $(+ $bound)?,
         {
             /// [`Vec::from`]
-            #[inline]
             #[track_caller]
             fn from(value: &[T; N]) -> $vec<T, M> {
-                <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
+                let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
                 T::to_array_vec(value.as_slice())
             }
@@ -932,10 +925,9 @@ macro_rules! impl_from {
             T: Clone $(+ $bound)?,
         {
             /// [`Vec::from`]
-            #[inline]
             #[track_caller]
             fn from(value: &mut [T; N]) -> $vec<T, M> {
-                <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
+                let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
 
                 T::to_array_vec(value.as_mut_slice())
             }
@@ -948,7 +940,6 @@ macro_rules! impl_from {
             type Error = OutOfMemoryError;
 
             /// [`Vec::from`]
-            #[inline]
             #[track_caller]
             fn try_from(value: &[T]) -> Result<$vec<T, N>, OutOfMemoryError> {
                 check_capacity!(value.len());
@@ -964,7 +955,6 @@ macro_rules! impl_from {
             type Error = OutOfMemoryError;
 
             /// [`Vec::from`]
-            #[inline]
             #[track_caller]
             fn try_from(value: &mut [T]) -> Result<$vec<T, N>, OutOfMemoryError> {
                 check_capacity!(value.len());
@@ -980,7 +970,6 @@ macro_rules! impl_from {
             type Error = $vec<T, N>;
 
             /// [`TryFrom::try_from`] for `[T; N]`
-            #[inline]
             #[track_caller]
             fn try_from(mut vec: $vec<T, N>) -> Result<[T; M], $vec<T, N>> {
                 if vec.len() != M {

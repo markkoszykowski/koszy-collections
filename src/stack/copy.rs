@@ -16,7 +16,6 @@ where
     impl_subtraction! { CopyArrayVec, const }
 
     /// [`Vec::truncate`]
-    #[inline]
     pub const fn truncate(&mut self, new_len: usize) {
         let len: usize = self.len;
         unsafe {
@@ -44,22 +43,20 @@ where
     T: Copy,
 {
     /// [`Vec::extend_with`]
-    #[inline]
     #[track_caller]
-    const fn extend_with(&mut self, new_len: usize, value: T) {
+    const fn extend_with(&mut self, n: usize, value: T) {
         unsafe {
             let ptr: *mut T = self.as_mut_ptr().add(self.len);
             let mut i: usize = 0;
-            while i < new_len {
+            while i < n {
                 std::ptr::write(ptr.add(i), value);
                 i += 1;
             }
-            self.len += new_len;
+            self.len += n;
         }
     }
 
     /// [`Vec::extend_from_slice`]
-    #[inline]
     #[track_caller]
     pub const fn extend_from_slice(&mut self, other: &[T]) -> Result<(), OutOfMemoryError> {
         check_capacity!(self.len + other.len());
@@ -71,7 +68,7 @@ where
     }
 
     /// [`Vec::extend_from_within`]
-    #[inline]
+    #[track_caller]
     pub fn extend_from_within<R>(&mut self, src: R) -> Result<(), OutOfMemoryError>
     where
         R: RangeBounds<usize>,
@@ -113,15 +110,15 @@ impl<T, const N: usize> Copy for CopyArrayVec<T, N> where T: Copy {}
 
 impl_traits! { CopyArrayVec, Copy }
 
-// #[macro_export]
-// macro_rules! array_vec {
-//     () => {
-//         $crate::stack::copy::CopyArrayVec::new()
-//     };
-//     ($elem:expr; $n:expr) => {
-//         $crate::stack::copy::CopyArrayVec::from_elem($elem, $n)
-//     };
-//     ($($x:expr),+ $(,)?) => {
-//         $crate::stack::copy::CopyArrayVec::from([$($x),+])
-//     };
-// }
+#[macro_export]
+macro_rules! copy_array_vec {
+    () => {
+        $crate::stack::copy::CopyArrayVec::new()
+    };
+    ($elem:expr; $n:expr) => {
+        $crate::stack::copy::CopyArrayVec::from_elem($elem, $n)
+    };
+    ($($x:expr),+ $(,)?) => {
+        $crate::stack::copy::CopyArrayVec::from([$($x),+])
+    };
+}
