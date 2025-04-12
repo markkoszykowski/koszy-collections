@@ -1,3 +1,3 @@
 extern crate core;
 
-mod stack;
+pub mod stack;

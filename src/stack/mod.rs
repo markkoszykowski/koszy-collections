@@ -1,5 +1,6 @@
 mod common;
-mod copy;
-mod error;
-mod string;
-mod vec;
+
+pub mod copy;
+pub mod error;
+pub mod string;
+pub mod vec;

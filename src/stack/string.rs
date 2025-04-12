@@ -9,7 +9,7 @@ use std::str::{Utf8Chunks, Utf8Error};
 
 /// [`String`]
 #[derive(PartialEq, PartialOrd, Eq, Ord)]
-struct ArrayString<const N: usize> {
+pub struct ArrayString<const N: usize> {
     vec: CopyArrayVec<u8, N>,
 }
 
