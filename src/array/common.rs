@@ -886,6 +886,7 @@ macro_rules! impl_array_from {
             T: Clone $(+ $bound)?,
         {
             /// [`Vec::from`]
+            #[inline]
             #[track_caller]
             fn from(value: $from) -> $vec<T, M> {
                 $crate::array::common::check_capacity!();
@@ -905,6 +906,7 @@ macro_rules! impl_slice_from {
             type Error = OutOfMemoryError;
 
             /// [`Vec::from`]
+            #[inline]
             #[track_caller]
             fn try_from(value: $from) -> Result<$vec<T, N>, OutOfMemoryError> {
                 $crate::array::common::check_capacity!(value.len());
@@ -922,6 +924,7 @@ macro_rules! impl_from {
             $(T: $bound,)?
         {
             /// [`Vec::from`]
+            #[inline]
             #[track_caller]
             fn from(value: [T; N]) -> $vec<T, M> {
                 $crate::array::common::check_capacity!();
@@ -965,6 +968,7 @@ macro_rules! impl_from {
             type Error = $vec<T, N>;
 
             /// [`TryFrom::try_from`] for `[T; N]`
+            #[inline]
             #[track_caller]
             fn try_from(mut value: $vec<T, N>) -> Result<[T; M], $vec<T, N>> {
                 if value.len() != M {

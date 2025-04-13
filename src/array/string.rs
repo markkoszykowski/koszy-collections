@@ -2,7 +2,7 @@ use crate::array::common::check_capacity;
 use crate::array::copy::CopyArrayVec;
 use crate::array::error::{FromUtf16Error, FromUtf8Error, OutOfMemoryError};
 use std::borrow::{Borrow, BorrowMut, Cow};
-use std::ffi::{CStr, CString, OsStr};
+use std::ffi::{CStr, OsStr};
 use std::fmt::{Debug, Display, Formatter, Write};
 use std::hash::{Hash, Hasher};
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -549,6 +549,7 @@ macro_rules! impl_eq {
 }
 
 impl_eq! { ArrayString<N>, str }
+impl_eq! { ArrayString<N>, &str }
 impl_eq! { ArrayString<N>, String }
 impl_eq! { ArrayString<N>, Cow<'_, str> }
 
@@ -558,7 +559,7 @@ impl<const N: usize> Add<&str> for ArrayString<N> {
     /// [`String::add`]
     fn add(mut self, other: &str) -> Result<ArrayString<N>, OutOfMemoryError> {
         match self.push_str(other) {
-            Ok(_) => Ok(self),
+            Ok(()) => Ok(self),
             Err(e) => Err(e),
         }
     }
@@ -570,6 +571,8 @@ macro_rules! impl_str_try_from {
             type Error = OutOfMemoryError;
 
             /// [`String::from`]
+            #[inline]
+            #[track_caller]
             fn try_from(value: $from) -> Result<ArrayString<N>, OutOfMemoryError> {
                 match CopyArrayVec::try_from(value.as_bytes()) {
                     Ok(vec) => Ok(unsafe { ArrayString::from_utf8_unchecked(vec) }),
@@ -586,6 +589,8 @@ macro_rules! impl_c_str_try_from {
             type Error = FromUtf8Error;
 
             /// [`String::try_from`]
+            #[inline]
+            #[track_caller]
             fn try_from(value: $from) -> Result<ArrayString<N>, FromUtf8Error> {
                 match value.to_str() {
                     Ok(str) => match CopyArrayVec::try_from(str.as_bytes()) {
@@ -601,12 +606,9 @@ macro_rules! impl_c_str_try_from {
 
 impl_str_try_from! { &str }
 impl_str_try_from! { &mut str }
-impl_str_try_from! { &String }
-impl_str_try_from! { &Box<str> }
-impl_str_try_from! { &Cow<'_, str> }
 
 impl_c_str_try_from! { &CStr }
-impl_c_str_try_from! { &CString }
+impl_c_str_try_from! { &mut CStr }
 
 impl<const N: usize> TryFrom<char> for ArrayString<N> {
     type Error = OutOfMemoryError;
