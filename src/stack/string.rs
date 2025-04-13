@@ -1,11 +1,16 @@
 use crate::stack::common::check_capacity;
 use crate::stack::copy::CopyArrayVec;
-use crate::stack::error::OutOfMemoryError;
+use crate::stack::error::{FromUtf16Error, FromUtf8Error, OutOfMemoryError};
 use std::borrow::{Borrow, BorrowMut, Cow};
+use std::ffi::{CStr, CString, OsStr};
+use std::fmt::{Debug, Display, Formatter, Write};
 use std::hash::{Hash, Hasher};
-use std::ops::{Add, Deref, DerefMut, Index, IndexMut};
+use std::net::{SocketAddr, ToSocketAddrs};
+use std::ops::{Add, Deref, DerefMut, Index, IndexMut, RangeBounds};
+use std::path::Path;
 use std::slice::SliceIndex;
 use std::str::{Utf8Chunks, Utf8Error};
+use std::vec::IntoIter;
 
 /// [`String`]
 #[derive(PartialEq, PartialOrd, Eq, Ord)]
@@ -19,6 +24,17 @@ impl<const N: usize> ArrayString<N> {
     pub const fn new() -> ArrayString<N> {
         ArrayString {
             vec: CopyArrayVec::new(),
+        }
+    }
+
+    /// [`String::from_raw_parts`]
+    #[inline]
+    pub unsafe fn from_raw_parts(
+        buf: [std::mem::MaybeUninit<u8>; N],
+        len: usize,
+    ) -> ArrayString<N> {
+        ArrayString {
+            vec: unsafe { CopyArrayVec::from_raw_parts(buf, len) },
         }
     }
 
@@ -55,41 +71,41 @@ impl<const N: usize> ArrayString<N> {
             return Ok(ArrayString::new());
         };
 
-        const REPLACEMENT: &str = "\u{FFFD}";
-
-        let mut res: ArrayString<N> = ArrayString::new();
-        res.push_str(first_valid)?;
-        res.push_str(REPLACEMENT)?;
+        let mut string: ArrayString<N> = ArrayString::new();
+        string.push_str(first_valid)?;
+        string.push(char::REPLACEMENT_CHARACTER)?;
 
         for chunk in iter {
-            res.push_str(chunk.valid())?;
+            string.push_str(chunk.valid())?;
             if !chunk.invalid().is_empty() {
-                res.push_str(REPLACEMENT)?;
+                string.push(char::REPLACEMENT_CHARACTER)?;
             }
         }
 
-        Ok(res)
+        Ok(string)
     }
 
-    // /// [`String::from_utf16`]
-    // #[inline]
-    // pub fn from_utf16(v: &[u16]) -> Result<ArrayString<N>, FromUtf16Error> {
-    //     let mut ret: ArrayString<N> = ArrayString::new();
-    //     for c in char::decode_utf16(v.iter().cloned()) {
-    //         if let Ok(c) = c {
-    //             ret.push(c);
-    //         } else {
-    //             return Err(FromUtf16Error(()));
-    //         }
-    //     }
-    //     Ok(ret)
-    // }
-    //
-    // /// [`String::from_utf16_lossy`]
-    // #[inline]
-    // pub fn from_utf16_lossy(v: &[u16]) -> Result<String, FromUtf16Error> {
-    //     todo!()
-    // }
+    /// [`String::from_utf16`]
+    #[inline]
+    pub fn from_utf16(v: &[u16]) -> Result<ArrayString<N>, FromUtf16Error> {
+        let mut string: ArrayString<N> = ArrayString::new();
+        for c in char::decode_utf16(v.iter().cloned()) {
+            string
+                .push(c.map_err(|e| FromUtf16Error::DecodeUtf16(e))?)
+                .map_err(|e| FromUtf16Error::OutOfMemory(e))?
+        }
+        Ok(string)
+    }
+
+    /// [`String::from_utf16_lossy`]
+    #[inline]
+    pub fn from_utf16_lossy(v: &[u16]) -> Result<ArrayString<N>, OutOfMemoryError> {
+        let mut string: ArrayString<N> = ArrayString::new();
+        for c in char::decode_utf16(v.iter().cloned()) {
+            string.push(c.unwrap_or(char::REPLACEMENT_CHARACTER))?;
+        }
+        Ok(string)
+    }
 
     /// [`String::capacity`]
     #[inline]
@@ -106,7 +122,7 @@ impl<const N: usize> ArrayString<N> {
     /// [`String::is_empty`]
     #[inline]
     pub const fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.vec.is_empty()
     }
 
     /// [`String::into_bytes`]
@@ -140,102 +156,107 @@ impl<const N: usize> ArrayString<N> {
     }
 
     /// [`String::insert_bytes`]
-    #[inline]
-    const unsafe fn insert_bytes(&mut self, idx: usize, bytes: &[u8]) {
+    #[track_caller]
+    const unsafe fn insert_bytes(&mut self, index: usize, bytes: &[u8]) {
         let len: usize = self.len();
-        let amt: usize = bytes.len();
+        let bytes_len: usize = bytes.len();
 
         unsafe {
             std::ptr::copy(
-                self.vec.as_ptr().add(idx),
-                self.vec.as_mut_ptr().add(idx + amt),
-                len - idx,
+                self.vec.as_ptr().add(index),
+                self.vec.as_mut_ptr().add(index + bytes_len),
+                len - index,
             );
-            std::ptr::copy_nonoverlapping(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
-            self.vec.set_len(len + amt);
+            std::ptr::copy_nonoverlapping(
+                bytes.as_ptr(),
+                self.vec.as_mut_ptr().add(index),
+                bytes_len,
+            );
+            self.vec.set_len(len + bytes_len);
         }
     }
 
     /// [`String::insert`]
-    #[inline]
-    pub fn insert(&mut self, idx: usize, ch: char) -> Result<(), OutOfMemoryError> {
-        assert!(self.is_char_boundary(idx));
+    #[track_caller]
+    pub fn insert(&mut self, index: usize, c: char) -> Result<(), OutOfMemoryError> {
+        assert!(self.is_char_boundary(index));
 
-        let mut bits: [u8; 4] = [0; 4];
-        let bits: &[u8] = ch.encode_utf8(&mut bits).as_bytes();
+        let mut bytes: [u8; 4] = [0; 4];
+        let bytes: &[u8] = c.encode_utf8(&mut bytes).as_bytes();
 
-        check_capacity!(self.len() + bits.len());
+        check_capacity!(self.len() + bytes.len());
 
         unsafe {
-            self.insert_bytes(idx, bits);
+            self.insert_bytes(index, bytes);
         }
         Ok(())
     }
 
     /// [`String::insert_str`]
-    #[inline]
-    pub fn insert_str(&mut self, idx: usize, string: &str) -> Result<(), OutOfMemoryError> {
-        assert!(self.is_char_boundary(idx));
+    #[track_caller]
+    pub fn insert_str(&mut self, index: usize, str: &str) -> Result<(), OutOfMemoryError> {
+        assert!(self.is_char_boundary(index));
 
-        check_capacity!(self.len() + string.len());
+        check_capacity!(self.len() + str.len());
 
         unsafe {
-            self.insert_bytes(idx, string.as_bytes());
+            self.insert_bytes(index, str.as_bytes());
         }
         Ok(())
     }
 
     /// [`String::push`]
-    #[inline]
-    pub const fn push(&mut self, ch: char) -> Result<(), OutOfMemoryError> {
-        match ch.len_utf8() {
-            1 => self.vec.push(ch as u8),
+    #[track_caller]
+    pub const fn push(&mut self, c: char) -> Result<(), OutOfMemoryError> {
+        match c.len_utf8() {
+            1 => self.vec.push(c as u8),
             _ => self
                 .vec
-                .extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+                .extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes()),
         }
     }
 
     /// [`String::push_str`]
-    #[inline]
-    pub const fn push_str(&mut self, string: &str) -> Result<(), OutOfMemoryError> {
-        self.vec.extend_from_slice(string.as_bytes())
+    #[track_caller]
+    pub const fn push_str(&mut self, str: &str) -> Result<(), OutOfMemoryError> {
+        self.vec.extend_from_slice(str.as_bytes())
     }
 
     /// [`String::pop`]
-    #[inline]
+    #[track_caller]
     pub fn pop(&mut self) -> Option<char> {
-        let ch: char = self.chars().rev().next()?;
-        let new_len: usize = self.len() - ch.len_utf8();
+        let c: char = self.chars().rev().next()?;
+        let new_len: usize = self.len() - c.len_utf8();
         unsafe {
             self.vec.set_len(new_len);
         }
-        Some(ch)
+        Some(c)
     }
 
     /// [`String::remove`]
-    #[inline]
-    pub fn remove(&mut self, idx: usize) -> char {
-        let ch: char = match self[idx..].chars().next() {
+    #[track_caller]
+    pub fn remove(&mut self, index: usize) -> char {
+        let c: char = match self[index..].chars().next() {
             Some(ch) => ch,
             None => panic!("cannot remove a char from the end of a string"),
         };
 
-        let next: usize = idx + ch.len_utf8();
+        let next: usize = index + c.len_utf8();
         let len: usize = self.len();
         unsafe {
             std::ptr::copy(
                 self.vec.as_ptr().add(next),
-                self.vec.as_mut_ptr().add(idx),
+                self.vec.as_mut_ptr().add(index),
                 len - next,
             );
-            self.vec.set_len(len - (next - idx));
+            self.vec.set_len(len - (next - index));
         }
-        ch
+        c
     }
 
     /// [`String::truncate`]
     #[inline]
+    #[track_caller]
     pub fn truncate(&mut self, new_len: usize) {
         if new_len <= self.len() {
             assert!(self.is_char_boundary(new_len));
@@ -246,17 +267,82 @@ impl<const N: usize> ArrayString<N> {
 
     /// [`String::clear`]
     #[inline]
+    #[track_caller]
     pub const fn clear(&mut self) {
         self.vec.clear()
     }
 
     /// [`String::split_off`]
-    #[inline]
+    #[track_caller]
     pub fn split_off<const M: usize>(&mut self, at: usize) -> ArrayString<M> {
         assert!(self.is_char_boundary(at));
 
         let other: CopyArrayVec<u8, M> = self.vec.split_off(at);
         unsafe { ArrayString::from_utf8_unchecked(other) }
+    }
+
+    /// [`String::retain`]
+    #[track_caller]
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(char) -> bool,
+    {
+        struct SetLenOnDrop<'a, const N: usize> {
+            string: &'a mut ArrayString<N>,
+            index: usize,
+            del_bytes: usize,
+        }
+
+        impl<const N: usize> Drop for SetLenOnDrop<'_, N> {
+            fn drop(&mut self) {
+                let new_len: usize = self.index - self.del_bytes;
+                debug_assert!(new_len <= self.string.len());
+                unsafe { self.string.vec.set_len(new_len) };
+            }
+        }
+
+        let len: usize = self.len();
+        let mut guard: SetLenOnDrop<'_, N> = SetLenOnDrop {
+            string: self,
+            index: 0,
+            del_bytes: 0,
+        };
+
+        while guard.index < len {
+            let c: char = unsafe {
+                guard
+                    .string
+                    .get_unchecked(guard.index..len)
+                    .chars()
+                    .next()
+                    .unwrap_unchecked()
+            };
+            let c_len: usize = c.len_utf8();
+
+            if !f(c) {
+                guard.del_bytes += c_len;
+            } else if 0 < guard.del_bytes {
+                c.encode_utf8(unsafe {
+                    std::slice::from_raw_parts_mut(
+                        guard.string.as_mut_ptr().add(guard.index - guard.del_bytes),
+                        c_len,
+                    )
+                });
+            }
+
+            guard.index += c_len;
+        }
+
+        drop(guard);
+    }
+
+    /// [`String::replace_range`]
+    #[track_caller]
+    pub fn replace_range<R>(&mut self, range: R, str: &str)
+    where
+        R: RangeBounds<usize>,
+    {
+        todo!()
     }
 }
 
@@ -286,19 +372,19 @@ impl<const N: usize> Clone for ArrayString<N> {
 
 impl<const N: usize> Copy for ArrayString<N> {}
 
-impl<const N: usize> core::fmt::Display for ArrayString<N> {
+impl<const N: usize> Debug for ArrayString<N> {
     /// [`String::fmt`]
     #[inline]
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Display::fmt(&**self, f)
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        Debug::fmt(&**self, f)
     }
 }
 
-impl<const N: usize> core::fmt::Debug for ArrayString<N> {
+impl<const N: usize> Display for ArrayString<N> {
     /// [`String::fmt`]
     #[inline]
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Debug::fmt(&**self, f)
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        Display::fmt(&**self, f)
     }
 }
 
@@ -309,7 +395,7 @@ impl<const N: usize> Hash for ArrayString<N> {
     where
         H: Hasher,
     {
-        (**self).hash(hasher)
+        Hash::hash(&**self, hasher)
     }
 }
 
@@ -334,6 +420,22 @@ impl<const N: usize> AsRef<[u8]> for ArrayString<N> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
+    }
+}
+
+impl<const N: usize> AsRef<OsStr> for ArrayString<N> {
+    /// [`String::as_ref`]
+    #[inline]
+    fn as_ref(&self) -> &OsStr {
+        AsRef::as_ref(&**self)
+    }
+}
+
+impl<const N: usize> AsRef<Path> for ArrayString<N> {
+    /// [`String::as_ref`]
+    #[inline]
+    fn as_ref(&self) -> &Path {
+        Path::new(self)
     }
 }
 
@@ -380,7 +482,7 @@ where
     /// [`String::index`]
     #[inline]
     fn index(&self, index: I) -> &I::Output {
-        self.as_str().index(index)
+        Index::index(&**self, index)
     }
 }
 
@@ -391,15 +493,15 @@ where
     /// [`String::index_mut`]
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
-        self.as_mut_str().index_mut(index)
+        IndexMut::index_mut(&mut **self, index)
     }
 }
 
-impl<const N: usize> core::fmt::Write for ArrayString<N> {
+impl<const N: usize> Write for ArrayString<N> {
     /// [`String::write_str`]
     #[inline]
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        match self.push_str(s) {
+    fn write_str(&mut self, str: &str) -> core::fmt::Result {
+        match self.push_str(str) {
             Ok(_) => Ok(()),
             Err(_) => Err(std::fmt::Error),
         }
@@ -449,11 +551,71 @@ impl<const N: usize> Add<&str> for ArrayString<N> {
     type Output = Result<ArrayString<N>, OutOfMemoryError>;
 
     /// [`String::add`]
-    #[inline]
     fn add(mut self, other: &str) -> Result<ArrayString<N>, OutOfMemoryError> {
         match self.push_str(other) {
             Ok(_) => Ok(self),
             Err(e) => Err(e),
         }
+    }
+}
+
+macro_rules! impl_str_try_from {
+    ($from:ty) => {
+        impl<const N: usize> TryFrom<$from> for ArrayString<N> {
+            type Error = OutOfMemoryError;
+
+            /// [`String::from`]
+            fn try_from(value: $from) -> Result<ArrayString<N>, OutOfMemoryError> {
+                match CopyArrayVec::try_from(value.as_bytes()) {
+                    Ok(vec) => Ok(unsafe { ArrayString::from_utf8_unchecked(vec) }),
+                    Err(e) => Err(e),
+                }
+            }
+        }
+    };
+}
+
+macro_rules! impl_c_str_try_from {
+    ($from:ty) => {
+        impl<const N: usize> TryFrom<$from> for ArrayString<N> {
+            type Error = FromUtf8Error;
+
+            /// [`String::try_from`]
+            fn try_from(value: $from) -> Result<ArrayString<N>, FromUtf8Error> {
+                match CopyArrayVec::try_from(value.to_bytes()) {
+                    Ok(vec) => match ArrayString::from_utf8(vec) {
+                        Ok(string) => Ok(string),
+                        Err(e) => Err(FromUtf8Error::Utf8(e)),
+                    },
+                    Err(e) => Err(FromUtf8Error::OutOfMemory(e)),
+                }
+            }
+        }
+    };
+}
+
+impl_str_try_from! { &str }
+impl_str_try_from! { &mut str }
+impl_str_try_from! { &String }
+impl_str_try_from! { &Box<str> }
+impl_str_try_from! { &Cow<'_, str> }
+
+impl_c_str_try_from! { &CStr }
+impl_c_str_try_from! { &CString }
+
+impl<const N: usize> TryFrom<char> for ArrayString<N> {
+    type Error = OutOfMemoryError;
+
+    /// [`String::from`]
+    fn try_from(c: char) -> Result<ArrayString<N>, OutOfMemoryError> {
+        ArrayString::try_from(c.encode_utf8(&mut [0; 4]))
+    }
+}
+
+impl<const N: usize> ToSocketAddrs for ArrayString<N> {
+    type Iter = IntoIter<SocketAddr>;
+    /// [`String::to_socket_addrs`]
+    fn to_socket_addrs(&self) -> std::io::Result<IntoIter<SocketAddr>> {
+        ToSocketAddrs::to_socket_addrs(&**self)
     }
 }

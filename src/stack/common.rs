@@ -255,8 +255,8 @@ macro_rules! impl_subtraction {
         where
             F: FnOnce(&mut T) -> bool
         {
-            let last: &mut T = self.last_mut()?;
-            if predicate(last) { self.pop() } else { None }
+            let value: &mut T = self.last_mut()?;
+            if predicate(value) { self.pop() } else { None }
         }
     };
 }
@@ -442,7 +442,7 @@ macro_rules! impl_retain {
             where
                 $(T: $bound,)?
             {
-                v: &'a mut $vec<T, N>,
+                vec: &'a mut $vec<T, N>,
                 processed_len: usize,
                 deleted_cnt: usize,
                 original_len: usize,
@@ -456,21 +456,21 @@ macro_rules! impl_retain {
                     if 0 < self.deleted_cnt {
                         unsafe {
                             std::ptr::copy(
-                                self.v.as_ptr().add(self.processed_len),
-                                self.v.as_mut_ptr().add(self.processed_len - self.deleted_cnt),
+                                self.vec.as_ptr().add(self.processed_len),
+                                self.vec.as_mut_ptr().add(self.processed_len - self.deleted_cnt),
                                 self.original_len - self.processed_len,
                             );
                         }
                     }
 
                     unsafe {
-                        self.v.len = self.original_len - self.deleted_cnt;
+                        self.vec.len = self.original_len - self.deleted_cnt;
                     }
                 }
             }
 
-            let mut g: BackshiftOnDrop<'_, T, N> = BackshiftOnDrop {
-                v: self,
+            let mut guard: BackshiftOnDrop<'_, T, N> = BackshiftOnDrop {
+                vec: self,
                 processed_len: 0,
                 deleted_cnt: 0,
                 original_len: original_len,
@@ -479,16 +479,16 @@ macro_rules! impl_retain {
             fn process_loop<F, T, const N: usize, const DELETED: bool>(
                 original_len: usize,
                 f: &mut F,
-                g: &mut BackshiftOnDrop<'_, T, N>,
+                guard: &mut BackshiftOnDrop<'_, T, N>,
             ) where
                 F: FnMut(&mut T) -> bool,
                 $(T: $bound,)?
             {
-                while g.processed_len != original_len {
-                    let cur: &mut T = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
+                while guard.processed_len != original_len {
+                    let cur: &mut T = unsafe { &mut *guard.vec.as_mut_ptr().add(guard.processed_len) };
                     if !f(cur) {
-                        g.processed_len += 1;
-                        g.deleted_cnt += 1;
+                        guard.processed_len += 1;
+                        guard.deleted_cnt += 1;
 
                         unsafe {
                             std::ptr::drop_in_place(cur);
@@ -502,19 +502,19 @@ macro_rules! impl_retain {
                     }
                     if DELETED {
                         unsafe {
-                            let hole_slot: *mut T = g.v.as_mut_ptr().add(g.processed_len - g.deleted_cnt);
+                            let hole_slot: *mut T = guard.vec.as_mut_ptr().add(guard.processed_len - guard.deleted_cnt);
                             std::ptr::copy_nonoverlapping(cur, hole_slot, 1);
                         }
                     }
-                    g.processed_len += 1;
+                    guard.processed_len += 1;
                 }
             }
 
-            process_loop::<F, T, N, false>(original_len, &mut f, &mut g);
+            process_loop::<F, T, N, false>(original_len, &mut f, &mut guard);
 
-            process_loop::<F, T, N, true>(original_len, &mut f, &mut g);
+            process_loop::<F, T, N, true>(original_len, &mut f, &mut guard);
 
-            core::mem::drop(g);
+            core::mem::drop(guard);
         }
     };
 }
@@ -582,7 +582,7 @@ macro_rules! impl_assert {
 macro_rules! impl_clone {
     ($vec:ident $(, $bound:ident)?) => {
         trait ConvertArrayVec<const N: usize> {
-            fn to_array_vec(s: &[Self]) -> $vec<Self, N>
+            fn to_array_vec(slice: &[Self]) -> $vec<Self, N>
             where
                 Self: Sized $(+ $bound)?;
         }
@@ -628,9 +628,9 @@ macro_rules! impl_clone {
             fn from_elem(elem: T, n: usize) -> Result<$vec<T, N>, OutOfMemoryError> {
                 check_capacity!(n);
 
-                let mut v: $vec<T, N> = $vec::new();
-                v.extend_with(n, elem);
-                Ok(v)
+                let mut vec: $vec<T, N> = $vec::new();
+                vec.extend_with(n, elem);
+                Ok(vec)
             }
         }
 
@@ -818,13 +818,13 @@ macro_rules! impl_slice_eq {
             /// [`Vec::eq`]
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
-                self[..] == other[..]
+                PartialEq::eq(&self[..], &other[..])
             }
 
             /// [`Vec::ne`]
             #[inline]
             fn ne(&self, other: &$rhs) -> bool {
-                self[..] != other[..]
+                PartialEq::ne(&self[..], &other[..])
             }
         }
     }
@@ -837,11 +837,11 @@ macro_rules! impl_hash {
         {
             /// [`Vec::hash`]
             #[inline]
-            fn hash<H>(&self, state: &mut H)
+            fn hash<H>(&self, hasher: &mut H)
             where
                 H: core::hash::Hasher,
             {
-                core::hash::Hash::hash(&**self, state)
+                core::hash::Hash::hash(&**self, hasher)
             }
         }
     };
@@ -973,14 +973,14 @@ macro_rules! impl_from {
 
             /// [`TryFrom::try_from`] for `[T; N]`
             #[track_caller]
-            fn try_from(mut vec: $vec<T, N>) -> Result<[T; M], $vec<T, N>> {
-                if vec.len() != M {
-                    return Err(vec);
+            fn try_from(mut value: $vec<T, N>) -> Result<[T; M], $vec<T, N>> {
+                if value.len() != M {
+                    return Err(value);
                 }
 
                 unsafe {
-                    vec.set_len(0);
-                    Ok(std::ptr::read(vec.as_ptr() as *const [T; M]))
+                    value.set_len(0);
+                    Ok(std::ptr::read(value.as_ptr() as *const [T; M]))
                 }
             }
         }

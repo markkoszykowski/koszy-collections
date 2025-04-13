@@ -89,7 +89,7 @@ where
 
     /// [`Vec::extend_from_within`]
     #[track_caller]
-    pub fn extend_from_within<R>(&mut self, src: R) -> Result<(), OutOfMemoryError>
+    pub fn extend_from_within<R>(&mut self, range: R) -> Result<(), OutOfMemoryError>
     where
         R: RangeBounds<usize>,
     {
@@ -103,7 +103,7 @@ impl<T, const N: usize> ConvertArrayVec<N> for T
 where
     T: Clone,
 {
-    fn to_array_vec(s: &[T]) -> ArrayVec<T, N> {
+    fn to_array_vec(slice: &[T]) -> ArrayVec<T, N> {
         struct DropGuard<'a, T, const N: usize> {
             vec: &'a mut ArrayVec<T, N>,
             num_init: usize,
@@ -121,13 +121,13 @@ where
             num_init: 0,
         };
         let slots: &mut [MaybeUninit<T>] = guard.vec.spare_capacity_mut();
-        for element in s {
+        for element in slice {
             slots[guard.num_init].write(element.clone());
             guard.num_init += 1;
         }
         core::mem::forget(guard);
         unsafe {
-            vec.set_len(s.len());
+            vec.set_len(slice.len());
         }
         vec
     }

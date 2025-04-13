@@ -70,7 +70,7 @@ where
 
     /// [`Vec::extend_from_within`]
     #[track_caller]
-    pub fn extend_from_within<R>(&mut self, src: R) -> Result<(), OutOfMemoryError>
+    pub fn extend_from_within<R>(&mut self, range: R) -> Result<(), OutOfMemoryError>
     where
         R: RangeBounds<usize>,
     {
@@ -84,11 +84,11 @@ impl<T, const N: usize> ConvertArrayVec<N> for T
 where
     T: Copy,
 {
-    fn to_array_vec(s: &[T]) -> CopyArrayVec<T, N> {
+    fn to_array_vec(slice: &[T]) -> CopyArrayVec<T, N> {
         let mut vec: CopyArrayVec<T, N> = CopyArrayVec::new();
         unsafe {
-            std::ptr::copy_nonoverlapping(s.as_ptr(), vec.as_mut_ptr(), s.len());
-            vec.set_len(s.len());
+            std::ptr::copy_nonoverlapping(slice.as_ptr(), vec.as_mut_ptr(), slice.len());
+            vec.set_len(slice.len());
         }
         vec
     }
