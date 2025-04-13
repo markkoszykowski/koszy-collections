@@ -518,22 +518,28 @@ impl<const N: usize> Write for ArrayString<N> {
 }
 macro_rules! impl_eq {
     ($lhs:ty, $rhs: ty) => {
-        impl<'a, 'b, const N: usize> PartialEq<$rhs> for $lhs {
+        impl<const N: usize> PartialEq<$rhs> for $lhs {
+            /// [`String::eq`]
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 PartialEq::eq(&self[..], &other[..])
             }
+
+            /// [`String::ne`]
             #[inline]
             fn ne(&self, other: &$rhs) -> bool {
                 PartialEq::ne(&self[..], &other[..])
             }
         }
 
-        impl<'a, 'b, const N: usize> PartialEq<$lhs> for $rhs {
+        impl<const N: usize> PartialEq<$lhs> for $rhs {
+            /// [`String::eq`]
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 PartialEq::eq(&self[..], &other[..])
             }
+
+            /// [`String::ne`]
             #[inline]
             fn ne(&self, other: &$lhs) -> bool {
                 PartialEq::ne(&self[..], &other[..])
@@ -543,9 +549,8 @@ macro_rules! impl_eq {
 }
 
 impl_eq! { ArrayString<N>, str }
-impl_eq! { ArrayString<N>, &'a str }
 impl_eq! { ArrayString<N>, String }
-impl_eq! { ArrayString<N>, Cow<'a, str> }
+impl_eq! { ArrayString<N>, Cow<'_, str> }
 
 impl<const N: usize> Add<&str> for ArrayString<N> {
     type Output = Result<ArrayString<N>, OutOfMemoryError>;
@@ -582,12 +587,12 @@ macro_rules! impl_c_str_try_from {
 
             /// [`String::try_from`]
             fn try_from(value: $from) -> Result<ArrayString<N>, FromUtf8Error> {
-                match CopyArrayVec::try_from(value.to_bytes()) {
-                    Ok(vec) => match ArrayString::from_utf8(vec) {
-                        Ok(string) => Ok(string),
-                        Err(e) => Err(FromUtf8Error::Utf8(e)),
+                match value.to_str() {
+                    Ok(str) => match CopyArrayVec::try_from(str.as_bytes()) {
+                        Ok(vec) => Ok(unsafe { ArrayString::from_utf8_unchecked(vec) }),
+                        Err(e) => Err(FromUtf8Error::OutOfMemory(e)),
                     },
-                    Err(e) => Err(FromUtf8Error::OutOfMemory(e)),
+                    Err(e) => Err(FromUtf8Error::Utf8(e)),
                 }
             }
         }

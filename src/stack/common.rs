@@ -43,15 +43,10 @@ macro_rules! array_vec_struct {
     };
 }
 
-pub(super) const fn const_assert<const N: usize, const M: usize>() {
-    assert!(N <= M, "N should be <= M");
-}
-
-pub(super) trait ConstAssert<const N: usize, const M: usize> {
-    const CONST_ASSERT: ();
-}
-
 macro_rules! check_capacity {
+    () => {
+        const { assert!(N <= M, "N should be <= M") };
+    };
     ($len:expr) => {
         if N < $len {
             return Err(OutOfMemoryError(()));
@@ -266,7 +261,7 @@ macro_rules! impl_split_off {
         /// [`Vec::split_off`]
         #[track_caller]
         pub $($is_const)? fn split_off<const M: usize>(&mut self, at: usize) -> $vec<T, M> {
-            let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
+            $crate::stack::common::check_capacity!();
 
             let len: usize = self.len;
 
@@ -564,17 +559,6 @@ macro_rules! impl_resize {
                 self.truncate(new_len);
             }
             Ok(())
-        }
-    };
-}
-
-macro_rules! impl_assert {
-    ($vec:ident $(, $bound:ident)?) => {
-        impl<T, const N: usize, const M: usize> $crate::stack::common::ConstAssert<N, M> for $vec<T, M>
-        where
-            $(T: $bound,)?
-        {
-            const CONST_ASSERT: () = $crate::stack::common::const_assert::<N, M>();
         }
     };
 }
@@ -882,7 +866,7 @@ macro_rules! impl_from {
             /// [`Vec::from`]
             #[track_caller]
             fn from(value: [T; N]) -> $vec<T, M> {
-                let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
+                $crate::stack::common::check_capacity!();
 
                 #[inline]
                 const fn same_capacity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
@@ -917,7 +901,7 @@ macro_rules! impl_from {
             /// [`Vec::from`]
             #[track_caller]
             fn from(value: &[T; N]) -> $vec<T, M> {
-                let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
+                $crate::stack::common::check_capacity!();
 
                 T::to_array_vec(value.as_slice())
             }
@@ -929,7 +913,7 @@ macro_rules! impl_from {
             /// [`Vec::from`]
             #[track_caller]
             fn from(value: &mut [T; N]) -> $vec<T, M> {
-                let _: () = <$vec<T, M> as $crate::stack::common::ConstAssert<N, M>>::CONST_ASSERT;
+                $crate::stack::common::check_capacity!();
 
                 T::to_array_vec(value.as_mut_slice())
             }
@@ -1042,8 +1026,6 @@ macro_rules! impl_write {
 
 macro_rules! impl_traits {
     ($vec:ident $(, $bound:ident)?) => {
-        $crate::stack::common::impl_assert! { $vec $(, $bound)? }
-
         $crate::stack::common::impl_clone! { $vec $(, $bound)? }
 
         $crate::stack::common::impl_default! { $vec $(, $bound)? }
@@ -1087,7 +1069,6 @@ pub(super) use check_capacity;
 
 pub(super) use impl_addition;
 pub(super) use impl_as_ref;
-pub(super) use impl_assert;
 pub(super) use impl_borrow;
 pub(super) use impl_clone;
 pub(super) use impl_common;
