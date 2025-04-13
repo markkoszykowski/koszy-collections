@@ -1,8 +1,8 @@
-use crate::stack::common::{
+use crate::array::common::{
     array_vec_struct, check_capacity, impl_addition, impl_common, impl_dedup, impl_resize,
     impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits,
 };
-use crate::stack::error::OutOfMemoryError;
+use crate::array::error::OutOfMemoryError;
 use std::ops::RangeBounds;
 
 array_vec_struct! { CopyArrayVec, Copy }
@@ -114,12 +114,12 @@ impl_traits! { CopyArrayVec, Copy }
 #[macro_export]
 macro_rules! copy_array_vec {
     () => {
-        $crate::stack::copy::CopyArrayVec::new()
+        $crate::array::copy::CopyArrayVec::new()
     };
     ($elem:expr; $n:expr) => {
-        $crate::stack::copy::CopyArrayVec::from_elem($elem, $n)
+        $crate::array::copy::CopyArrayVec::from_elem($elem, $n)
     };
     ($($x:expr),+ $(,)?) => {
-        $crate::stack::copy::CopyArrayVec::from([$($x),+])
+        $crate::array::copy::CopyArrayVec::from([$($x),+])
     };
 }

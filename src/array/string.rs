@@ -1,6 +1,6 @@
-use crate::stack::common::check_capacity;
-use crate::stack::copy::CopyArrayVec;
-use crate::stack::error::{FromUtf16Error, FromUtf8Error, OutOfMemoryError};
+use crate::array::common::check_capacity;
+use crate::array::copy::CopyArrayVec;
+use crate::array::error::{FromUtf16Error, FromUtf8Error, OutOfMemoryError};
 use std::borrow::{Borrow, BorrowMut, Cow};
 use std::ffi::{CStr, CString, OsStr};
 use std::fmt::{Debug, Display, Formatter, Write};

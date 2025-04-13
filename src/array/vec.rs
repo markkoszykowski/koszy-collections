@@ -1,8 +1,8 @@
-use crate::stack::common::{
+use crate::array::common::{
     array_vec_struct, check_capacity, impl_addition, impl_common, impl_dedup, impl_resize,
     impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits, SetLenOnDrop,
 };
-use crate::stack::error::OutOfMemoryError;
+use crate::array::error::OutOfMemoryError;
 use std::mem::MaybeUninit;
 use std::ops::RangeBounds;
 
@@ -166,12 +166,12 @@ impl_traits! { ArrayVec }
 #[macro_export]
 macro_rules! array_vec {
     () => {
-        $crate::stack::vec::ArrayVec::new()
+        $crate::array::vec::ArrayVec::new()
     };
     ($elem:expr; $n:expr) => {
-        $crate::stack::vec::ArrayVec::from_elem($elem, $n)
+        $crate::array::vec::ArrayVec::from_elem($elem, $n)
     };
     ($($x:expr),+ $(,)?) => {
-        $crate::stack::vec::ArrayVec::from([$($x),+])
+        $crate::array::vec::ArrayVec::from([$($x),+])
     };
 }

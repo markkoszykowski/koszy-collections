@@ -261,7 +261,7 @@ macro_rules! impl_split_off {
         /// [`Vec::split_off`]
         #[track_caller]
         pub $($is_const)? fn split_off<const M: usize>(&mut self, at: usize) -> $vec<T, M> {
-            $crate::stack::common::check_capacity!();
+            $crate::array::common::check_capacity!();
 
             let len: usize = self.len;
 
@@ -529,8 +529,8 @@ macro_rules! impl_resize_with {
             if len < new_len {
                 unsafe {
                     let ptr: *mut T = self.as_mut_ptr();
-                    let mut local_len: $crate::stack::common::SetLenOnDrop<'_> =
-                        $crate::stack::common::SetLenOnDrop::new(&mut self.len);
+                    let mut local_len: $crate::array::common::SetLenOnDrop<'_> =
+                        $crate::array::common::SetLenOnDrop::new(&mut self.len);
                     for element in core::iter::repeat_with(f).take(new_len - len) {
                         std::ptr::write(ptr.add(local_len.current_len()), element);
                         local_len.increment_len(1);
@@ -816,20 +816,20 @@ macro_rules! impl_slice_eq {
 
 macro_rules! impl_eq {
     ($vec:ident $(, $bound:ident)?) => {
-        $crate::stack::common::impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, $vec<U, M> $(, where T: $bound)? $(, where U: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, $vec<U, M> $(, where T: $bound)? $(, where U: $bound)? }
 
-        $crate::stack::common::impl_slice_eq! { [const N: usize], $vec<T, N>, &[U] $(, where T: $bound)? }
-        $crate::stack::common::impl_slice_eq! { [const N: usize], $vec<T, N>, &mut [U] $(, where T: $bound)? }
-        $crate::stack::common::impl_slice_eq! { [const N: usize], &[T], $vec<U, N> $(, where U: $bound)? }
-        $crate::stack::common::impl_slice_eq! { [const N: usize], &mut [T], $vec<U, N> $(, where U: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize], $vec<T, N>, &[U] $(, where T: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize], $vec<T, N>, &mut [U] $(, where T: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize], &[T], $vec<U, N> $(, where U: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize], &mut [T], $vec<U, N> $(, where U: $bound)? }
 
-        $crate::stack::common::impl_slice_eq! { [const N: usize], $vec<T, N>, [U] $(, where T: $bound)? }
-        $crate::stack::common::impl_slice_eq! { [const N: usize], [T], $vec<U, N> $(, where U: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize], $vec<T, N>, [U] $(, where T: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize], [T], $vec<U, N> $(, where U: $bound)? }
 
-        $crate::stack::common::impl_slice_eq! { [const N: usize], std::borrow::Cow<'_, [T]>, $vec<U, N>, where T: Clone $(, where T: $bound)? $(, where U: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize], std::borrow::Cow<'_, [T]>, $vec<U, N>, where T: Clone $(, where T: $bound)? $(, where U: $bound)? }
 
-        $crate::stack::common::impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, [U; M] $(, where T: $bound)? }
-        $crate::stack::common::impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, &[U; M] $(, where T: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, [U; M] $(, where T: $bound)? }
+        $crate::array::common::impl_slice_eq! { [const N: usize, const M: usize], $vec<T, N>, &[U; M] $(, where T: $bound)? }
 
         impl<T: Eq, const N: usize> Eq for $vec<T, N> $(where T: $bound)? {}
     };
@@ -888,7 +888,7 @@ macro_rules! impl_array_from {
             /// [`Vec::from`]
             #[track_caller]
             fn from(value: $from) -> $vec<T, M> {
-                $crate::stack::common::check_capacity!();
+                $crate::array::common::check_capacity!();
 
                 T::to_array_vec(value.as_slice())
             }
@@ -907,7 +907,7 @@ macro_rules! impl_slice_from {
             /// [`Vec::from`]
             #[track_caller]
             fn try_from(value: $from) -> Result<$vec<T, N>, OutOfMemoryError> {
-                $crate::stack::common::check_capacity!(value.len());
+                $crate::array::common::check_capacity!(value.len());
 
                 Ok(T::to_array_vec(value))
             }
@@ -924,7 +924,7 @@ macro_rules! impl_from {
             /// [`Vec::from`]
             #[track_caller]
             fn from(value: [T; N]) -> $vec<T, M> {
-                $crate::stack::common::check_capacity!();
+                $crate::array::common::check_capacity!();
 
                 #[inline]
                 const fn same_capacity<T, const N: usize, const M: usize>(value: [T; N]) -> [std::mem::MaybeUninit<T>; M] {
@@ -952,11 +952,11 @@ macro_rules! impl_from {
             }
         }
 
-        $crate::stack::common::impl_array_from! { &[T; N], $vec $(, $bound)? }
-        $crate::stack::common::impl_array_from! { &mut [T; N], $vec $(, $bound)? }
+        $crate::array::common::impl_array_from! { &[T; N], $vec $(, $bound)? }
+        $crate::array::common::impl_array_from! { &mut [T; N], $vec $(, $bound)? }
 
-        $crate::stack::common::impl_slice_from! { &[T], $vec $(, $bound)? }
-        $crate::stack::common::impl_slice_from! { &mut [T], $vec $(, $bound)? }
+        $crate::array::common::impl_slice_from! { &[T], $vec $(, $bound)? }
+        $crate::array::common::impl_slice_from! { &mut [T], $vec $(, $bound)? }
 
         impl<T, const N: usize, const M: usize> TryFrom<$vec<T, N>> for [T; M]
         where
@@ -1035,23 +1035,23 @@ macro_rules! impl_write {
 
 macro_rules! impl_traits {
     ($vec:ident $(, $bound:ident)?) => {
-        $crate::stack::common::impl_clone! { $vec $(, $bound)? }
+        $crate::array::common::impl_clone! { $vec $(, $bound)? }
 
-        $crate::stack::common::impl_default! { $vec $(, $bound)? }
-        $crate::stack::common::impl_debug! { $vec $(, $bound)? }
+        $crate::array::common::impl_default! { $vec $(, $bound)? }
+        $crate::array::common::impl_debug! { $vec $(, $bound)? }
 
-        $crate::stack::common::impl_as_ref! { $vec $(, $bound)? }
-        $crate::stack::common::impl_deref! { $vec $(, $bound)? }
-        $crate::stack::common::impl_borrow! { $vec $(, $bound)? }
-        $crate::stack::common::impl_index! { $vec $(, $bound)? }
+        $crate::array::common::impl_as_ref! { $vec $(, $bound)? }
+        $crate::array::common::impl_deref! { $vec $(, $bound)? }
+        $crate::array::common::impl_borrow! { $vec $(, $bound)? }
+        $crate::array::common::impl_index! { $vec $(, $bound)? }
 
-        $crate::stack::common::impl_eq! { $vec $(, $bound)?}
-        $crate::stack::common::impl_hash! { $vec $(, $bound)? }
-        $crate::stack::common::impl_ord! { $vec $(, $bound)? }
+        $crate::array::common::impl_eq! { $vec $(, $bound)?}
+        $crate::array::common::impl_hash! { $vec $(, $bound)? }
+        $crate::array::common::impl_ord! { $vec $(, $bound)? }
 
-        $crate::stack::common::impl_from! { $vec $(, $bound)? }
+        $crate::array::common::impl_from! { $vec $(, $bound)? }
 
-        $crate::stack::common::impl_write! { $vec }
+        $crate::array::common::impl_write! { $vec }
     };
 }
 

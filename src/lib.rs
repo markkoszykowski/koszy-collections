@@ -1,3 +1,3 @@
 extern crate core;
 
-pub mod stack;
+pub mod array;
