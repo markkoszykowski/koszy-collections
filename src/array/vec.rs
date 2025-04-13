@@ -3,6 +3,7 @@ use crate::array::common::{
     impl_resize_with, impl_retain, impl_split_off, impl_subtraction, impl_traits, SetLenOnDrop,
 };
 use crate::array::error::OutOfMemoryError;
+use std::alloc::Layout;
 use std::mem::MaybeUninit;
 use std::ops::RangeBounds;
 
@@ -97,6 +98,40 @@ where
     }
 
     impl_resize! { ArrayVec }
+
+    #[inline]
+    unsafe fn into_ptr(&mut self, n: usize) -> *mut T {
+        let len: usize = self.len;
+
+        let layout: Layout = match Layout::array::<T>(n) {
+            Ok(layout) => layout,
+            Err(e) => panic!("{}", e),
+        };
+
+        unsafe {
+            self.len = 0;
+
+            let ptr: *mut T = std::alloc::alloc(layout) as *mut T;
+            std::ptr::copy_nonoverlapping(self.as_ptr(), ptr, len);
+            ptr
+        }
+    }
+
+    /// [`Vec::into_boxed_slice`]
+    #[inline]
+    #[track_caller]
+    pub fn into_vec(mut self) -> Vec<T> {
+        let len: usize = self.len;
+        unsafe { Vec::from_raw_parts(self.into_ptr(N), len, N) }
+    }
+
+    /// [`Vec::into_boxed_slice`]
+    #[inline]
+    #[track_caller]
+    pub fn into_boxed_slice(mut self) -> Box<[T]> {
+        let len: usize = self.len;
+        unsafe { Box::from_raw(std::ptr::slice_from_raw_parts_mut(self.into_ptr(len), len)) }
+    }
 }
 
 impl<T, const N: usize> ConvertArrayVec<N> for T
@@ -153,6 +188,7 @@ where
 impl<T, const N: usize> Drop for ArrayVec<T, N> {
     /// [`Vec::drop`]
     #[inline]
+    #[track_caller]
     fn drop(&mut self) {
         let slice: *mut [T] = std::ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len);
         unsafe {
