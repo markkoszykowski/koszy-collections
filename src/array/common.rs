@@ -141,7 +141,7 @@ macro_rules! impl_addition {
                 panic!("insertion index should be <= len");
             }
 
-            check_capacity!(len + 1);
+            $crate::array::common::check_capacity!(len + 1);
 
             unsafe {
                 let ptr: *mut T = self.as_mut_ptr().add(index);
@@ -159,7 +159,7 @@ macro_rules! impl_addition {
         pub $($is_const)? fn push(&mut self, value: T) -> Result<(), OutOfMemoryError> {
             let len: usize = self.len;
 
-            check_capacity!(len + 1);
+            $crate::array::common::check_capacity!(len + 1);
 
             unsafe {
                 let ptr: *mut T = self.as_mut_ptr().add(len);
@@ -172,7 +172,7 @@ macro_rules! impl_addition {
         /// [`Vec::append`]
         #[track_caller]
         pub $($is_const)? fn append<const M: usize>(&mut self, other: &mut $vec<T, M>) -> Result<(), OutOfMemoryError> {
-            check_capacity!(self.len + other.len);
+            $crate::array::common::check_capacity!(self.len + other.len);
 
             unsafe {
                 self.append_elements(other.as_slice());
@@ -524,7 +524,7 @@ macro_rules! impl_resize_with {
         {
             let len: usize = self.len;
 
-            check_capacity!(new_len);
+            $crate::array::common::check_capacity!(new_len);
 
             if len < new_len {
                 unsafe {
@@ -551,7 +551,7 @@ macro_rules! impl_resize {
         pub $($is_const)? fn resize(&mut self, new_len: usize, value: T) -> Result<(), OutOfMemoryError> {
             let len: usize = self.len;
 
-            check_capacity!(new_len);
+            $crate::array::common::check_capacity!(new_len);
 
             if len < new_len {
                 self.extend_with(new_len - len, value);
@@ -610,7 +610,7 @@ macro_rules! impl_clone {
             T: Clone $(+ $bound)?,
         {
             fn from_elem(elem: T, n: usize) -> Result<$vec<T, N>, OutOfMemoryError> {
-                check_capacity!(n);
+                $crate::array::common::check_capacity!(n);
 
                 let mut vec: $vec<T, N> = $vec::new();
                 vec.extend_with(n, elem);
