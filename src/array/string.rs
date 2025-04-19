@@ -92,7 +92,7 @@ impl<const N: usize> ArrayString<N> {
         for c in char::decode_utf16(v.iter().cloned()) {
             string
                 .push(c.map_err(|e| FromUtf16Error::DecodeUtf16(e))?)
-                .map_err(|e| FromUtf16Error::OutOfMemory(e))?
+                .map_err(|e| FromUtf16Error::OutOfMemory(e))?;
         }
         Ok(string)
     }
