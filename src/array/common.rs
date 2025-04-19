@@ -984,6 +984,36 @@ macro_rules! impl_from {
     };
 }
 
+macro_rules! impl_into_iterator {
+    ($vec:ident $(, $bound:ident)?) => {
+        impl<'a, T, const N: usize> IntoIterator for &'a $vec<T, N>
+        where
+            $(T: $bound,)?
+        {
+            type Item = &'a T;
+            type IntoIter = std::slice::Iter<'a, T>;
+
+            /// [`Vec::into_iter`]
+            fn into_iter(self) -> std::slice::Iter<'a, T> {
+                self.iter()
+            }
+        }
+
+        impl<'a, T, const N: usize> IntoIterator for &'a mut $vec<T, N>
+        where
+            $(T: $bound,)?
+        {
+            type Item = &'a mut T;
+            type IntoIter = std::slice::IterMut<'a, T>;
+
+            /// [`Vec::into_iter`]
+            fn into_iter(self) -> std::slice::IterMut<'a, T> {
+                self.iter_mut()
+            }
+        }
+    };
+}
+
 macro_rules! impl_write {
     ($vec:ident) => {
         impl<const N: usize> std::io::Write for $vec<u8, N> {
@@ -1054,6 +1084,7 @@ macro_rules! impl_traits {
         $crate::array::common::impl_ord! { $vec $(, $bound)? }
 
         $crate::array::common::impl_from! { $vec $(, $bound)? }
+        $crate::array::common::impl_into_iterator! { $vec $(, $bound)? }
 
         $crate::array::common::impl_write! { $vec }
     };
@@ -1077,6 +1108,7 @@ pub(super) use impl_eq;
 pub(super) use impl_from;
 pub(super) use impl_hash;
 pub(super) use impl_index;
+pub(super) use impl_into_iterator;
 pub(super) use impl_ord;
 pub(super) use impl_resize;
 pub(super) use impl_resize_with;
