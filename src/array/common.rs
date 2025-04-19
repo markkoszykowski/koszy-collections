@@ -981,6 +981,17 @@ macro_rules! impl_from {
                 }
             }
         }
+
+        impl<const N: usize> TryFrom<&str> for $vec<u8, N> {
+            type Error = OutOfMemoryError;
+
+            /// [`Vec::from`]
+            #[inline]
+            #[track_caller]
+            fn try_from(value: &str) -> Result<$vec<u8, N>, OutOfMemoryError> {
+                TryFrom::try_from(value.as_bytes())
+            }
+        }
     };
 }
 

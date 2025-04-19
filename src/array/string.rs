@@ -610,10 +610,21 @@ impl_str_try_from! { &mut str }
 impl_c_str_try_from! { &CStr }
 impl_c_str_try_from! { &mut CStr }
 
+impl<const N: usize> From<ArrayString<N>> for CopyArrayVec<u8, N> {
+    /// [`Vec::from`]
+    #[inline]
+    #[track_caller]
+    fn from(value: ArrayString<N>) -> CopyArrayVec<u8, N> {
+        value.into_bytes()
+    }
+}
+
 impl<const N: usize> TryFrom<char> for ArrayString<N> {
     type Error = OutOfMemoryError;
 
     /// [`String::from`]
+    #[inline]
+    #[track_caller]
     fn try_from(c: char) -> Result<ArrayString<N>, OutOfMemoryError> {
         ArrayString::try_from(c.encode_utf8(&mut [0; 4]))
     }
@@ -621,7 +632,10 @@ impl<const N: usize> TryFrom<char> for ArrayString<N> {
 
 impl<const N: usize> ToSocketAddrs for ArrayString<N> {
     type Iter = IntoIter<SocketAddr>;
+
     /// [`String::to_socket_addrs`]
+    #[inline]
+    #[track_caller]
     fn to_socket_addrs(&self) -> std::io::Result<IntoIter<SocketAddr>> {
         ToSocketAddrs::to_socket_addrs(&**self)
     }
