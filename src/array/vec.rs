@@ -4,6 +4,7 @@ use crate::array::common::{
 };
 use crate::array::error::OutOfMemoryError;
 use std::alloc::Layout;
+use std::borrow::Cow;
 use std::mem::MaybeUninit;
 use std::ops::RangeBounds;
 
@@ -47,6 +48,40 @@ impl<T, const N: usize> ArrayVec<T, N> {
     impl_split_off! { ArrayVec }
     impl_retain! { ArrayVec }
     impl_resize_with! { ArrayVec }
+
+    #[inline]
+    unsafe fn into_ptr(&mut self, n: usize) -> *mut T {
+        let len: usize = self.len;
+
+        let layout: Layout = match Layout::array::<T>(n) {
+            Ok(layout) => layout,
+            Err(e) => panic!("{}", e),
+        };
+
+        unsafe {
+            self.len = 0;
+
+            let ptr: *mut T = std::alloc::alloc(layout) as *mut T;
+            std::ptr::copy_nonoverlapping(self.as_ptr(), ptr, len);
+            ptr
+        }
+    }
+
+    /// [`Vec::into_boxed_slice`]
+    #[inline]
+    #[track_caller]
+    pub fn into_vec(mut self) -> Vec<T> {
+        let len: usize = self.len;
+        unsafe { Vec::from_raw_parts(self.into_ptr(N), len, N) }
+    }
+
+    /// [`Vec::into_boxed_slice`]
+    #[inline]
+    #[track_caller]
+    pub fn into_boxed_slice(mut self) -> Box<[T]> {
+        let len: usize = self.len;
+        unsafe { Box::from_raw(std::ptr::slice_from_raw_parts_mut(self.into_ptr(len), len)) }
+    }
 }
 
 impl_dedup! { ArrayVec }
@@ -98,40 +133,6 @@ where
     }
 
     impl_resize! { ArrayVec }
-
-    #[inline]
-    unsafe fn into_ptr(&mut self, n: usize) -> *mut T {
-        let len: usize = self.len;
-
-        let layout: Layout = match Layout::array::<T>(n) {
-            Ok(layout) => layout,
-            Err(e) => panic!("{}", e),
-        };
-
-        unsafe {
-            self.len = 0;
-
-            let ptr: *mut T = std::alloc::alloc(layout) as *mut T;
-            std::ptr::copy_nonoverlapping(self.as_ptr(), ptr, len);
-            ptr
-        }
-    }
-
-    /// [`Vec::into_boxed_slice`]
-    #[inline]
-    #[track_caller]
-    pub fn into_vec(mut self) -> Vec<T> {
-        let len: usize = self.len;
-        unsafe { Vec::from_raw_parts(self.into_ptr(N), len, N) }
-    }
-
-    /// [`Vec::into_boxed_slice`]
-    #[inline]
-    #[track_caller]
-    pub fn into_boxed_slice(mut self) -> Box<[T]> {
-        let len: usize = self.len;
-        unsafe { Box::from_raw(std::ptr::slice_from_raw_parts_mut(self.into_ptr(len), len)) }
-    }
 }
 
 impl<T, const N: usize> ConvertArrayVec<N> for T
@@ -198,6 +199,44 @@ impl<T, const N: usize> Drop for ArrayVec<T, N> {
 }
 
 impl_traits! { ArrayVec }
+
+impl<T, const N: usize> From<ArrayVec<T, N>> for Vec<T> {
+    /// [`Vec::from`]
+    #[inline]
+    fn from(value: ArrayVec<T, N>) -> Vec<T> {
+        value.into_vec()
+    }
+}
+
+impl<T, const N: usize> From<ArrayVec<T, N>> for Box<[T]> {
+    /// [`Box::from`]
+    #[inline]
+    fn from(value: ArrayVec<T, N>) -> Box<[T]> {
+        value.into_boxed_slice()
+    }
+}
+
+impl<'a, T, const N: usize> From<ArrayVec<T, N>> for Cow<'a, [T]>
+where
+    T: Clone,
+{
+    /// [`Cow::from`]
+    #[inline]
+    fn from(value: ArrayVec<T, N>) -> Cow<'a, [T]> {
+        Cow::Owned(value.into_vec())
+    }
+}
+
+impl<'a, T, const N: usize> From<&'a ArrayVec<T, N>> for Cow<'a, [T]>
+where
+    T: Clone,
+{
+    /// [`Cow::from`]
+    #[inline]
+    fn from(value: &'a ArrayVec<T, N>) -> Cow<'a, [T]> {
+        Cow::Borrowed(value.as_slice())
+    }
+}
 
 #[macro_export]
 macro_rules! array_vec {
