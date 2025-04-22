@@ -161,7 +161,7 @@ where
             slots[guard.num_init].write(element.clone());
             guard.num_init += 1;
         }
-        core::mem::forget(guard);
+        std::mem::forget(guard);
         unsafe {
             vec.set_len(slice.len());
         }

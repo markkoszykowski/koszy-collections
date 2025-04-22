@@ -388,7 +388,7 @@ macro_rules! impl_dedup {
                     }
 
                     gap.vec.len = gap.write;
-                    core::mem::forget(gap);
+                    std::mem::forget(gap);
                 }
             }
         }
@@ -509,7 +509,7 @@ macro_rules! impl_retain {
 
             process_loop::<F, T, N, true>(original_len, &mut f, &mut guard);
 
-            core::mem::drop(guard);
+            std::mem::drop(guard);
         }
     };
 }
@@ -531,7 +531,7 @@ macro_rules! impl_resize_with {
                     let ptr: *mut T = self.as_mut_ptr();
                     let mut local_len: $crate::array::common::SetLenOnDrop<'_> =
                         $crate::array::common::SetLenOnDrop::new(&mut self.len);
-                    for element in core::iter::repeat_with(f).take(new_len - len) {
+                    for element in std::iter::repeat_with(f).take(new_len - len) {
                         std::ptr::write(ptr.add(local_len.current_len()), element);
                         local_len.increment_len(1);
                     }
@@ -647,14 +647,14 @@ macro_rules! impl_default {
 
 macro_rules! impl_debug {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T, const N: usize> core::fmt::Debug for $vec<T, N>
+        impl<T, const N: usize> std::fmt::Debug for $vec<T, N>
         where
-            T: core::fmt::Debug $(+ $bound)?,
+            T: std::fmt::Debug $(+ $bound)?,
         {
             /// [`Vec::fmt`]
             #[inline]
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                core::fmt::Debug::fmt(&**self, f)
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Debug::fmt(&**self, f)
             }
         }
     };
@@ -710,7 +710,7 @@ macro_rules! impl_as_ref {
 
 macro_rules! impl_deref {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T, const N: usize> core::ops::Deref for $vec<T, N>
+        impl<T, const N: usize> std::ops::Deref for $vec<T, N>
         where
             $(T: $bound,)?
         {
@@ -723,7 +723,7 @@ macro_rules! impl_deref {
             }
         }
 
-        impl<T, const N: usize> core::ops::DerefMut for $vec<T, N>
+        impl<T, const N: usize> std::ops::DerefMut for $vec<T, N>
         where
             $(T: $bound,)?
         {
@@ -738,7 +738,7 @@ macro_rules! impl_deref {
 
 macro_rules! impl_borrow {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T, const N: usize> core::borrow::Borrow<[T]> for $vec<T, N>
+        impl<T, const N: usize> std::borrow::Borrow<[T]> for $vec<T, N>
         where
             $(T: $bound,)?
         {
@@ -749,7 +749,7 @@ macro_rules! impl_borrow {
             }
         }
 
-        impl<T, const N: usize> core::borrow::BorrowMut<[T]> for $vec<T, N>
+        impl<T, const N: usize> std::borrow::BorrowMut<[T]> for $vec<T, N>
         where
             $(T: $bound,)?
         {
@@ -764,7 +764,7 @@ macro_rules! impl_borrow {
 
 macro_rules! impl_index {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T, I, const N: usize> core::ops::Index<I> for $vec<T, N>
+        impl<T, I, const N: usize> std::ops::Index<I> for $vec<T, N>
         where
             I: std::slice::SliceIndex<[T]>,
             $(T: $bound,)?
@@ -774,11 +774,11 @@ macro_rules! impl_index {
             /// [`Vec::index`]
             #[inline]
             fn index(&self, index: I) -> &I::Output {
-                core::ops::Index::index(&**self, index)
+                std::ops::Index::index(&**self, index)
             }
         }
 
-        impl<T, I, const N: usize> core::ops::IndexMut<I> for $vec<T, N>
+        impl<T, I, const N: usize> std::ops::IndexMut<I> for $vec<T, N>
         where
             I: std::slice::SliceIndex<[T]>,
             $(T: $bound,)?
@@ -786,7 +786,7 @@ macro_rules! impl_index {
             /// [`Vec::index_mut`]
             #[inline]
             fn index_mut(&mut self, index: I) -> &mut I::Output {
-                core::ops::IndexMut::index_mut(&mut **self, index)
+                std::ops::IndexMut::index_mut(&mut **self, index)
             }
         }
     };
@@ -837,17 +837,17 @@ macro_rules! impl_eq {
 
 macro_rules! impl_hash {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T, const N: usize> core::hash::Hash for $vec<T, N>
+        impl<T, const N: usize> std::hash::Hash for $vec<T, N>
         where
-            T: core::hash::Hash $(+ $bound)?,
+            T: std::hash::Hash $(+ $bound)?,
         {
             /// [`Vec::hash`]
             #[inline]
             fn hash<H>(&self, hasher: &mut H)
             where
-                H: core::hash::Hasher,
+                H: std::hash::Hasher,
             {
-                core::hash::Hash::hash(&**self, hasher)
+                std::hash::Hash::hash(&**self, hasher)
             }
         }
     };
@@ -855,25 +855,25 @@ macro_rules! impl_hash {
 
 macro_rules! impl_ord {
     ($vec:ident $(, $bound:ident)?) => {
-        impl<T, const N: usize, const M: usize> core::cmp::PartialOrd<$vec<T, M>> for $vec<T, N>
+        impl<T, const N: usize, const M: usize> std::cmp::PartialOrd<$vec<T, M>> for $vec<T, N>
         where
-            T: core::cmp::PartialOrd $(+ $bound)?,
+            T: std::cmp::PartialOrd $(+ $bound)?,
         {
             /// [`Vec::partial_cmp`]
             #[inline]
-            fn partial_cmp(&self, other: &$vec<T, M>) -> Option<core::cmp::Ordering> {
-                core::cmp::PartialOrd::partial_cmp(&**self, &**other)
+            fn partial_cmp(&self, other: &$vec<T, M>) -> Option<std::cmp::Ordering> {
+                std::cmp::PartialOrd::partial_cmp(&**self, &**other)
             }
         }
 
-        impl<T, const N: usize> core::cmp::Ord for $vec<T, N>
+        impl<T, const N: usize> std::cmp::Ord for $vec<T, N>
         where
-            T: core::cmp::Ord $(+ $bound)?,
+            T: std::cmp::Ord $(+ $bound)?,
         {
             /// [`Vec::cmp`]
             #[inline]
-            fn cmp(&self, other: &$vec<T, N>) -> core::cmp::Ordering {
-                core::cmp::Ord::cmp(&**self, &**other)
+            fn cmp(&self, other: &$vec<T, N>) -> std::cmp::Ordering {
+                std::cmp::Ord::cmp(&**self, &**other)
             }
         }
     };

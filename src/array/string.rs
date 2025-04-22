@@ -375,7 +375,7 @@ impl<const N: usize> Copy for ArrayString<N> {}
 impl<const N: usize> Debug for ArrayString<N> {
     /// [`String::fmt`]
     #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(&**self, f)
     }
 }
@@ -383,7 +383,7 @@ impl<const N: usize> Debug for ArrayString<N> {
 impl<const N: usize> Display for ArrayString<N> {
     /// [`String::fmt`]
     #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&**self, f)
     }
 }
@@ -500,7 +500,7 @@ where
 impl<const N: usize> Write for ArrayString<N> {
     /// [`String::write_str`]
     #[inline]
-    fn write_str(&mut self, str: &str) -> core::fmt::Result {
+    fn write_str(&mut self, str: &str) -> std::fmt::Result {
         match self.push_str(str) {
             Ok(_) => Ok(()),
             Err(_) => Err(std::fmt::Error),
@@ -509,7 +509,7 @@ impl<const N: usize> Write for ArrayString<N> {
 
     /// [`String::write_char`]
     #[inline]
-    fn write_char(&mut self, c: char) -> core::fmt::Result {
+    fn write_char(&mut self, c: char) -> std::fmt::Result {
         match self.push(c) {
             Ok(_) => Ok(()),
             Err(_) => Err(std::fmt::Error),
