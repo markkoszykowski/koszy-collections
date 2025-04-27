@@ -242,6 +242,54 @@ where
     }
 }
 
+macro_rules! impl_try_from {
+    ($from:ty) => {
+        impl<T, const N: usize> TryFrom<$from> for ArrayVec<T, N> {
+            type Error = $from;
+
+            #[inline]
+            #[track_caller]
+            fn try_from(value: $from) -> Result<ArrayVec<T, N>, $from> {
+                if N < value.len() {
+                    return Err(value);
+                }
+
+                let mut vec: ArrayVec<T, N> = ArrayVec::new();
+                unsafe {
+                    std::ptr::copy_nonoverlapping(value.as_ptr(), vec.as_mut_ptr(), value.len());
+                }
+                std::mem::forget(value);
+                Ok(vec)
+            }
+        }
+    };
+}
+
+impl_try_from! { Vec<T> }
+impl_try_from! { Box<[T]> }
+
+impl<'a, T, const N: usize> TryFrom<Cow<'a, [T]>> for ArrayVec<T, N>
+where
+    T: Clone,
+{
+    type Error = Cow<'a, [T]>;
+
+    #[inline]
+    #[track_caller]
+    fn try_from(value: Cow<'a, [T]>) -> Result<ArrayVec<T, N>, Cow<'a, [T]>> {
+        match value {
+            Cow::Borrowed(slice) => match ArrayVec::try_from(slice) {
+                Ok(vec) => Ok(vec),
+                Err(_) => Err(Cow::Borrowed(slice)),
+            },
+            Cow::Owned(vec) => match ArrayVec::try_from(vec) {
+                Ok(vec) => Ok(vec),
+                Err(vec) => Err(Cow::Owned(vec)),
+            },
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! array_vec {
     () => {
