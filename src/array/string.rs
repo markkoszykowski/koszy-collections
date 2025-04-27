@@ -338,7 +338,7 @@ impl<const N: usize> ArrayString<N> {
 
     /// [`String::replace_range`]
     #[track_caller]
-    pub fn replace_range<R>(&mut self, range: R, str: &str)
+    pub fn replace_range<R>(&mut self, _range: R, _str: &str)
     where
         R: RangeBounds<usize>,
     {

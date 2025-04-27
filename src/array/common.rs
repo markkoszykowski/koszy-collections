@@ -1022,6 +1022,25 @@ macro_rules! impl_into_iterator {
                 self.iter_mut()
             }
         }
+
+        impl<T, const N: usize> IntoIterator for $vec<T, N>
+        where
+            $(T: $bound,)?
+        {
+            type Item = T;
+            type IntoIter = $crate::array::iter::IntoIter<T, N>;
+
+            /// [`Vec::into_iter`]
+            fn into_iter(self) -> $crate::array::iter::IntoIter<T, N> {
+                let me: std::mem::ManuallyDrop<$vec<T, N>> = std::mem::ManuallyDrop::new(self);
+                unsafe {
+                    $crate::array::iter::IntoIter {
+                        data: std::ptr::read(me.buf.as_ptr() as *const [std::mem::MaybeUninit<T>; N]),
+                        alive: $crate::array::iter::IndexRange::zero_to(me.len)
+                    }
+                }
+            }
+        }
     };
 }
 

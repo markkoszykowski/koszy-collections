@@ -70,7 +70,7 @@ where
 
     /// [`Vec::extend_from_within`]
     #[track_caller]
-    pub fn extend_from_within<R>(&mut self, range: R) -> Result<(), OutOfMemoryError>
+    pub fn extend_from_within<R>(&mut self, _range: R) -> Result<(), OutOfMemoryError>
     where
         R: RangeBounds<usize>,
     {
