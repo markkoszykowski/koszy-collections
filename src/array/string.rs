@@ -91,8 +91,8 @@ impl<const N: usize> ArrayString<N> {
         let mut string: ArrayString<N> = ArrayString::new();
         for c in char::decode_utf16(v.iter().cloned()) {
             string
-                .push(c.map_err(|e| FromUtf16Error::DecodeUtf16(e))?)
-                .map_err(|e| FromUtf16Error::OutOfMemory(e))?;
+                .push(c.map_err(FromUtf16Error::DecodeUtf16)?)
+                .map_err(FromUtf16Error::OutOfMemory)?;
         }
         Ok(string)
     }
