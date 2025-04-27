@@ -9,7 +9,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::{Add, Deref, DerefMut, Index, IndexMut, RangeBounds};
 use std::path::Path;
 use std::slice::SliceIndex;
-use std::str::{Utf8Chunks, Utf8Error};
+use std::str::{FromStr, Utf8Chunks, Utf8Error};
 use std::vec::IntoIter;
 
 /// [`String`]
@@ -609,6 +609,17 @@ impl_str_try_from! { &mut str }
 
 impl_c_str_try_from! { &CStr }
 impl_c_str_try_from! { &mut CStr }
+
+impl<const N: usize> FromStr for ArrayString<N> {
+    type Err = OutOfMemoryError;
+
+    /// [`String::from_str`]
+    #[inline]
+    #[track_caller]
+    fn from_str(s: &str) -> Result<ArrayString<N>, OutOfMemoryError> {
+        ArrayString::try_from(s)
+    }
+}
 
 impl<const N: usize> From<ArrayString<N>> for CopyArrayVec<u8, N> {
     /// [`Vec::from`]
