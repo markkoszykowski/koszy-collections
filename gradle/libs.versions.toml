@@ -1,10 +1,12 @@
 [versions]
+agrona = "2.2.4"
 checkstyle = "11.0.0"
 fastutil = "8.5.16"
 junit = "5.13.4"
 versions = "0.52.0"
 
 [libraries]
+agrona = { module = "org.agrona:agrona", version.ref = "agrona" }
 fastutil = { module = "it.unimi.dsi:fastutil", version.ref = "fastutil" }
 junit = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }

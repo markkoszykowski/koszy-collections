@@ -32,6 +32,7 @@ repositories {
 }
 
 dependencies {
+	implementation(libs.agrona)
 	implementation(libs.fastutil)
 
 	testImplementation(libs.junit)
