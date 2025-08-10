@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.HashCommon;
 import it.unimi.dsi.fastutil.objects.AbstractObjectSortedSet;
 import it.unimi.dsi.fastutil.objects.ObjectBidirectionalIterator;
 import it.unimi.dsi.fastutil.objects.ObjectSortedSet;
-import org.agrona.collections.NullReference;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -13,8 +12,9 @@ import java.util.random.RandomGenerator;
 
 public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
-	protected Object[] key;
+	protected K[] key;
 
+	protected int nulll = -1;
 	protected int first = -1;
 	protected int last = -1;
 
@@ -113,6 +113,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		);
 	}
 
+	@SuppressWarnings(value = {"unchecked"})
 	public SortedSparseArraySet(
 			final int expected,
 			final float f,
@@ -129,20 +130,10 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		this.f = f;
 		this.minN = this.n = HashCommon.arraySize(expected, f);
 		this.maxFill = HashCommon.maxFill(this.n, f);
-		this.key = new Object[this.n];
+		this.key = (K[]) new Object[this.n];
 
 		this.comparator = comparator;
 		this.random = Objects.requireNonNull(random);
-	}
-
-
-	protected static Object map(final Object k) {
-		return k == null ? NullReference.INSTANCE : k;
-	}
-
-	@SuppressWarnings(value = {"unchecked"})
-	protected static <T> T unmap(final Object k) {
-		return k == NullReference.INSTANCE ? null : (T) k;
 	}
 
 
@@ -184,7 +175,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		}
 		this.size = 0;
 		Arrays.fill(this.key, null);
-		this.first = this.last = -1;
+		this.nulll = this.first = this.last = -1;
 	}
 
 
@@ -202,25 +193,25 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 	@Override
 	@SuppressWarnings(value = {"unchecked"})
 	public boolean contains(final Object k) {
-		final Object[] key = this.key;
+		final K[] key = this.key;
 		return switch (this.size) {
 			case 0 -> false;
-			case 1 -> this.compare((K) k, unmap(key[this.first])) == 0;
-			case 2 -> this.compare((K) k, unmap(key[this.first])) == 0 || this.compare(unmap(key[this.last]), (K) k) == 0;
+			case 1 -> this.compare((K) k, key[this.first]) == 0;
+			case 2 -> this.compare((K) k, key[this.first]) == 0 || this.compare(key[this.last], (K) k) == 0;
 			default -> {
 				final int first = this.first;
 				final int last = this.last;
 
 				int compare;
 
-				compare = this.compare((K) k, unmap(key[first]));
+				compare = this.compare((K) k, key[first]);
 				if (compare < 0) { // k < first
 					yield false;
 				} else if (compare == 0) { // k == first
 					yield true;
 				}
 
-				compare = this.compare(unmap(key[last]), (K) k);
+				compare = this.compare(key[last], (K) k);
 				if (compare < 0) { // last < k
 					yield false;
 				} else if (compare == 0) { // k == last
@@ -235,7 +226,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 	@Override
 	public boolean add(final K k) {
-		final Object[] key = this.key;
+		final K[] key = this.key;
 
 		final int begin = 0;
 		final int end = this.n - 1;
@@ -259,12 +250,11 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 				final int low, high, compare;
 
-				compare = this.compare(k, unmap(key[first]));
+				compare = this.compare(k, key[first]);
 				if (compare < 0) { // k < first
 					low = begin - 1;
 					high = first;
 					this.first = this.insert(k, low, high);
-					this.last = last < end && key[last + 1] != null ? last + 1 : last;
 
 					if (this.maxFill <= this.size++) {
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
@@ -275,7 +265,6 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 					low = first;
 					high = end + 1;
 					this.last = this.insert(k, low, high);
-					this.first = begin < first && key[first - 1] != null ? first - 1 : first;
 
 					if (this.maxFill <= this.size++) {
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
@@ -294,12 +283,11 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 				int compare;
 
-				compare = this.compare(k, unmap(key[first]));
+				compare = this.compare(k, key[first]);
 				if (compare < 0) { // k < first
 					low = begin - 1;
 					high = first;
 					this.first = this.insert(k, low, high);
-					this.last = last < end && key[last + 1] != null ? last + 1 : last;
 
 					if (this.maxFill <= this.size++) {
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
@@ -310,12 +298,11 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 					yield false;
 				}
 
-				compare = this.compare(unmap(key[last]), k);
+				compare = this.compare(key[last], k);
 				if (compare < 0) { // last < k
 					low = last;
 					high = end + 1;
 					this.last = this.insert(k, low, high);
-					this.first = begin < first && key[first - 1] != null ? first - 1 : first;
 
 					if (this.maxFill <= this.size++) {
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
@@ -329,8 +316,6 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				low = first;
 				high = last;
 				this.insert(k, low, high);
-				this.first = begin < first && key[first - 1] != null ? first - 1 : first;
-				this.last = last < end && key[last + 1] != null ? last + 1 : last;
 
 				if (this.maxFill <= this.size++) {
 					this.resort(HashCommon.arraySize(this.size + 1, this.f));
@@ -346,12 +331,11 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 				int compare;
 
-				compare = this.compare(k, unmap(key[first]));
+				compare = this.compare(k, key[first]);
 				if (compare < 0) { // k < first
 					low = begin - 1;
 					high = first;
 					this.first = this.insert(k, low, high);
-					this.last = last < end && key[last + 1] != null ? last + 1 : last;
 
 					if (this.maxFill <= this.size++) {
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
@@ -362,12 +346,11 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 					yield false;
 				}
 
-				compare = this.compare(unmap(key[last]), k);
+				compare = this.compare(key[last], k);
 				if (compare < 0) { // last < k
 					low = last;
 					high = end + 1;
 					this.last = this.insert(k, low, high);
-					this.first = begin < first && key[first - 1] != null ? first - 1 : first;
 
 					if (this.maxFill <= this.size++) {
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
@@ -383,8 +366,6 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				high = (int) (packed >>> Integer.SIZE);
 				if (low != high) {
 					this.insert(k, low, high);
-					this.first = begin < first && key[first - 1] != null ? first - 1 : first;
-					this.last = last < end && key[last + 1] != null ? last + 1 : last;
 
 					if (this.maxFill <= this.size++) {
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
@@ -399,56 +380,72 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 	}
 
 	private int insert(final K k, final int low, final int high) {
-		final Object[] key = this.key;
+		final K[] key = this.key;
 
 		assert low < high;
 
 		final int begin = 0;
 		final int end = this.n - 1;
 
-		Object last, curr;
-		int pos, slot;
+		K last, curr;
+		int pos, slot, nulll;
 		if (high == begin) {
+			last = k;
+
 			pos = high;
 
-			slot = pos;
-			last = key[slot];
+			slot = pos - 1;
+			nulll = last == null ? slot : this.nulll;
 
-			while (last != null) {
+			while (last != null || slot == nulll) {
 				curr = key[++slot];
 				key[slot] = last;
+				if (last == null) {
+					this.nulll = slot;
+				}
 				last = curr;
 			}
 
-			key[pos] = map(k);
+			this.last = Math.max(slot, this.last);
 		} else if (low == end) {
+			last = k;
+
 			pos = low;
 
-			slot = pos;
-			last = key[slot];
+			slot = pos + 1;
+			nulll = last == null ? slot : this.nulll;
 
-			while (last != null) {
+			while (last != null || slot == nulll) {
 				curr = key[--slot];
 				key[slot] = last;
+				if (last == null) {
+					this.nulll = slot;
+				}
 				last = curr;
 			}
 
-			key[pos] = map(k);
+			this.first = Math.min(slot, this.first);
 		} else if (low + 1 == high) { // Need to do some shifting
 			if (this.random.nextBoolean()) { // Shift right
+				last = k;
+
 				pos = high;
 
-				slot = pos;
-				last = key[slot];
+				slot = pos - 1;
+				nulll = last == null ? slot : this.nulll;
 
-				while (last != null && ++slot <= end) {
-					curr = key[slot];
+				while (slot < end && (last != null || slot == nulll)) {
+					curr = key[++slot];
 					key[slot] = last;
+					if (last == null) {
+						this.nulll = slot;
+					}
 					last = curr;
 				}
 
-				if (last == null) {
-					key[pos] = map(k);
+				if (last == null && slot != nulll) {
+					this.last = Math.max(slot, this.last);
+
 					return pos;
 				}
 
@@ -456,25 +453,39 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 				pos = low;
 
-				while (last != null) {
+				slot = slot + 1;
+				nulll = last == null ? slot : this.nulll;
+
+				while (last != null || slot == nulll) {
 					curr = key[--slot];
 					key[slot] = last;
+					if (last == null) {
+						this.nulll = slot;
+					}
 					last = curr;
 				}
+
+				this.first = Math.min(slot, this.first);
 			} else { // Shift left
+				last = k;
+
 				pos = low;
 
-				slot = pos;
-				last = key[slot];
+				slot = pos + 1;
+				nulll = k == null ? slot : this.nulll;
 
-				while (last != null && begin <= --slot) {
-					curr = key[slot];
+				while (begin < slot && (last != null || slot == nulll)) {
+					curr = key[--slot];
 					key[slot] = last;
+					if (last == null) {
+						this.nulll = slot;
+					}
 					last = curr;
 				}
 
-				if (last == null) {
-					key[pos] = map(k);
+				if (last == null && slot != nulll) {
+					this.first = Math.min(slot, this.first);
+
 					return pos;
 				}
 
@@ -482,32 +493,42 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 				pos = high;
 
-				while (last != null) {
+				slot = slot - 1;
+				nulll = last == null ? slot : this.nulll;
+
+				while (last != null || slot == nulll) {
 					curr = key[++slot];
 					key[slot] = last;
+					if (last == null) {
+						this.nulll = slot;
+					}
 					last = curr;
 				}
-			}
 
-			key[pos] = map(k);
+				this.last = Math.max(slot, this.last);
+			}
 		} else {
 			pos = this.random.nextInt(low + 1, high);
 
-			key[pos] = map(k);
+			key[pos] = k;
+			if (k == null) {
+				this.nulll = pos;
+			}
 		}
+
 		return pos;
 	}
 
 	@Override
 	@SuppressWarnings(value = {"unchecked"})
 	public boolean remove(final Object k) {
-		final Object[] key = this.key;
+		final K[] key = this.key;
 		return switch (this.size) {
 			case 0 -> false;
 			case 1 -> {
 				final int pos = this.first;
 
-				if (this.compare(unmap(key[pos]), (K) k) != 0) {
+				if (this.compare(key[pos], (K) k) != 0) {
 					yield false;
 				}
 
@@ -522,7 +543,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				int pos, compare;
 
 				pos = first;
-				compare = this.compare((K) k, unmap(key[pos]));
+				compare = this.compare((K) k, key[pos]);
 				if (compare < 0) { // k < first
 					yield false;
 				} else if (compare == 0) { // k == first
@@ -532,7 +553,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				}
 
 				pos = last;
-				compare = this.compare(unmap(key[pos]), (K) k);
+				compare = this.compare(key[pos], (K) k);
 				if (compare < 0) { // last < k
 					yield false;
 				} else if (compare == 0) { // k == last
@@ -550,7 +571,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				int pos, compare;
 
 				pos = first;
-				compare = this.compare((K) k, unmap(key[pos]));
+				compare = this.compare((K) k, key[pos]);
 				if (compare < 0) { // k < first
 					yield false;
 				} else if (compare == 0) { // k == first
@@ -560,7 +581,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				}
 
 				pos = last;
-				compare = this.compare(unmap(key[pos]), (K) k);
+				compare = this.compare(key[pos], (K) k);
 				if (compare < 0) { // last < k
 					yield false;
 				} else if (compare == 0) { // k == last
@@ -585,8 +606,12 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 	protected void fixPointers(final int i) {
 		switch (this.size) {
-			case 0 -> this.first = this.last = -1;
+			case 0 -> this.nulll = this.first = this.last = -1;
 			case 1 -> {
+				if (i == this.nulll) {
+					this.nulll = -1;
+				}
+
 				if (i == this.first) {
 					this.first = this.last;
 				} else if (i == this.last) {
@@ -594,12 +619,19 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				}
 			}
 			default -> {
-				final Object[] key = this.key;
+				final K[] key = this.key;
+
+				final int nulll = this.nulll;
+
+				if (i == nulll) {
+					this.nulll = -1;
+				}
+
 				if (i == this.first) {
-					while (key[++this.first] == null) {
+					while (key[++this.first] == null && this.first != nulll) {
 					}
 				} else if (i == this.last) {
-					while (key[--this.last] == null) {
+					while (key[--this.last] == null && this.last != nulll) {
 					}
 				}
 			}
@@ -621,7 +653,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		if (this.size == 0) {
 			throw new NoSuchElementException();
 		}
-		return unmap(this.key[this.first]);
+		return this.key[this.first];
 	}
 
 	@Override
@@ -629,7 +661,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		if (this.size == 0) {
 			throw new NoSuchElementException();
 		}
-		return unmap(this.key[this.last]);
+		return this.key[this.last];
 	}
 
 	@Override
@@ -638,14 +670,14 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 			throw new NoSuchElementException();
 		}
 
-		final Object[] key = this.key;
+		final K[] key = this.key;
 		final int pos = this.first;
 
-		final Object k = key[pos];
+		final K k = key[pos];
 
 		this.removeEntry(pos);
 
-		return unmap(k);
+		return k;
 	}
 
 	@Override
@@ -654,14 +686,14 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 			throw new NoSuchElementException();
 		}
 
-		final Object[] key = this.key;
+		final K[] key = this.key;
 		final int pos = this.last;
 
-		final Object k = key[pos];
+		final K k = key[pos];
 
 		this.removeEntry(pos);
 
-		return unmap(k);
+		return k;
 	}
 
 
@@ -693,29 +725,32 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 	@Override
 	public void forEach(final Consumer<? super K> action) {
-		final Object[] key = this.key;
+		final K[] key = this.key;
 
+		final int nulll = this.nulll;
 		final int last = this.last;
 
 		int curr;
 		int next = this.first;
 		while (next != -1) {
 			curr = next;
-			while (++next < last && key[next] == null) {
+			while (++next < last && (key[next] == null && next != nulll)) {
 			}
 			if (last < next) {
 				next = -1;
 			}
 
-			action.accept(unmap(key[curr]));
+			action.accept(key[curr]);
 		}
 	}
 
 
+	@SuppressWarnings(value = {"unchecked"})
 	protected void resort(final int newN) {
-		final Object[] key = this.key;
-		final Object[] newKey = new Object[newN];
+		final K[] key = this.key;
+		final K[] newKey = (K[]) new Object[newN];
 
+		final int nulll = this.nulll;
 		final int last = this.last;
 
 		final int size = this.size;
@@ -727,13 +762,16 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		int j = newN + 1;
 		while (0 < required) {
 			if (random.nextInt(--j) < required) {
-				Object o;
-				while ((o = key[--i]) == null) {
+				K o;
+				while ((o = key[--i]) == null && i != nulll) {
 				}
 
 				final int pos = j - 1;
 
 				newKey[pos] = o;
+				if (o == null) {
+					this.nulll = pos;
+				}
 
 				if (required == size) {
 					this.last = pos;
@@ -750,7 +788,9 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 	}
 
 	protected long sparseBinarySearch(final K k) {
-		final Object[] key = this.key;
+		final K[] key = this.key;
+
+		final int nulll = this.nulll;
 
 		int low = this.first;
 		int high = this.last;
@@ -758,10 +798,10 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		while (true) {
 			int mid = (low + high) >>> 1;
 
-			Object o;
+			K o;
 			int sign = -1;
 			int distance = 0;
-			while ((o = key[mid]) == null) {
+			while ((o = key[mid]) == null && mid != nulll) {
 				sign = -sign;
 				mid += (sign * ++distance);
 			}
@@ -771,10 +811,9 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 			}
 
 			assert low < mid && mid < high;
-			assert key[low] != null && key[mid] != null && key[high] != null;
-			assert this.compare(unmap(key[low]), k) < 0 && this.compare(k, unmap(key[high])) < 0;
+			assert this.compare(key[low], k) < 0 && this.compare(k, key[high]) < 0;
 
-			final int compare = this.compare(unmap(o), k);
+			final int compare = this.compare(o, k);
 			if (compare < 0) { // mid < k
 				low = mid;
 			} else if (compare > 0) { // k < mid
@@ -787,7 +826,6 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 
 	private final class SetIterator implements ObjectBidirectionalIterator<K> {
-
 		int prev = -1;
 		int next = -1;
 		int curr = -1;
@@ -797,14 +835,14 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		}
 
 		SetIterator(final K from) {
-			final Object[] key = SortedSparseArraySet.this.key;
+			final K[] key = SortedSparseArraySet.this.key;
 			switch (SortedSparseArraySet.this.size) {
 				case 0 -> throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 				case 1 -> {
 					final int first = SortedSparseArraySet.this.first;
 					final int last = SortedSparseArraySet.this.last;
 
-					final int compare = SortedSparseArraySet.this.compare(from, unmap(key[first]));
+					final int compare = SortedSparseArraySet.this.compare(from, key[first]);
 					if (compare == 0) { // k == first == last
 						this.prev = last;
 						return;
@@ -818,7 +856,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 					int compare;
 
-					compare = SortedSparseArraySet.this.compare(from, unmap(key[first]));
+					compare = SortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 					} else if (compare == 0) { // k == first
@@ -827,7 +865,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 						return;
 					}
 
-					compare = SortedSparseArraySet.this.compare(unmap(key[last]), from);
+					compare = SortedSparseArraySet.this.compare(key[last], from);
 					if (compare < 0) { // last < k
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 					} else if (compare == 0) { // k == last
@@ -838,22 +876,23 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 					throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 				}
 				default -> {
+					final int nulll = SortedSparseArraySet.this.nulll;
 					final int first = SortedSparseArraySet.this.first;
 					final int last = SortedSparseArraySet.this.last;
 
 					int compare;
 
-					compare = SortedSparseArraySet.this.compare(from, unmap(key[first]));
+					compare = SortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 					} else if (compare == 0) { // k == first
 						this.prev = this.next = first;
-						while (key[++this.next] == null) {
+						while (key[++this.next] == null && this.next != nulll) {
 						}
 						return;
 					}
 
-					compare = SortedSparseArraySet.this.compare(unmap(key[last]), from);
+					compare = SortedSparseArraySet.this.compare(key[last], from);
 					if (compare < 0) { // last < k
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 					} else if (compare == 0) { // k == last
@@ -865,7 +904,7 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 					final int pos = (int) packed;
 					if (pos == (int) (packed >>> Integer.SIZE)) {
 						this.prev = this.next = pos;
-						while (++this.next < last && key[this.next] == null) {
+						while (++this.next < last && (key[this.next] == null && this.next != nulll)) {
 						}
 						return;
 					}
@@ -891,19 +930,20 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				throw new NoSuchElementException();
 			}
 
-			final Object[] key = SortedSparseArraySet.this.key;
+			final K[] key = SortedSparseArraySet.this.key;
 
+			final int nulll = SortedSparseArraySet.this.nulll;
 			final int first = SortedSparseArraySet.this.first;
 
 			this.curr = this.prev;
-			while (first < --this.prev && key[this.prev] == null) {
+			while (first < --this.prev && (key[this.prev] == null && this.prev != nulll)) {
 			}
 			if (this.prev < first) {
 				this.prev = -1;
 			}
 			this.next = this.curr;
 
-			return unmap(key[this.curr]);
+			return key[this.curr];
 		}
 
 		@Override
@@ -912,19 +952,20 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				throw new NoSuchElementException();
 			}
 
-			final Object[] key = SortedSparseArraySet.this.key;
+			final K[] key = SortedSparseArraySet.this.key;
 
+			final int nulll = SortedSparseArraySet.this.nulll;
 			final int last = SortedSparseArraySet.this.last;
 
 			this.curr = this.next;
-			while (++this.next < last && key[this.next] == null) {
+			while (++this.next < last && (key[this.next] == null && this.next != nulll)) {
 			}
 			if (last < this.next) {
 				this.next = -1;
 			}
 			this.prev = this.curr;
 
-			return unmap(key[this.curr]);
+			return key[this.curr];
 		}
 
 		@Override
@@ -933,20 +974,26 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				throw new IllegalStateException();
 			}
 
-			final Object[] key = SortedSparseArraySet.this.key;
+			final K[] key = SortedSparseArraySet.this.key;
 
+			final int pos = this.curr;
+
+			final int nulll = SortedSparseArraySet.this.nulll;
 			final int first = SortedSparseArraySet.this.first;
 			final int last = SortedSparseArraySet.this.last;
 
-			final int pos = this.curr;
+			if (pos == SortedSparseArraySet.this.nulll) {
+				SortedSparseArraySet.this.nulll = -1;
+			}
+
 			if (pos == this.prev) {
-				while (first < --this.prev && key[this.prev] == null) {
+				while (first < --this.prev && (key[this.prev] == null && this.prev != nulll)) {
 				}
 				if (this.prev < first) {
 					this.prev = -1;
 				}
 			} else if (pos == this.next) {
-				while (++this.next < last && key[this.next] == null) {
+				while (++this.next < last && (key[this.next] == null && this.next != nulll)) {
 				}
 				if (last < this.next) {
 					this.next = -1;
@@ -969,20 +1016,21 @@ public class SortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 		@Override
 		public void forEachRemaining(final Consumer<? super K> action) {
-			final Object[] key = SortedSparseArraySet.this.key;
+			final K[] key = SortedSparseArraySet.this.key;
 
+			final int nulll = SortedSparseArraySet.this.nulll;
 			final int last = SortedSparseArraySet.this.last;
 
 			while (this.next != -1) {
 				this.curr = this.next;
-				while (++this.next < last && key[this.next] == null) {
+				while (++this.next < last && (key[this.next] == null) && this.next != nulll) {
 				}
 				if (last < this.next) {
 					this.next = -1;
 				}
 				this.prev = this.curr;
 
-				action.accept(unmap(key[this.curr]));
+				action.accept(key[this.curr]);
 			}
 		}
 	}

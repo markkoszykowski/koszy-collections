@@ -71,14 +71,14 @@ class SortedSparseArraySetTest {
 		Assertions.assertEquals(expectedList, actualList);
 	}
 
-	static void chaos(final Comparator<? super Integer> comparator) {
+	static void chaos(final Comparator<? super Integer> comparator, final Function<? super RandomGenerator, Integer> generator) {
 		final Random random = new Random();
 
 		final SortedSet<Integer> expected = comparator == null ? new TreeSet<>() : new TreeSet<>(comparator);
 		final SortedSet<Integer> actual = comparator == null ? new SortedSparseArraySet<>() : new SortedSparseArraySet<>(comparator);
 
 		for (int i = 0; i < 1_000_000; ++i) {
-			final Integer value = !expected.isEmpty() && random.nextBoolean() ? random(expected, random) : random.nextInt();
+			final Integer value = !expected.isEmpty() && random.nextBoolean() ? random(expected, random) : generator.apply(random);
 			switch (random.nextInt(7)) {
 				case 0 -> Assertions.assertEquals(expected.add(value), actual.add(value));
 				case 1 -> Assertions.assertEquals(expected.remove(value), actual.remove(value));
@@ -96,44 +96,35 @@ class SortedSparseArraySetTest {
 
 	@Test
 	void chaos() {
-		chaos(null);
+		chaos(null, RandomGenerator::nextInt);
 	}
 
 	@Test
 	void chaosNaturalOrder() {
-		chaos(Comparator.naturalOrder());
+		chaos(Comparator.naturalOrder(), RandomGenerator::nextInt);
 	}
 
 	@Test
 	void chaosReverseOrder() {
-		chaos(Comparator.reverseOrder());
+		chaos(Comparator.reverseOrder(), RandomGenerator::nextInt);
 	}
 
 	@Test
 	void allowNull() {
-		final SortedSparseArraySet<Integer> nullFirstSet = new SortedSparseArraySet<>(Comparator.nullsFirst(Comparator.naturalOrder()));
-
-		nullFirstSet.add(1);
-		nullFirstSet.add(2);
-		nullFirstSet.add(3);
-		nullFirstSet.add(4);
-
-		nullFirstSet.add(null);
-
-		Assertions.assertNull(nullFirstSet.first());
-		Assertions.assertEquals(4, nullFirstSet.last());
-
-		final SortedSparseArraySet<Integer> nullLastSet = new SortedSparseArraySet<>(Comparator.nullsLast(Comparator.naturalOrder()));
-
-		nullLastSet.add(null);
-
-		nullLastSet.add(1);
-		nullLastSet.add(2);
-		nullLastSet.add(3);
-		nullLastSet.add(4);
-
-		Assertions.assertEquals(1, nullLastSet.first());
-		Assertions.assertNull(nullLastSet.last());
+		chaos(
+				(left, right) -> {
+					final Integer l = left == null ? 0 : left;
+					final Integer r = right == null ? 0 : right;
+					return l.compareTo(r);
+				},
+				random -> switch (random.nextInt(10)) {
+					case 0 -> null;
+					default -> {
+						final int value = random.nextInt();
+						yield value == 0 ? null : value;
+					}
+				}
+		);
 	}
 
 	@Test

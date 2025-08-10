@@ -32,11 +32,15 @@ repositories {
 }
 
 dependencies {
-	implementation(libs.agrona)
 	implementation(libs.fastutil)
+
+	testImplementation(libs.agrona)
 
 	testImplementation(libs.junit)
 	testRuntimeOnly(libs.junit.launcher)
+
+	testAnnotationProcessor(libs.jmh.annotations)
+	testImplementation(libs.jmh.core)
 }
 
 tasks.test {
