@@ -1,4 +1,4 @@
-package com.koszy.collections;
+package com.koszy.collections.objects;
 
 import it.unimi.dsi.fastutil.BidirectionalIterator;
 import it.unimi.dsi.fastutil.objects.ObjectAVLTreeSet;
@@ -18,7 +18,7 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.random.RandomGenerator;
 
-class SortedSparseArraySetTest {
+class ObjectSortedSparseArraySetTest {
 
 	static <T> T previous(final BidirectionalIterator<T> iterator, final int index) {
 		T element = null;
@@ -82,7 +82,7 @@ class SortedSparseArraySetTest {
 		final Random random = new Random();
 
 		final SortedSet<Integer> expected = comparator == null ? new TreeSet<>() : new TreeSet<>(comparator);
-		final SortedSet<Integer> actual = comparator == null ? new SortedSparseArraySet<>() : new SortedSparseArraySet<>(comparator);
+		final SortedSet<Integer> actual = comparator == null ? new ObjectSortedSparseArraySet<>() : new ObjectSortedSparseArraySet<>(comparator);
 
 		for (int i = 0; i < 1_000_000; ++i) {
 			final Integer value = !expected.isEmpty() && random.nextBoolean() ? random(expected, random) : generator.apply(random);
@@ -136,7 +136,7 @@ class SortedSparseArraySetTest {
 
 	@Test
 	void emptyIterator() {
-		final SortedSparseArraySet<Integer> set = new SortedSparseArraySet<>();
+		final ObjectSortedSparseArraySet<Integer> set = new ObjectSortedSparseArraySet<>();
 
 		Assertions.assertThrows(NoSuchElementException.class, () -> set.iterator(0));
 		Assertions.assertThrows(NoSuchElementException.class, () -> set.iterator(1));
@@ -149,7 +149,7 @@ class SortedSparseArraySetTest {
 
 	@Test
 	void oneElementIterator() {
-		final SortedSparseArraySet<Integer> set = new SortedSparseArraySet<>();
+		final ObjectSortedSparseArraySet<Integer> set = new ObjectSortedSparseArraySet<>();
 
 		set.add(1);
 
@@ -179,7 +179,7 @@ class SortedSparseArraySetTest {
 
 	@Test
 	void twoElementIterator() {
-		final SortedSparseArraySet<Integer> set = new SortedSparseArraySet<>();
+		final ObjectSortedSparseArraySet<Integer> set = new ObjectSortedSparseArraySet<>();
 
 		set.add(1);
 		set.add(2);
@@ -244,7 +244,7 @@ class SortedSparseArraySetTest {
 
 	@Test
 	void oneElementIteratorRemove() {
-		final SortedSparseArraySet<Integer> set = new SortedSparseArraySet<>();
+		final ObjectSortedSparseArraySet<Integer> set = new ObjectSortedSparseArraySet<>();
 
 		set.add(1);
 
@@ -260,7 +260,7 @@ class SortedSparseArraySetTest {
 
 	@Test
 	void twoElementIteratorRemove() {
-		final SortedSparseArraySet<Integer> set = new SortedSparseArraySet<>();
+		final ObjectSortedSparseArraySet<Integer> set = new ObjectSortedSparseArraySet<>();
 
 		set.add(1);
 		set.add(2);
@@ -284,7 +284,7 @@ class SortedSparseArraySetTest {
 
 	@Test
 	void threeElementIteratorRemove() {
-		final SortedSparseArraySet<Integer> set = new SortedSparseArraySet<>();
+		final ObjectSortedSparseArraySet<Integer> set = new ObjectSortedSparseArraySet<>();
 
 		set.add(1);
 		set.add(2);
@@ -332,7 +332,7 @@ class SortedSparseArraySetTest {
 		final Random random = new Random();
 
 		final ObjectSortedSet<Integer> expected = comparator == null ? new ObjectAVLTreeSet<>() : new ObjectAVLTreeSet<>(comparator);
-		final ObjectSortedSet<Integer> actual = comparator == null ? new SortedSparseArraySet<>() : new SortedSparseArraySet<>(comparator);
+		final ObjectSortedSet<Integer> actual = comparator == null ? new ObjectSortedSparseArraySet<>() : new ObjectSortedSparseArraySet<>(comparator);
 
 		for (int i = 0; i < 1_000; ++i) {
 			final int value = random.nextInt();
