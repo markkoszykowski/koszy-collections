@@ -123,7 +123,7 @@ public class CharSortedSparseArraySet extends AbstractCharSortedSet {
 			final CharComparator comparator,
 			final RandomGenerator random
 	) {
-		if (f <= 0.0 || 1.0 <= f) {
+		if (f <= 0.0F || 1.0F <= f) {
 			throw new IllegalArgumentException("Load factor must be greater than 0 and smaller than 1");
 		}
 		if (expected < 0) {
@@ -473,7 +473,7 @@ public class CharSortedSparseArraySet extends AbstractCharSortedSet {
 				pos = low;
 
 				slot = pos + 1;
-				nulll = k == (char) 0 ? slot : this.nulll;
+				nulll = last == (char) 0 ? slot : this.nulll;
 
 				while (begin < slot && (last != (char) 0 || slot == nulll)) {
 					curr = key[--slot];
