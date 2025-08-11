@@ -822,7 +822,7 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 				low = mid;
 			} else if (compare > 0) { // k < mid
 				high = mid;
-			} else {
+			} else { // k == mid
 				return ((mid & 0xffffffffL) << Integer.SIZE) | (mid & 0xffffffffL);
 			}
 		}
