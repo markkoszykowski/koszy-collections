@@ -979,7 +979,7 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet {
 			final int first = LongSortedSparseArraySet.this.first;
 			final int last = LongSortedSparseArraySet.this.last;
 
-			if (pos == LongSortedSparseArraySet.this.nulll) {
+			if (pos == nulll) {
 				LongSortedSparseArraySet.this.nulll = -1;
 			}
 

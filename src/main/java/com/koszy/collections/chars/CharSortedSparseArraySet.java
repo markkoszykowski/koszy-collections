@@ -979,7 +979,7 @@ public class CharSortedSparseArraySet extends AbstractCharSortedSet {
 			final int first = CharSortedSparseArraySet.this.first;
 			final int last = CharSortedSparseArraySet.this.last;
 
-			if (pos == CharSortedSparseArraySet.this.nulll) {
+			if (pos == nulll) {
 				CharSortedSparseArraySet.this.nulll = -1;
 			}
 

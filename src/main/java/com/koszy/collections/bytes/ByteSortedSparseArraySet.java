@@ -979,7 +979,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet {
 			final int first = ByteSortedSparseArraySet.this.first;
 			final int last = ByteSortedSparseArraySet.this.last;
 
-			if (pos == ByteSortedSparseArraySet.this.nulll) {
+			if (pos == nulll) {
 				ByteSortedSparseArraySet.this.nulll = -1;
 			}
 

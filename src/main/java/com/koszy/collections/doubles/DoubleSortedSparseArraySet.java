@@ -979,7 +979,7 @@ public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet {
 			final int first = DoubleSortedSparseArraySet.this.first;
 			final int last = DoubleSortedSparseArraySet.this.last;
 
-			if (pos == DoubleSortedSparseArraySet.this.nulll) {
+			if (pos == nulll) {
 				DoubleSortedSparseArraySet.this.nulll = -1;
 			}
 

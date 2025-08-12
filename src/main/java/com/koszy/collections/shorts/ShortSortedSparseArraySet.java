@@ -979,7 +979,7 @@ public class ShortSortedSparseArraySet extends AbstractShortSortedSet {
 			final int first = ShortSortedSparseArraySet.this.first;
 			final int last = ShortSortedSparseArraySet.this.last;
 
-			if (pos == ShortSortedSparseArraySet.this.nulll) {
+			if (pos == nulll) {
 				ShortSortedSparseArraySet.this.nulll = -1;
 			}
 

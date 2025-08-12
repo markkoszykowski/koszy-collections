@@ -986,7 +986,7 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 			final int first = ObjectSortedSparseArraySet.this.first;
 			final int last = ObjectSortedSparseArraySet.this.last;
 
-			if (pos == ObjectSortedSparseArraySet.this.nulll) {
+			if (pos == nulll) {
 				ObjectSortedSparseArraySet.this.nulll = -1;
 			}
 

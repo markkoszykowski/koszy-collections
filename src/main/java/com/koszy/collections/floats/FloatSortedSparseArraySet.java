@@ -979,7 +979,7 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet {
 			final int first = FloatSortedSparseArraySet.this.first;
 			final int last = FloatSortedSparseArraySet.this.last;
 
-			if (pos == FloatSortedSparseArraySet.this.nulll) {
+			if (pos == nulll) {
 				FloatSortedSparseArraySet.this.nulll = -1;
 			}
 
