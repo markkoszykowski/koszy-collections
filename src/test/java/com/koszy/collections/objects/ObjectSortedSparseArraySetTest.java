@@ -75,6 +75,9 @@ class ObjectSortedSparseArraySetTest {
 		final List<T> expectedList = new ArrayList<>(expected.size());
 		final List<T> actualList = new ArrayList<>(actual.size());
 
+		expected.forEach(expectedList::add);
+		actual.forEach(actualList::add);
+
 		Assertions.assertEquals(expectedList, actualList);
 	}
 
