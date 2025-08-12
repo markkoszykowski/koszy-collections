@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
-<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
-		"https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN" "https://checkstyle.org/dtds/configuration_1_3.dtd">
 
 <module name="Checker">
 	<property name="severity" value="error"/>
@@ -39,8 +38,7 @@
 			<property name="allowInSwitchCase" value="true"/>
 		</module>
 		<module name="EmptyBlock">
-			<property name="tokens"
-					  value="LITERAL_TRY,LITERAL_FINALLY,LITERAL_IF,LITERAL_ELSE,INSTANCE_INIT,STATIC_INIT,LITERAL_SWITCH,LITERAL_SYNCHRONIZED,LITERAL_CASE,LITERAL_DEFAULT,ARRAY_INIT"/>
+			<property name="tokens" value="LITERAL_TRY,LITERAL_FINALLY,LITERAL_IF,LITERAL_ELSE,INSTANCE_INIT,STATIC_INIT,LITERAL_SWITCH,LITERAL_SYNCHRONIZED,LITERAL_CASE,LITERAL_DEFAULT,ARRAY_INIT"/>
 		</module>
 		<module name="LeftCurly">
 			<property name="ignoreEnums" value="false"/>
@@ -88,6 +86,7 @@
 
 
 		<!-- See https://checkstyle.org/checks/imports/index.html -->
+		<module name="AvoidStarImport"/>
 		<module name="AvoidStaticImport"/>
 		<module name="IllegalImport"/>
 		<module name="RedundantImport"/>
