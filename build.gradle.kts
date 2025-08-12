@@ -23,7 +23,6 @@ idea {
 
 checkstyle {
 	toolVersion = libs.versions.checkstyle.get()
-	config
 }
 
 repositories {
