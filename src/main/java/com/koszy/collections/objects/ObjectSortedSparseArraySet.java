@@ -164,7 +164,11 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 		if (this.n <= l || HashCommon.maxFill(l, this.f) < this.size) {
 			return true;
 		}
-		this.resort(l);
+		try {
+			this.resort(l);
+		} catch (final OutOfMemoryError cantDoIt) {
+			return false;
+		}
 		return true;
 	}
 
