@@ -388,6 +388,7 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet {
 		final float[] key = this.key;
 
 		assert low < high;
+		assert this.size < this.n;
 
 		final int begin = 0;
 		final int end = this.n - 1;
