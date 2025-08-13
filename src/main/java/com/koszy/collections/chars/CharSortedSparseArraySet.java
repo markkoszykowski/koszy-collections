@@ -984,10 +984,6 @@ public class CharSortedSparseArraySet extends AbstractCharSortedSet {
 			final int first = CharSortedSparseArraySet.this.first;
 			final int last = CharSortedSparseArraySet.this.last;
 
-			if (pos == nulll) {
-				CharSortedSparseArraySet.this.nulll = -1;
-			}
-
 			if (pos == this.prev) {
 				while (first < --this.prev && (key[this.prev] == (char) 0 && this.prev != nulll)) {
 				}
@@ -1005,6 +1001,10 @@ public class CharSortedSparseArraySet extends AbstractCharSortedSet {
 			this.curr = -1;
 
 			--CharSortedSparseArraySet.this.size;
+
+			if (pos == nulll) {
+				CharSortedSparseArraySet.this.nulll = -1;
+			}
 
 			if (this.prev == -1) {
 				CharSortedSparseArraySet.this.first = this.next;

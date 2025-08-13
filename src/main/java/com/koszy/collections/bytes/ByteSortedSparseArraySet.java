@@ -984,10 +984,6 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet {
 			final int first = ByteSortedSparseArraySet.this.first;
 			final int last = ByteSortedSparseArraySet.this.last;
 
-			if (pos == nulll) {
-				ByteSortedSparseArraySet.this.nulll = -1;
-			}
-
 			if (pos == this.prev) {
 				while (first < --this.prev && (key[this.prev] == (byte) 0 && this.prev != nulll)) {
 				}
@@ -1005,6 +1001,10 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet {
 			this.curr = -1;
 
 			--ByteSortedSparseArraySet.this.size;
+
+			if (pos == nulll) {
+				ByteSortedSparseArraySet.this.nulll = -1;
+			}
 
 			if (this.prev == -1) {
 				ByteSortedSparseArraySet.this.first = this.next;

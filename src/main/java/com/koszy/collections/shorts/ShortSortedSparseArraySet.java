@@ -984,10 +984,6 @@ public class ShortSortedSparseArraySet extends AbstractShortSortedSet {
 			final int first = ShortSortedSparseArraySet.this.first;
 			final int last = ShortSortedSparseArraySet.this.last;
 
-			if (pos == nulll) {
-				ShortSortedSparseArraySet.this.nulll = -1;
-			}
-
 			if (pos == this.prev) {
 				while (first < --this.prev && (key[this.prev] == (short) 0 && this.prev != nulll)) {
 				}
@@ -1005,6 +1001,10 @@ public class ShortSortedSparseArraySet extends AbstractShortSortedSet {
 			this.curr = -1;
 
 			--ShortSortedSparseArraySet.this.size;
+
+			if (pos == nulll) {
+				ShortSortedSparseArraySet.this.nulll = -1;
+			}
 
 			if (this.prev == -1) {
 				ShortSortedSparseArraySet.this.first = this.next;

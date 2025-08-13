@@ -984,10 +984,6 @@ public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet {
 			final int first = DoubleSortedSparseArraySet.this.first;
 			final int last = DoubleSortedSparseArraySet.this.last;
 
-			if (pos == nulll) {
-				DoubleSortedSparseArraySet.this.nulll = -1;
-			}
-
 			if (pos == this.prev) {
 				while (first < --this.prev && (Double.doubleToRawLongBits(key[this.prev]) == 0L && this.prev != nulll)) {
 				}
@@ -1005,6 +1001,10 @@ public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet {
 			this.curr = -1;
 
 			--DoubleSortedSparseArraySet.this.size;
+
+			if (pos == nulll) {
+				DoubleSortedSparseArraySet.this.nulll = -1;
+			}
 
 			if (this.prev == -1) {
 				DoubleSortedSparseArraySet.this.first = this.next;

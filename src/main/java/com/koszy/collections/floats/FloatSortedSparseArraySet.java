@@ -984,10 +984,6 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet {
 			final int first = FloatSortedSparseArraySet.this.first;
 			final int last = FloatSortedSparseArraySet.this.last;
 
-			if (pos == nulll) {
-				FloatSortedSparseArraySet.this.nulll = -1;
-			}
-
 			if (pos == this.prev) {
 				while (first < --this.prev && (Float.floatToRawIntBits(key[this.prev]) == 0 && this.prev != nulll)) {
 				}
@@ -1005,6 +1001,10 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet {
 			this.curr = -1;
 
 			--FloatSortedSparseArraySet.this.size;
+
+			if (pos == nulll) {
+				FloatSortedSparseArraySet.this.nulll = -1;
+			}
 
 			if (this.prev == -1) {
 				FloatSortedSparseArraySet.this.first = this.next;

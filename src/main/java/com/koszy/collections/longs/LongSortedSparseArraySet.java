@@ -984,10 +984,6 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet {
 			final int first = LongSortedSparseArraySet.this.first;
 			final int last = LongSortedSparseArraySet.this.last;
 
-			if (pos == nulll) {
-				LongSortedSparseArraySet.this.nulll = -1;
-			}
-
 			if (pos == this.prev) {
 				while (first < --this.prev && (key[this.prev] == 0L && this.prev != nulll)) {
 				}
@@ -1005,6 +1001,10 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet {
 			this.curr = -1;
 
 			--LongSortedSparseArraySet.this.size;
+
+			if (pos == nulll) {
+				LongSortedSparseArraySet.this.nulll = -1;
+			}
 
 			if (this.prev == -1) {
 				LongSortedSparseArraySet.this.first = this.next;

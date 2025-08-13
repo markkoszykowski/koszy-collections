@@ -991,10 +991,6 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 			final int first = ObjectSortedSparseArraySet.this.first;
 			final int last = ObjectSortedSparseArraySet.this.last;
 
-			if (pos == nulll) {
-				ObjectSortedSparseArraySet.this.nulll = -1;
-			}
-
 			if (pos == this.prev) {
 				while (first < --this.prev && (key[this.prev] == null && this.prev != nulll)) {
 				}
@@ -1012,6 +1008,10 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 			this.curr = -1;
 
 			--ObjectSortedSparseArraySet.this.size;
+
+			if (pos == nulll) {
+				ObjectSortedSparseArraySet.this.nulll = -1;
+			}
 
 			if (this.prev == -1) {
 				ObjectSortedSparseArraySet.this.first = this.next;

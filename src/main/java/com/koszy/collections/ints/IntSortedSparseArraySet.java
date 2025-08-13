@@ -984,10 +984,6 @@ public class IntSortedSparseArraySet extends AbstractIntSortedSet {
 			final int first = IntSortedSparseArraySet.this.first;
 			final int last = IntSortedSparseArraySet.this.last;
 
-			if (pos == nulll) {
-				IntSortedSparseArraySet.this.nulll = -1;
-			}
-
 			if (pos == this.prev) {
 				while (first < --this.prev && (key[this.prev] == 0 && this.prev != nulll)) {
 				}
@@ -1005,6 +1001,10 @@ public class IntSortedSparseArraySet extends AbstractIntSortedSet {
 			this.curr = -1;
 
 			--IntSortedSparseArraySet.this.size;
+
+			if (pos == nulll) {
+				IntSortedSparseArraySet.this.nulll = -1;
+			}
 
 			if (this.prev == -1) {
 				IntSortedSparseArraySet.this.first = this.next;
