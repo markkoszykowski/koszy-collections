@@ -224,7 +224,7 @@ public class IntSortedSparseArraySet extends AbstractIntSortedSet implements Clo
 				}
 
 				final long packed = this.sparseBinarySearch(k);
-				yield ((int) packed) == ((int) (packed >>> Integer.SIZE));
+				yield (int) packed == (int) (packed >>> Integer.SIZE);
 			}
 		};
 	}

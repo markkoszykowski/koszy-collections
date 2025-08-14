@@ -227,7 +227,7 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> im
 				}
 
 				final long packed = this.sparseBinarySearch((K) k);
-				yield ((int) packed) == ((int) (packed >>> Integer.SIZE));
+				yield (int) packed == (int) (packed >>> Integer.SIZE);
 			}
 		};
 	}
