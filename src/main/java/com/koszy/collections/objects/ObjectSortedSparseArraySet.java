@@ -232,6 +232,77 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> im
 		};
 	}
 
+	@SuppressWarnings(value = {"unchecked"})
+	public K get(final Object k) {
+		final K[] key = this.key;
+		return switch (this.size) {
+			case 0 -> null;
+			case 1 -> {
+				final int pos = this.first;
+
+				if (this.compare(key[pos], (K) k) != 0) {
+					yield null;
+				}
+
+				yield key[pos];
+			}
+			case 2 -> {
+				final int first = this.first;
+				final int last = this.last;
+
+				int pos, compare;
+
+				pos = first;
+				compare = this.compare((K) k, key[pos]);
+				if (compare < 0) { // k < first
+					yield null;
+				} else if (compare == 0) { // k == first
+					yield key[pos];
+				}
+
+				pos = last;
+				compare = this.compare(key[pos], (K) k);
+				if (compare < 0) { // last < k
+					yield null;
+				} else if (compare == 0) { // k == last
+					yield key[pos];
+				}
+
+				yield null;
+			}
+			default -> {
+				final int first = this.first;
+				final int last = this.last;
+
+				int pos, compare;
+
+				pos = first;
+				compare = this.compare((K) k, key[pos]);
+				if (compare < 0) { // k < first
+					yield null;
+				} else if (compare == 0) { // k == first
+					yield key[pos];
+				}
+
+				pos = last;
+				compare = this.compare(key[pos], (K) k);
+				if (compare < 0) { // last < k
+					yield null;
+				} else if (compare == 0) { // k == last
+					yield key[pos];
+				}
+
+				final long packed = this.sparseBinarySearch((K) k);
+				pos = (int) packed;
+				if (pos != (int) (packed >>> Integer.SIZE)) {
+					yield null;
+				}
+
+				yield key[pos];
+			}
+		};
+	}
+
 	@Override
 	public boolean add(final K k) {
 		final K[] key = this.key;
@@ -382,6 +453,165 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> im
 					yield true;
 				} else {
 					yield false;
+				}
+			}
+		};
+	}
+
+	public K addOrGet(final K k) {
+		final K[] key = this.key;
+
+		final int begin = 0;
+		final int end = this.n - 1;
+
+		return switch (this.size) {
+			case 0 -> {
+				final int low = begin - 1;
+				final int high = end + 1;
+
+				this.first = this.last = this.insert(k, low, high);
+
+				if (this.maxFill <= this.size++) {
+					this.resort(HashCommon.arraySize(this.size + 1, this.f));
+				}
+
+				yield k;
+			}
+			case 1 -> {
+				final int first = this.first;
+				final int last = this.last;
+
+				final int low, high, pos, compare;
+
+				pos = first;
+				compare = this.compare(k, key[pos]);
+				if (compare < 0) { // k < first
+					low = begin - 1;
+					high = first;
+					this.first = this.insert(k, low, high);
+
+					if (this.maxFill <= this.size++) {
+						this.resort(HashCommon.arraySize(this.size + 1, this.f));
+					}
+
+					yield k;
+				} else if (compare > 0) { // last < k
+					low = last;
+					high = end + 1;
+					this.last = this.insert(k, low, high);
+
+					if (this.maxFill <= this.size++) {
+						this.resort(HashCommon.arraySize(this.size + 1, this.f));
+					}
+
+					yield k;
+				} else { // k == first == last
+					yield key[pos];
+				}
+			}
+			case 2 -> {
+				final int first = this.first;
+				final int last = this.last;
+
+				final int low, high;
+
+				int pos, compare;
+
+				pos = first;
+				compare = this.compare(k, key[pos]);
+				if (compare < 0) { // k < first
+					low = begin - 1;
+					high = first;
+					this.first = this.insert(k, low, high);
+
+					if (this.maxFill <= this.size++) {
+						this.resort(HashCommon.arraySize(this.size + 1, this.f));
+					}
+
+					yield k;
+				} else if (compare == 0) { // k == first
+					yield key[pos];
+				}
+
+				pos = last;
+				compare = this.compare(key[pos], k);
+				if (compare < 0) { // last < k
+					low = last;
+					high = end + 1;
+					this.last = this.insert(k, low, high);
+
+					if (this.maxFill <= this.size++) {
+						this.resort(HashCommon.arraySize(this.size + 1, this.f));
+					}
+
+					yield k;
+				} else if (compare == 0) { // k == last
+					yield key[pos];
+				}
+
+				low = first;
+				high = last;
+				this.insert(k, low, high);
+
+				if (this.maxFill <= this.size++) {
+					this.resort(HashCommon.arraySize(this.size + 1, this.f));
+				}
+
+				yield k;
+			}
+			default -> {
+				final int first = this.first;
+				final int last = this.last;
+
+				final int low, high;
+
+				int pos, compare;
+
+				pos = first;
+				compare = this.compare(k, key[pos]);
+				if (compare < 0) { // k < first
+					low = begin - 1;
+					high = first;
+					this.first = this.insert(k, low, high);
+
+					if (this.maxFill <= this.size++) {
+						this.resort(HashCommon.arraySize(this.size + 1, this.f));
+					}
+
+					yield k;
+				} else if (compare == 0) { // k == first
+					yield key[pos];
+				}
+
+				pos = last;
+				compare = this.compare(key[pos], k);
+				if (compare < 0) { // last < k
+					low = last;
+					high = end + 1;
+					this.last = this.insert(k, low, high);
+
+					if (this.maxFill <= this.size++) {
+						this.resort(HashCommon.arraySize(this.size + 1, this.f));
+					}
+
+					yield k;
+				} else if (compare == 0) { // k == last
+					yield key[pos];
+				}
+
+				final long packed = this.sparseBinarySearch(k);
+				pos = low = (int) packed;
+				high = (int) (packed >>> Integer.SIZE);
+				if (low != high) {
+					this.insert(k, low, high);
+
+					if (this.maxFill <= this.size++) {
+						this.resort(HashCommon.arraySize(this.size + 1, this.f));
+					}
+
+					yield k;
+				} else {
+					yield key[pos];
 				}
 			}
 		};

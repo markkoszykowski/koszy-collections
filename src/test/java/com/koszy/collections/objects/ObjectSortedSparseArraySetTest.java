@@ -92,14 +92,14 @@ class ObjectSortedSparseArraySetTest {
 
 		for (int i = 0; i < 1_000_000; ++i) {
 			final Integer value = !expected.isEmpty() && random.nextBoolean() ? random(expected, random) : generator.apply(random);
-			switch (random.nextInt(7)) {
-				case 0 -> Assertions.assertEquals(expected.add(value), actual.add(value));
-				case 1 -> Assertions.assertEquals(expected.remove(value), actual.remove(value));
-				case 2 -> Assertions.assertEquals(expected.contains(value), actual.contains(value));
-				case 3 -> assertMayThrow(expected, actual, SortedSet::first, NoSuchElementException.class);
-				case 4 -> assertMayThrow(expected, actual, SortedSet::last, NoSuchElementException.class);
-				case 5 -> assertMayThrow(expected, actual, SortedSet::removeFirst, NoSuchElementException.class);
-				case 6 -> assertMayThrow(expected, actual, SortedSet::removeLast, NoSuchElementException.class);
+			switch (random.nextInt(10)) {
+				case 0, 1, 2, 3 -> Assertions.assertEquals(expected.add(value), actual.add(value));
+				case 4 -> Assertions.assertEquals(expected.remove(value), actual.remove(value));
+				case 5 -> Assertions.assertEquals(expected.contains(value), actual.contains(value));
+				case 6 -> assertMayThrow(expected, actual, SortedSet::first, NoSuchElementException.class);
+				case 7 -> assertMayThrow(expected, actual, SortedSet::last, NoSuchElementException.class);
+				case 8 -> assertMayThrow(expected, actual, SortedSet::removeFirst, NoSuchElementException.class);
+				case 9 -> assertMayThrow(expected, actual, SortedSet::removeLast, NoSuchElementException.class);
 				default -> throw new IllegalStateException();
 			}
 
