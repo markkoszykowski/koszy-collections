@@ -14,7 +14,7 @@ import java.util.Random;
 import java.util.function.IntConsumer;
 import java.util.random.RandomGenerator;
 
-public class IntSortedSparseArraySet extends AbstractIntSortedSet {
+public class IntSortedSparseArraySet extends AbstractIntSortedSet implements Cloneable {
 
 	protected int[] key;
 
@@ -745,6 +745,46 @@ public class IntSortedSparseArraySet extends AbstractIntSortedSet {
 
 			action.accept(key[curr]);
 		}
+	}
+
+
+	@Override
+	public IntSortedSparseArraySet clone() {
+		final IntSortedSparseArraySet c;
+		try {
+			c = (IntSortedSparseArraySet) super.clone();
+		} catch (final CloneNotSupportedException cantHappen) {
+			throw new InternalError();
+		}
+		c.key = this.key.clone();
+		return c;
+	}
+
+	@Override
+	public int hashCode() {
+		int h = 0;
+
+		final int[] key = this.key;
+
+		final int nulll = this.nulll;
+		final int last = this.last;
+
+		final int size = this.size;
+
+		int required = nulll == -1 ? size : size - 1;
+
+		int i = last + 1;
+		while (0 < required) {
+			int o;
+			while ((o = key[--i]) == 0) {
+			}
+
+			h += Integer.hashCode(o);
+
+			--required;
+		}
+
+		return h;
 	}
 
 

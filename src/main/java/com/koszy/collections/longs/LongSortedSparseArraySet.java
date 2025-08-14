@@ -14,7 +14,7 @@ import java.util.Random;
 import java.util.function.LongConsumer;
 import java.util.random.RandomGenerator;
 
-public class LongSortedSparseArraySet extends AbstractLongSortedSet {
+public class LongSortedSparseArraySet extends AbstractLongSortedSet implements Cloneable {
 
 	protected long[] key;
 
@@ -745,6 +745,46 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet {
 
 			action.accept(key[curr]);
 		}
+	}
+
+
+	@Override
+	public LongSortedSparseArraySet clone() {
+		final LongSortedSparseArraySet c;
+		try {
+			c = (LongSortedSparseArraySet) super.clone();
+		} catch (final CloneNotSupportedException cantHappen) {
+			throw new InternalError();
+		}
+		c.key = this.key.clone();
+		return c;
+	}
+
+	@Override
+	public int hashCode() {
+		int h = 0;
+
+		final long[] key = this.key;
+
+		final int nulll = this.nulll;
+		final int last = this.last;
+
+		final int size = this.size;
+
+		int required = nulll == -1 ? size : size - 1;
+
+		int i = last + 1;
+		while (0 < required) {
+			long o;
+			while ((o = key[--i]) == 0L) {
+			}
+
+			h += Long.hashCode(o);
+
+			--required;
+		}
+
+		return h;
 	}
 
 

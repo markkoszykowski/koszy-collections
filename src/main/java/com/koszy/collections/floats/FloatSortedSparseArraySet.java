@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 
-public class FloatSortedSparseArraySet extends AbstractFloatSortedSet {
+public class FloatSortedSparseArraySet extends AbstractFloatSortedSet implements Cloneable {
 
 	protected float[] key;
 
@@ -745,6 +745,46 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet {
 
 			action.accept(key[curr]);
 		}
+	}
+
+
+	@Override
+	public FloatSortedSparseArraySet clone() {
+		final FloatSortedSparseArraySet c;
+		try {
+			c = (FloatSortedSparseArraySet) super.clone();
+		} catch (final CloneNotSupportedException cantHappen) {
+			throw new InternalError();
+		}
+		c.key = this.key.clone();
+		return c;
+	}
+
+	@Override
+	public int hashCode() {
+		int h = 0;
+
+		final float[] key = this.key;
+
+		final int nulll = this.nulll;
+		final int last = this.last;
+
+		final int size = this.size;
+
+		int required = nulll == -1 ? size : size - 1;
+
+		int i = last + 1;
+		while (0 < required) {
+			float o;
+			while (Float.floatToRawIntBits(o = key[--i]) == 0) {
+			}
+
+			h += Float.hashCode(o);
+
+			--required;
+		}
+
+		return h;
 	}
 
 

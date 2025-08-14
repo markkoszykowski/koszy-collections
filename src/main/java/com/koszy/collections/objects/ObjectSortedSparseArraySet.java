@@ -14,7 +14,7 @@ import java.util.Random;
 import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
 
-public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
+public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> implements Cloneable {
 
 	protected K[] key;
 
@@ -751,6 +751,47 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> {
 
 			action.accept(key[curr]);
 		}
+	}
+
+
+	@Override
+	@SuppressWarnings(value = {"unchecked"})
+	public ObjectSortedSparseArraySet<K> clone() {
+		final ObjectSortedSparseArraySet<K> c;
+		try {
+			c = (ObjectSortedSparseArraySet<K>) super.clone();
+		} catch (final CloneNotSupportedException cantHappen) {
+			throw new InternalError();
+		}
+		c.key = this.key.clone();
+		return c;
+	}
+
+	@Override
+	public int hashCode() {
+		int h = 0;
+
+		final K[] key = this.key;
+
+		final int nulll = this.nulll;
+		final int last = this.last;
+
+		final int size = this.size;
+
+		int required = nulll == -1 ? size : size - 1;
+
+		int i = last + 1;
+		while (0 < required) {
+			K o;
+			while ((o = key[--i]) == null) {
+			}
+
+			h += o.hashCode();
+
+			--required;
+		}
+
+		return h;
 	}
 
 

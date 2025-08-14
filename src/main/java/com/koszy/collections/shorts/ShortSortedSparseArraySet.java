@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 
-public class ShortSortedSparseArraySet extends AbstractShortSortedSet {
+public class ShortSortedSparseArraySet extends AbstractShortSortedSet implements Cloneable {
 
 	protected short[] key;
 
@@ -745,6 +745,46 @@ public class ShortSortedSparseArraySet extends AbstractShortSortedSet {
 
 			action.accept(key[curr]);
 		}
+	}
+
+
+	@Override
+	public ShortSortedSparseArraySet clone() {
+		final ShortSortedSparseArraySet c;
+		try {
+			c = (ShortSortedSparseArraySet) super.clone();
+		} catch (final CloneNotSupportedException cantHappen) {
+			throw new InternalError();
+		}
+		c.key = this.key.clone();
+		return c;
+	}
+
+	@Override
+	public int hashCode() {
+		int h = 0;
+
+		final short[] key = this.key;
+
+		final int nulll = this.nulll;
+		final int last = this.last;
+
+		final int size = this.size;
+
+		int required = nulll == -1 ? size : size - 1;
+
+		int i = last + 1;
+		while (0 < required) {
+			short o;
+			while ((o = key[--i]) == (short) 0) {
+			}
+
+			h += Short.hashCode(o);
+
+			--required;
+		}
+
+		return h;
 	}
 
 

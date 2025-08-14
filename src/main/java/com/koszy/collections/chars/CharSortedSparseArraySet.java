@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 
-public class CharSortedSparseArraySet extends AbstractCharSortedSet {
+public class CharSortedSparseArraySet extends AbstractCharSortedSet implements Cloneable {
 
 	protected char[] key;
 
@@ -745,6 +745,46 @@ public class CharSortedSparseArraySet extends AbstractCharSortedSet {
 
 			action.accept(key[curr]);
 		}
+	}
+
+
+	@Override
+	public CharSortedSparseArraySet clone() {
+		final CharSortedSparseArraySet c;
+		try {
+			c = (CharSortedSparseArraySet) super.clone();
+		} catch (final CloneNotSupportedException cantHappen) {
+			throw new InternalError();
+		}
+		c.key = this.key.clone();
+		return c;
+	}
+
+	@Override
+	public int hashCode() {
+		int h = 0;
+
+		final char[] key = this.key;
+
+		final int nulll = this.nulll;
+		final int last = this.last;
+
+		final int size = this.size;
+
+		int required = nulll == -1 ? size : size - 1;
+
+		int i = last + 1;
+		while (0 < required) {
+			char o;
+			while ((o = key[--i]) == (char) 0) {
+			}
+
+			h += Character.hashCode(o);
+
+			--required;
+		}
+
+		return h;
 	}
 
 

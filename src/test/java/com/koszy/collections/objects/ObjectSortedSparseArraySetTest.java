@@ -79,6 +79,9 @@ class ObjectSortedSparseArraySetTest {
 		actual.forEach(actualList::add);
 
 		Assertions.assertEquals(expectedList, actualList);
+
+		Assertions.assertEquals(expected.hashCode(), actual.hashCode());
+		Assertions.assertEquals(expected, actual);
 	}
 
 	static void chaos(final Comparator<? super Integer> comparator, final Function<? super RandomGenerator, Integer> generator) {

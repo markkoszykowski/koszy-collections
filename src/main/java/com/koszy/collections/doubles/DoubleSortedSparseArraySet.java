@@ -14,7 +14,7 @@ import java.util.Random;
 import java.util.function.DoubleConsumer;
 import java.util.random.RandomGenerator;
 
-public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet {
+public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet implements Cloneable {
 
 	protected double[] key;
 
@@ -745,6 +745,46 @@ public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet {
 
 			action.accept(key[curr]);
 		}
+	}
+
+
+	@Override
+	public DoubleSortedSparseArraySet clone() {
+		final DoubleSortedSparseArraySet c;
+		try {
+			c = (DoubleSortedSparseArraySet) super.clone();
+		} catch (final CloneNotSupportedException cantHappen) {
+			throw new InternalError();
+		}
+		c.key = this.key.clone();
+		return c;
+	}
+
+	@Override
+	public int hashCode() {
+		int h = 0;
+
+		final double[] key = this.key;
+
+		final int nulll = this.nulll;
+		final int last = this.last;
+
+		final int size = this.size;
+
+		int required = nulll == -1 ? size : size - 1;
+
+		int i = last + 1;
+		while (0 < required) {
+			double o;
+			while (Double.doubleToRawLongBits(o = key[--i]) == 0L) {
+			}
+
+			h += Double.hashCode(o);
+
+			--required;
+		}
+
+		return h;
 	}
 
 
