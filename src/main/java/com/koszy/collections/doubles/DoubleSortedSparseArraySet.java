@@ -884,9 +884,9 @@ public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet implemen
 					final int first = DoubleSortedSparseArraySet.this.first;
 					final int last = DoubleSortedSparseArraySet.this.last;
 
-					final int compare = DoubleSortedSparseArraySet.this.compare(from, key[first]);
+					final int compare = DoubleSortedSparseArraySet.this.compare(from, key[last]);
 					if (compare == 0) { // k == first == last
-						this.prev = last;
+						this.prev = first;
 						return;
 					}
 
@@ -898,20 +898,20 @@ public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet implemen
 
 					int compare;
 
+					compare = DoubleSortedSparseArraySet.this.compare(key[last], from);
+					if (compare < 0) { // last < k
+						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+					} else if (compare == 0) { // k == last
+						this.prev = last;
+						return;
+					}
+
 					compare = DoubleSortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 					} else if (compare == 0) { // k == first
 						this.prev = first;
 						this.next = last;
-						return;
-					}
-
-					compare = DoubleSortedSparseArraySet.this.compare(key[last], from);
-					if (compare < 0) { // last < k
-						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-					} else if (compare == 0) { // k == last
-						this.prev = last;
 						return;
 					}
 
@@ -924,6 +924,14 @@ public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet implemen
 
 					int compare;
 
+					compare = DoubleSortedSparseArraySet.this.compare(key[last], from);
+					if (compare < 0) { // last < k
+						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+					} else if (compare == 0) { // k == last
+						this.prev = last;
+						return;
+					}
+
 					compare = DoubleSortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
@@ -931,14 +939,6 @@ public class DoubleSortedSparseArraySet extends AbstractDoubleSortedSet implemen
 						this.prev = this.next = first;
 						while (Double.doubleToRawLongBits(key[++this.next]) == 0L && this.next != nulll) {
 						}
-						return;
-					}
-
-					compare = DoubleSortedSparseArraySet.this.compare(key[last], from);
-					if (compare < 0) { // last < k
-						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-					} else if (compare == 0) { // k == last
-						this.prev = last;
 						return;
 					}
 

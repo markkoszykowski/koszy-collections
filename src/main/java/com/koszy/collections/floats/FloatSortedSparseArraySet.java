@@ -884,9 +884,9 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet implements
 					final int first = FloatSortedSparseArraySet.this.first;
 					final int last = FloatSortedSparseArraySet.this.last;
 
-					final int compare = FloatSortedSparseArraySet.this.compare(from, key[first]);
+					final int compare = FloatSortedSparseArraySet.this.compare(from, key[last]);
 					if (compare == 0) { // k == first == last
-						this.prev = last;
+						this.prev = first;
 						return;
 					}
 
@@ -898,20 +898,20 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet implements
 
 					int compare;
 
+					compare = FloatSortedSparseArraySet.this.compare(key[last], from);
+					if (compare < 0) { // last < k
+						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+					} else if (compare == 0) { // k == last
+						this.prev = last;
+						return;
+					}
+
 					compare = FloatSortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 					} else if (compare == 0) { // k == first
 						this.prev = first;
 						this.next = last;
-						return;
-					}
-
-					compare = FloatSortedSparseArraySet.this.compare(key[last], from);
-					if (compare < 0) { // last < k
-						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-					} else if (compare == 0) { // k == last
-						this.prev = last;
 						return;
 					}
 
@@ -924,6 +924,14 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet implements
 
 					int compare;
 
+					compare = FloatSortedSparseArraySet.this.compare(key[last], from);
+					if (compare < 0) { // last < k
+						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+					} else if (compare == 0) { // k == last
+						this.prev = last;
+						return;
+					}
+
 					compare = FloatSortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
@@ -931,14 +939,6 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet implements
 						this.prev = this.next = first;
 						while (Float.floatToRawIntBits(key[++this.next]) == 0 && this.next != nulll) {
 						}
-						return;
-					}
-
-					compare = FloatSortedSparseArraySet.this.compare(key[last], from);
-					if (compare < 0) { // last < k
-						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-					} else if (compare == 0) { // k == last
-						this.prev = last;
 						return;
 					}
 

@@ -1122,9 +1122,9 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> im
 					final int first = ObjectSortedSparseArraySet.this.first;
 					final int last = ObjectSortedSparseArraySet.this.last;
 
-					final int compare = ObjectSortedSparseArraySet.this.compare(from, key[first]);
+					final int compare = ObjectSortedSparseArraySet.this.compare(from, key[last]);
 					if (compare == 0) { // k == first == last
-						this.prev = last;
+						this.prev = first;
 						return;
 					}
 
@@ -1136,20 +1136,20 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> im
 
 					int compare;
 
+					compare = ObjectSortedSparseArraySet.this.compare(key[last], from);
+					if (compare < 0) { // last < k
+						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+					} else if (compare == 0) { // k == last
+						this.prev = last;
+						return;
+					}
+
 					compare = ObjectSortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 					} else if (compare == 0) { // k == first
 						this.prev = first;
 						this.next = last;
-						return;
-					}
-
-					compare = ObjectSortedSparseArraySet.this.compare(key[last], from);
-					if (compare < 0) { // last < k
-						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-					} else if (compare == 0) { // k == last
-						this.prev = last;
 						return;
 					}
 
@@ -1162,6 +1162,14 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> im
 
 					int compare;
 
+					compare = ObjectSortedSparseArraySet.this.compare(key[last], from);
+					if (compare < 0) { // last < k
+						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+					} else if (compare == 0) { // k == last
+						this.prev = last;
+						return;
+					}
+
 					compare = ObjectSortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
@@ -1169,14 +1177,6 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> im
 						this.prev = this.next = first;
 						while (key[++this.next] == null && this.next != nulll) {
 						}
-						return;
-					}
-
-					compare = ObjectSortedSparseArraySet.this.compare(key[last], from);
-					if (compare < 0) { // last < k
-						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-					} else if (compare == 0) { // k == last
-						this.prev = last;
 						return;
 					}
 

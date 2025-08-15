@@ -884,9 +884,9 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet implements C
 					final int first = LongSortedSparseArraySet.this.first;
 					final int last = LongSortedSparseArraySet.this.last;
 
-					final int compare = LongSortedSparseArraySet.this.compare(from, key[first]);
+					final int compare = LongSortedSparseArraySet.this.compare(from, key[last]);
 					if (compare == 0) { // k == first == last
-						this.prev = last;
+						this.prev = first;
 						return;
 					}
 
@@ -898,20 +898,20 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet implements C
 
 					int compare;
 
+					compare = LongSortedSparseArraySet.this.compare(key[last], from);
+					if (compare < 0) { // last < k
+						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+					} else if (compare == 0) { // k == last
+						this.prev = last;
+						return;
+					}
+
 					compare = LongSortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 					} else if (compare == 0) { // k == first
 						this.prev = first;
 						this.next = last;
-						return;
-					}
-
-					compare = LongSortedSparseArraySet.this.compare(key[last], from);
-					if (compare < 0) { // last < k
-						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-					} else if (compare == 0) { // k == last
-						this.prev = last;
 						return;
 					}
 
@@ -924,6 +924,14 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet implements C
 
 					int compare;
 
+					compare = LongSortedSparseArraySet.this.compare(key[last], from);
+					if (compare < 0) { // last < k
+						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+					} else if (compare == 0) { // k == last
+						this.prev = last;
+						return;
+					}
+
 					compare = LongSortedSparseArraySet.this.compare(from, key[first]);
 					if (compare < 0) { // k < first
 						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
@@ -931,14 +939,6 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet implements C
 						this.prev = this.next = first;
 						while (key[++this.next] == 0L && this.next != nulll) {
 						}
-						return;
-					}
-
-					compare = LongSortedSparseArraySet.this.compare(key[last], from);
-					if (compare < 0) { // last < k
-						throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-					} else if (compare == 0) { // k == last
-						this.prev = last;
 						return;
 					}
 
