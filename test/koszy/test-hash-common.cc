@@ -28,15 +28,15 @@ TEST(NextPowerOfTwoTest, HandlesThree) {
 
 TEST(NextPowerOfTwoTest, HandlesMaxValueMinusOne) {
 	EXPECT_EQ(
-		koszy::collections::hash::nextPowerOfTwo((static_cast<std::size_t>(1U) << (std::numeric_limits<std::size_t>::digits - 1U)) - 1U),
-		static_cast<std::size_t>(1U) << (std::numeric_limits<std::size_t>::digits - 1U)
+		koszy::collections::hash::nextPowerOfTwo((static_cast<std::size_t>(1U) << (std::numeric_limits<std::size_t>::digits - 1)) - 1U),
+		static_cast<std::size_t>(1U) << (std::numeric_limits<std::size_t>::digits - 1)
 	);
 }
 
 TEST(NextPowerOfTwoTest, HandlesMaxValue) {
 	EXPECT_EQ(
-		koszy::collections::hash::nextPowerOfTwo(static_cast<std::size_t>(1U) << (std::numeric_limits<std::size_t>::digits - 1U)),
-		static_cast<std::size_t>(1U) << (std::numeric_limits<std::size_t>::digits - 1U)
+		koszy::collections::hash::nextPowerOfTwo(static_cast<std::size_t>(1U) << (std::numeric_limits<std::size_t>::digits - 1)),
+		static_cast<std::size_t>(1U) << (std::numeric_limits<std::size_t>::digits - 1)
 	);
 }
 
@@ -67,6 +67,7 @@ TEST(Size, HandlesZero) {
 }
 
 TEST(Size, HandlesOne) {
+	EXPECT_EQ(koszy::collections::hash::arraySize(1U, 0.01f), 128U);
 	EXPECT_EQ(koszy::collections::hash::arraySize(1U, 0.1f), 16U);
 	EXPECT_EQ(koszy::collections::hash::arraySize(1U, 0.5f), 2U);
 	EXPECT_EQ(koszy::collections::hash::arraySize(1U, 0.9999999f), 2U);
