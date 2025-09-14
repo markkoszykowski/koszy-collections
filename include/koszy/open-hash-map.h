@@ -1,7 +1,8 @@
 #ifndef OPEN_HASH_MAP
 #define OPEN_HASH_MAP
 
-#include <cassert>
+#include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -19,22 +20,24 @@ namespace koszy::collections::hash {
 		template<typename T> typename A=std::allocator
 	>
 	class OpenHashMap {
-		using Entry = std::pair<K, V>;
-
 		public:
 			OpenHashMap() : OpenHashMap{
-				std::make_tuple(koszy::collections::hash::DEFAULT_INITIAL_CAPACITY, koszy::collections::hash::DEFAULT_LOAD_FACTOR),
+				std::make_tuple(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR),
 				H{},
 				E{},
-				A<Entry>{}
+				A<K>{},
+				A<V>{},
+				A<std::uint_fast8_t>{}
 			} {
 			}
 
 			explicit OpenHashMap(const std::size_t expected) : OpenHashMap{
-				std::make_tuple(koszy::collections::hash::arraySize(expected, koszy::collections::hash::DEFAULT_LOAD_FACTOR), koszy::collections::hash::DEFAULT_LOAD_FACTOR),
+				std::make_tuple(arraySize(expected, DEFAULT_LOAD_FACTOR), DEFAULT_LOAD_FACTOR),
 				H{},
 				E{},
-				A<Entry>{}
+				A<K>{},
+				A<V>{},
+				A<std::uint_fast8_t>{}
 			} {
 			}
 
@@ -42,26 +45,36 @@ namespace koszy::collections::hash {
 				const std::size_t expected,
 				const float f
 			) : OpenHashMap{
-				std::make_tuple(koszy::collections::hash::arraySize(expected, f), f),
+				std::make_tuple(arraySize(expected, f), f),
 				H{},
 				E{},
-				A<Entry>{}
+				A<K>{},
+				A<V>{},
+				A<std::uint_fast8_t>{}
 			} {
 			}
 
 			explicit OpenHashMap(const H& hash, const E& eq) : OpenHashMap{
-				std::make_tuple(koszy::collections::hash::DEFAULT_INITIAL_CAPACITY, koszy::collections::hash::DEFAULT_LOAD_FACTOR),
+				std::make_tuple(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR),
 				hash,
 				eq,
-				A<Entry>{}
+				A<K>{},
+				A<V>{},
+				A<std::uint_fast8_t>{}
 			} {
 			}
 
-			explicit OpenHashMap(const A<Entry>& allocator) : OpenHashMap{
-				std::make_tuple(koszy::collections::hash::DEFAULT_INITIAL_CAPACITY, koszy::collections::hash::DEFAULT_LOAD_FACTOR),
+			explicit OpenHashMap(
+				const A<K>& key_allocator,
+				const A<V>& value_allocator,
+				const A<std::uint_fast8_t>& mask_allocator
+			) : OpenHashMap{
+				std::make_tuple(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR),
 				H{},
 				E{},
-				allocator
+				key_allocator,
+				value_allocator,
+				mask_allocator
 			} {
 			}
 
@@ -70,12 +83,16 @@ namespace koszy::collections::hash {
 				const float f,
 				const H& hash,
 				const E& eq,
-				const A<Entry>& allocator
+				const A<K>& key_allocator,
+				const A<V>& value_allocator,
+				const A<std::uint_fast8_t>& mask_allocator
 			) : OpenHashMap{
-				std::make_tuple(koszy::collections::hash::arraySize(expected, f), f),
+				std::make_tuple(arraySize(expected, f), f),
 				hash,
 				eq,
-				allocator
+				key_allocator,
+				value_allocator,
+				mask_allocator
 			} {
 			}
 
@@ -99,12 +116,18 @@ namespace koszy::collections::hash {
 
 
 			~OpenHashMap() {
-				if (this->map_ != nullptr) {
-					for (std::size_t i{0U}; i != this->n_; ++i) {
-						std::allocator_traits<A<Entry>>::destroy(this->allocator_, &this->map_[i]);
+				for (std::size_t pos{0U}, cnt{0U}; pos != this->n_ && cnt != this->size_; ++pos) {
+					if (exists(pos, this->mask_)) {
+						std::allocator_traits<A<K>>::destroy(this->key_allocator_, &this->key_[pos]);
+						std::allocator_traits<A<V>>::destroy(this->value_allocator_, &this->value_[pos]);
+
+						++cnt;
 					}
-					this->allocator_.deallocate(this->map_, this->n_);
 				}
+
+				std::allocator_traits<A<K>>::deallocate(this->key_allocator_, this->key_, this->n_);
+				std::allocator_traits<A<V>>::deallocate(this->value_allocator_, this->value_, this->n_);
+				std::allocator_traits<A<std::uint_fast8_t>>::deallocate(this->mask_allocator_, this->mask_, maskSize<std::uint_fast8_t>(this->n_));
 			}
 
 			std::size_t size() const {
@@ -116,7 +139,11 @@ namespace koszy::collections::hash {
 			}
 
 			std::size_t max_size() const {
-				return std::allocator_traits<A<Entry>>::max_size(this->allocator_);
+				return std::min({
+					std::allocator_traits<A<K>>::max_size(this->key_allocator_),
+					std::allocator_traits<A<V>>::max_size(this->value_allocator_),
+					std::allocator_traits<A<std::uint_fast8_t>>::max_size(this->mask_allocator_)
+				});
 			}
 
 			void clear() {
@@ -124,41 +151,66 @@ namespace koszy::collections::hash {
 					return;
 				}
 
-				std::size_t pos{this->n_};
-				Entry* entry{};
+				for (std::size_t pos{0U}, cnt{0U}; cnt != this->size_; ++pos) {
+					if (exists(pos, this->mask_)) {
+						std::allocator_traits<A<K>>::destroy(this->key_allocator_, &this->key_[pos]);
+						std::allocator_traits<A<V>>::destroy(this->value_allocator_, &this->value_[pos]);
 
-				for (std::size_t i{this->size_}; i != 0U; --i) {
-					while (
-						this->eq_((entry = &this->map_[--pos])->first, this->null_) &&
-						(!this->null_pos_.has_value() || pos != this->null_pos_.value())
-					);
-					entry->first = K{};
-					entry->second = V{};
+						++cnt;
+					}
 				}
+
 				this->size_ = 0U;
-				this->null_pos_.reset();
+				std::fill(this->mask_, this->mask_ + maskSize<std::uint_fast8_t>(this->n_), 0U);
 			}
 
-			V& at(const K& key) const {
-				if (this->map_ == nullptr) [[unlikely]] {
-					throw std::out_of_range{"OpenHashMap::at"};
-				}
 
-				const std::tuple<std::size_t, bool> position{this->find(key)};
-				if (std::get<1>(position)) {
-					return this->map_[std::get<0>(position)].second;
+			V& at(const K& key) {
+				const std::tuple<std::size_t, bool> pos{this->find(key)};
+				if (std::get<1>(pos)) {
+					return this->value_[std::get<0>(pos)];
 				} else {
 					throw std::out_of_range{"OpenHashMap::at"};
 				}
 			}
 
+			const V& at(const K& key) const {
+				const std::tuple<std::size_t, bool> pos{this->find(key)};
+				if (std::get<1>(pos)) {
+					return this->value_[std::get<0>(pos)];
+				} else {
+					throw std::out_of_range{"OpenHashMap::at"};
+				}
+			}
+
+			template<typename KEY>
+			V& at(const KEY& key) {
+				const std::tuple<std::size_t, bool> pos{this->find(key)};
+				if (std::get<1>(pos)) {
+					return this->value_[std::get<0>(pos)];
+				} else {
+					throw std::out_of_range{"OpenHashMap::at"};
+				}
+			}
+
+			template<typename KEY>
+			const V& at(const KEY& key) const {
+				const std::tuple<std::size_t, bool> pos{this->find(key)};
+				if (std::get<1>(pos)) {
+					return this->value_[std::get<0>(pos)];
+				} else {
+					throw std::out_of_range{"OpenHashMap::at"};
+				}
+			}
+
+
 			bool contains(const K& key) const {
-				return this->map_ != nullptr && std::get<1>(this->find(key));
+				return std::get<1>(this->find(key));
 			}
 
 			template<typename KEY>
 			bool contains(const KEY& key) const {
-				return this->map_ != nullptr && std::get<1>(this->find(key));
+				return std::get<1>(this->find(key));
 			}
 
 
@@ -172,56 +224,58 @@ namespace koszy::collections::hash {
 			}
 
 
-			V& operator[](const K& key) {
-				if (this->map_ == nullptr) [[unlikely]] {
-					this->rehash(this->min_n_);
-				}
-
-				const std::tuple<std::size_t, bool> position{this->find(key)};
-
-				if (std::get<1>(position)) {
-					return this->map_[std::get<0>(position)].second;
-				} else {
-					return this->map_[this->insert(std::get<0>(position), key, V{})].second;
-				}
-			}
-
-			V& operator[](const K&& key) {
-				if (this->map_ == nullptr) [[unlikely]] {
-					return this->map_[this->insert(0U, std::move(key), V{})].second;
-				}
-
-				const std::tuple<std::size_t, bool> position{this->find(key)};
-				if (std::get<1>(position)) {
-					return this->map_[std::get<0>(position)].second;
-				} else {
-					return this->map_[this->insert(std::get<0>(position), std::move(key), V{})].second;
-				}
-			}
-
-			template<typename KEY>
-			V& operator[](const KEY&& key) {
-				if (this->map_ == nullptr) [[unlikely]] {
-					this->rehash(this->min_n_);
-				}
-
-				const std::tuple<std::size_t, bool> position{this->find(key)};
-
-				if (std::get<1>(position)) {
-					return this->map_[std::get<0>(position)].second;
-				} else {
-					return this->map_[this->insert(std::get<0>(position), std::forward<KEY>(key), V{})].second;
-				}
-			}
+			// V& operator[](const K& key) {
+			// 	if (this->map_ == nullptr) [[unlikely]] {
+			// 		this->rehash(this->min_n_);
+			// 	}
+			//
+			// 	const std::tuple<std::size_t, bool> position{this->find(key)};
+			//
+			// 	if (std::get<1>(position)) {
+			// 		return this->map_[std::get<0>(position)].second;
+			// 	} else {
+			// 		return this->map_[this->insert(std::get<0>(position), key, V{})].second;
+			// 	}
+			// }
+			//
+			// V& operator[](const K&& key) {
+			// 	if (this->map_ == nullptr) [[unlikely]] {
+			// 		return this->map_[this->insert(0U, std::move(key), V{})].second;
+			// 	}
+			//
+			// 	const std::tuple<std::size_t, bool> position{this->find(key)};
+			// 	if (std::get<1>(position)) {
+			// 		return this->map_[std::get<0>(position)].second;
+			// 	} else {
+			// 		return this->map_[this->insert(std::get<0>(position), std::move(key), V{})].second;
+			// 	}
+			// }
+			//
+			// template<typename KEY>
+			// V& operator[](const KEY&& key) {
+			// 	if (this->map_ == nullptr) [[unlikely]] {
+			// 		this->rehash(this->min_n_);
+			// 	}
+			//
+			// 	const std::tuple<std::size_t, bool> position{this->find(key)};
+			//
+			// 	if (std::get<1>(position)) {
+			// 		return this->map_[std::get<0>(position)].second;
+			// 	} else {
+			// 		return this->map_[this->insert(std::get<0>(position), std::forward<KEY>(key), V{})].second;
+			// 	}
+			// }
 
 		private:
-			[[no_unique_address]] A<Entry> allocator_;
+			[[no_unique_address]] A<K> key_allocator_;
+			[[no_unique_address]] A<V> value_allocator_;
+			[[no_unique_address]] A<std::uint_fast8_t> mask_allocator_;
 			[[no_unique_address]] H hash_;
 			[[no_unique_address]] E eq_;
 
-			Entry* map_;
-
-			std::size_t mask_;
+			K* key_;
+			V* value_;
+			std::uint_fast8_t* mask_;
 
 			std::size_t size_;
 			std::size_t n_;
@@ -230,128 +284,143 @@ namespace koszy::collections::hash {
 			std::size_t max_size_;
 			const std::size_t min_n_;
 
-			const K null_;
-			std::optional<std::size_t> null_pos_;
-
 			explicit OpenHashMap(
 				const std::tuple<std::size_t, float> size,
 				const H& hash,
 				const E& eq,
-				const A<Entry>& allocator
-			) : allocator_{std::allocator_traits<A<Entry>>::select_on_container_copy_construction(allocator)},
+				const A<K>& key_allocator,
+				const A<V>& value_allocator,
+				const A<std::uint_fast8_t>& mask_allocator
+			) : key_allocator_{std::allocator_traits<A<K>>::select_on_container_copy_construction(key_allocator)},
+				value_allocator_{std::allocator_traits<A<V>>::select_on_container_copy_construction(value_allocator)},
+				mask_allocator_{std::allocator_traits<A<std::uint_fast8_t>>::select_on_container_copy_construction(mask_allocator)},
 				hash_{hash},
 				eq_{eq},
-				map_{nullptr},
-				mask_{koszy::collections::hash::arrayMask(std::get<0>(size))},
+				key_{nullptr},
+				value_{nullptr},
+				mask_{nullptr},
 				size_{0U},
 				n_{std::get<0>(size)},
 				f_{std::get<1>(size)},
-				max_size_{koszy::collections::hash::maxSize(std::get<0>(size), std::get<1>(size))},
-				min_n_{std::max(std::get<0>(size), koszy::collections::hash::DEFAULT_MIN_CAPACITY)},
-				null_{K{}},
-				null_pos_{std::nullopt} {
-				if (0U < std::get<0>(size)) {
-					this->map_ = std::allocator_traits<A<Entry>>::allocate(this->allocator_, std::get<0>(size));
-					for (std::size_t i{0U}; i != std::get<0>(size); ++i) {
-						std::allocator_traits<A<Entry>>::construct(this->allocator_, &this->map_[i]);
-					}
-				}
+				max_size_{maxSize(std::get<0>(size), std::get<1>(size))},
+				min_n_{std::get<0>(size)} {
+				const std::size_t n{std::get<0>(size)};
+				this->key_ = std::allocator_traits<A<K>>::allocate(this->key_allocator_, n);
+				this->value_ = std::allocator_traits<A<V>>::allocate(this->value_allocator_, n);
+
+				const std::size_t mask_n{maskSize<std::uint_fast8_t>(n)};
+				this->mask_ = std::allocator_traits<A<std::uint_fast8_t>>::allocate(this->mask_allocator_, mask_n);
+				std::fill(this->mask_, this->mask_ + mask_n, 0U);
+			}
+
+			static bool exists(const std::size_t pos, const std::uint_fast8_t* const mask) {
+				return static_cast<bool>((mask[maskPos<std::uint_fast8_t>(pos)] >> maskBit<std::uint_fast8_t>(pos)) & 1U);
+			}
+
+			static void set(const std::size_t pos, std::uint_fast8_t* const mask) {
+				mask[maskPos<std::uint_fast8_t>(pos)] |= (1U << maskBit<std::uint_fast8_t>(pos));
+			}
+
+			static void unset(const std::size_t pos, std::uint_fast8_t* const mask) {
+				mask[maskPos<std::uint_fast8_t>(pos)] &= ~(1U << maskBit<std::uint_fast8_t>(pos));
 			}
 
 			template<typename KEY>
-			std::tuple<std::size_t, bool> find(KEY&& key) const {
-				assert(this->map_ != nullptr);
+			std::tuple<std::size_t, bool> find(const KEY& key) const {
+				const std::size_t mask{this->n_ - 1U};
 
 				std::size_t pos{};
-				const K* k{};
 
-				if (
-					this->eq_(*(k = &this->map_[pos = (this->hash_(key) & this->mask_)].first), this->null_) &&
-					(!this->null_pos_.has_value() || pos != this->null_pos_.value())
-				) {
+				pos = (this->hash_(key) & mask);
+				if (!exists(pos, this->mask_)) {
 					return std::make_tuple(pos, false);
 				}
-				if (this->eq_(key, *k)) {
+				if (this->eq_(key, this->key_[pos])) {
 					return std::make_tuple(pos, true);
 				}
 
 				while (true) {
-					if (
-						this->eq_(*(k = &this->map_[++pos & this->mask_].first), this->null_) &&
-						(!this->null_pos_.has_value() || pos != this->null_pos_.value())
-					) {
+					pos = (++pos & mask);
+					if (!exists(pos, this->mask_)) {
 						return std::make_tuple(pos, false);
 					}
-					if (this->eq_(key, *k)) {
+					if (this->eq_(key, this->key_[pos])) {
 						return std::make_tuple(pos, true);
 					}
 				}
 			}
 
-			template<typename KEY, typename VALUE>
-			std::size_t insert(const std::size_t pos, KEY&& key, VALUE&& value) {
-				std::size_t new_pos{pos};
-				if (this->size_ == this->max_size_) {
-					this->rehash(koszy::collections::hash::arraySize(this->size_ + 1U, this->f_));
-					new_pos = std::get<0>(this->find(key));
-				}
+			// template<typename KEY, typename VALUE>
+			// std::size_t insert(const std::size_t pos, KEY&& key, VALUE&& value) {
+			// 	std::size_t new_pos{pos};
+			// 	if (this->size_ == this->max_size_) {
+			// 		this->rehash(arraySize(this->size_ + 1U, this->f_));
+			// 		new_pos = std::get<0>(this->find(key));
+			// 	}
+			//
+			// 	Entry& entry{this->map_[new_pos]};
+			// 	entry.first = std::forward<KEY>(key);
+			// 	entry.second = std::forward<VALUE>(value);
+			// 	if (this->eq_(entry.first, this->null_)) {
+			// 		this->null_pos_.emplace(new_pos);
+			// 	}
+			//
+			// 	++this->size_;
+			//
+			// 	return new_pos;
+			// }
 
-				Entry& entry{this->map_[new_pos]};
-				entry.first = std::forward<KEY>(key);
-				entry.second = std::forward<VALUE>(value);
-				if (this->eq_(entry.first, this->null_)) {
-					this->null_pos_.emplace(new_pos);
-				}
 
-				++this->size_;
+			std::optional<std::size_t> rehash(const std::size_t new_n, const std::optional<std::size_t> i) {
+				K* const new_key{std::allocator_traits<A<K>>::allocate(this->key_allocator_, new_n)};
+				V* const new_value{std::allocator_traits<A<V>>::allocate(this->value_allocator_, new_n)};
+				std::uint_fast8_t* const new_mask{std::allocator_traits<A<std::uint_fast8_t>>::allocate(this->value_allocator_, maskSize<std::uint_fast8_t>(new_n))};
 
-				return new_pos;
-			}
+				std::optional<std::size_t> j{std::nullopt};
 
-			void rehash(const std::size_t new_n) {
-				Entry* const new_map{std::allocator_traits<A<Entry>>::allocate(this->allocator_, new_n)};
-				for (std::size_t i{0U}; i != new_n; ++i) {
-					std::allocator_traits<A<Entry>>::construct(this->allocator_, &new_map[i]);
-				}
-				const std::size_t new_mask{koszy::collections::hash::arrayMask(new_n)};
-				const std::size_t new_max_size{koszy::collections::hash::maxSize(new_n, this->f_)};
-				std::optional<std::size_t> new_null_pos{std::nullopt};
+				const std::size_t mask{new_n - 1U};
 
-				if (this->map_ != nullptr) [[likely]] {
-					std::size_t pos{this->n_}, new_pos{};
-					Entry* entry{},* new_entry{};
-
-					for (std::size_t i{this->size_}; i != 0U; --i) {
-						while (
-							this->eq_((entry = &this->map_[--pos])->first, this->null_) &&
-							(!this->null_pos_.has_value() || pos != this->null_pos_.value())
-						);
-						if (
-							this->eq_((new_entry = &new_map[new_pos = (this->hash_(this->map_[pos].first) & new_mask)])->first, this->null_) &&
-							(!new_null_pos.has_value() || new_pos != new_null_pos.value())
-						) {
-							while (
-								this->eq_((new_entry = &new_map[++new_pos & new_mask])->first, this->null_) &&
-								(!new_null_pos.has_value() || new_pos != new_null_pos.value())
-							);
+				std::size_t pos{0U}, new_pos{0U};
+				for (std::size_t cnt{0U}; cnt != this->size_; ++pos) {
+					if (exists(pos, this->mask_)) {
+						new_pos = (this->hash_(this->key_[pos]) & mask);
+						if (exists(new_pos, new_mask)) {
+							while (exists(new_pos = (++new_pos & mask), new_mask)) {
+							}
 						}
 
-						*new_entry = std::move(this->map_[pos]);
-						if (this->eq_(new_entry->first, this->null_)) {
-							new_null_pos.emplace(new_pos);
+						std::allocator_traits<A<K>>::construct(this->key_allocator_, &new_key[new_pos], std::move(this->key_[pos]));
+						std::allocator_traits<A<V>>::construct(this->value_allocator_, &new_value[new_pos], std::move(this->value_[pos]));
+
+						set(new_pos, new_mask);
+
+						std::allocator_traits<A<K>>::destroy(this->key_allocator_, &this->key_[pos]);
+						std::allocator_traits<A<V>>::destroy(this->value_allocator_, &this->value_[pos]);
+
+						if (i.has_value() && i.value() == pos) {
+							j = std::make_optional(new_pos);
 						}
 
-						std::allocator_traits<A<Entry>>::destroy(this->allocator_, entry);
+						++cnt;
 					}
-
-					std::allocator_traits<A<Entry>>::deallocate(this->allocator_, this->map_, this->n_);
 				}
 
-				this->map_ = new_map;
+
+				std::allocator_traits<A<K>>::deallocate(this->key_allocator_, this->key_, this->n_);
+				std::allocator_traits<A<V>>::deallocate(this->value_allocator_, this->value_, this->n_);
+				std::allocator_traits<A<std::uint_fast8_t>>::deallocate(this->mask_allocator_, this->mask_, maskSize<std::uint_fast8_t>(this->n_));
+
+
+				this->key_ = new_key;
+				this->value_ = new_value;
 				this->mask_ = new_mask;
+
 				this->n_ = new_n;
-				this->max_size_ = new_max_size;
-				this->null_pos_ = new_null_pos;
+
+				this->max_size_ = maxSize(this->n_, this->f_);
+
+
+				return j;
 			}
 	};
 }
