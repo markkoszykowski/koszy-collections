@@ -110,10 +110,10 @@ TEST(MaskPos, HandlesZero) {
 
 TEST(MaskPos, HandlesOne) {
 	EXPECT_EQ(koszy::collections::hash::maskPos<bool>(1U), 1U);
-	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint8_t>(1U), 1U);
-	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint16_t>(1U), 1U);
-	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint32_t>(1U), 1U);
-	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint64_t>(1U), 1U);
+	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint8_t>(1U), 0U);
+	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint16_t>(1U), 0U);
+	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint32_t>(1U), 0U);
+	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint64_t>(1U), 0U);
 }
 
 TEST(MaskPos, HandlesPowersOfTwo) {
@@ -126,10 +126,10 @@ TEST(MaskPos, HandlesPowersOfTwo) {
 
 TEST(MaskPos, HandlesOdds) {
 	EXPECT_EQ(koszy::collections::hash::maskPos<bool>(101U), 101U);
-	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint8_t>(101U), 13U);
-	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint16_t>(101U), 7U);
-	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint32_t>(101U), 4U);
-	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint64_t>(101U), 2U);
+	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint8_t>(101U), 12U);
+	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint16_t>(101U), 6U);
+	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint32_t>(101U), 3U);
+	EXPECT_EQ(koszy::collections::hash::maskPos<std::uint64_t>(101U), 1U);
 }
 
 // Mask Bit

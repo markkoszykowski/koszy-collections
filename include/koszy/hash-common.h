@@ -54,9 +54,8 @@ namespace koszy::collections::hash {
 		static_assert(std::has_single_bit(bits));
 
 		constexpr std::size_t shifts{std::numeric_limits<std::size_t>::digits - static_cast<std::size_t>(std::countl_zero(bits)) - 1U};
-		constexpr std::size_t mask{bits - 1U};
 
-		return (n >> shifts) + static_cast<std::size_t>(static_cast<bool>(n & mask));
+		return n >> shifts;
 	}
 
 	template<typename T>

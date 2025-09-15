@@ -1,5 +1,5 @@
 INCLUDES := -iquote./include
-CXXFLAGS := -std=c++23 -Wpedantic -Wextra -Wall -g
+CXXFLAGS := -save-temps -std=c++23 -Wpedantic -Wextra -Wall -g
 LDFLAGS  :=
 LDLIBS   :=
 
