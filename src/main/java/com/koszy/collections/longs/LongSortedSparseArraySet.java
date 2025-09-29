@@ -1065,7 +1065,7 @@ public class LongSortedSparseArraySet extends AbstractLongSortedSet implements C
 
 			while (this.next != -1) {
 				this.curr = this.next;
-				while (++this.next < last && (key[this.next] == 0L) && this.next != nulll) {
+				while (++this.next < last && (key[this.next] == 0L && this.next != nulll)) {
 				}
 				if (last < this.next) {
 					this.next = -1;

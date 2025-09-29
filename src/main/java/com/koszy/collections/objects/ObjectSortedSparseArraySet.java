@@ -1303,7 +1303,7 @@ public class ObjectSortedSparseArraySet<K> extends AbstractObjectSortedSet<K> im
 
 			while (this.next != -1) {
 				this.curr = this.next;
-				while (++this.next < last && (key[this.next] == null) && this.next != nulll) {
+				while (++this.next < last && (key[this.next] == null && this.next != nulll)) {
 				}
 				if (last < this.next) {
 					this.next = -1;

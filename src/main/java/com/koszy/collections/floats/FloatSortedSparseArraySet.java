@@ -1065,7 +1065,7 @@ public class FloatSortedSparseArraySet extends AbstractFloatSortedSet implements
 
 			while (this.next != -1) {
 				this.curr = this.next;
-				while (++this.next < last && (Float.floatToRawIntBits(key[this.next]) == 0) && this.next != nulll) {
+				while (++this.next < last && (Float.floatToRawIntBits(key[this.next]) == 0 && this.next != nulll)) {
 				}
 				if (last < this.next) {
 					this.next = -1;
