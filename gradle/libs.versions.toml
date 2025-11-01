@@ -1,10 +1,10 @@
 [versions]
-agrona = "2.2.4"
+agrona = "2.3.0"
 checkstyle = "11.0.0"
-fastutil = "8.5.16"
+fastutil = "8.5.18"
 jmh = "1.37"
-junit = "5.13.4"
-versions = "0.52.0"
+junit = "6.0.1"
+versions = "0.53.0"
 
 [libraries]
 agrona = { module = "org.agrona:agrona", version.ref = "agrona" }

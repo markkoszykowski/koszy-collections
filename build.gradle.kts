@@ -55,19 +55,14 @@ fun isNonStable(version: String): Boolean {
 	return isStable.not()
 }
 
-class SelectionRules : Action<ComponentSelectionWithCurrent> {
-	override fun execute(selection: ComponentSelectionWithCurrent) {
-		if (isNonStable(selection.candidate.version) && !isNonStable(selection.currentVersion)) {
-			selection.reject("Release candidate")
-		}
-	}
-
-}
-
 tasks.withType<DependencyUpdatesTask> {
 	resolutionStrategy {
 		componentSelection {
-			all(SelectionRules())
+			all(Action<ComponentSelectionWithCurrent> {
+				if (isNonStable(candidate.version) && !isNonStable(currentVersion)) {
+					reject("Release candidate")
+				}
+			})
 		}
 	}
 }
