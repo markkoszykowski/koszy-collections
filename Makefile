@@ -1,5 +1,5 @@
 INCLUDES := -iquote./include
-CXXFLAGS := -save-temps -std=c++23 -Wpedantic -Wextra -Wall -g
+CXXFLAGS := -save-temps -std=c++23 -Wconversion -Wpedantic -Wextra -Wall -g
 LDFLAGS  :=
 LDLIBS   :=
 
@@ -40,7 +40,7 @@ test: $(TEST)
 	$(TEST)
 
 $(TEST): $(SRCOBJS) $(TESTOBJS) $(TESTOBJ)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TEST) $(TESTOBJ) $(SRCOBJS) $(TESTOBJS) $(LDLIBS) -lgtest
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TEST) $(TESTOBJ) $(SRCOBJS) $(TESTOBJS) $(LDLIBS) -fsanitize=address -fsanitize=leak -fsanitize=undefined -lgtest
 
 
 $(TESTDIR)/%.o: ./test/%.cc
