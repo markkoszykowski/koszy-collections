@@ -116,7 +116,7 @@ TEST(MaskBitTest, HandlesOdds) {
 template<typename T>
 class HashMaskTest : public testing::Test {
 	public:
-		koszy::collections::hash::HashMask<T> mask_;
+		koszy::collections::hash::HashMask<T> mask_{1U};
 };
 
 using HashMaskTypes = testing::Types<bool, std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t, std::uintmax_t>;
