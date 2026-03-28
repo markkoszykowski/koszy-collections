@@ -8,7 +8,6 @@
 #include <limits>
 #include <memory>
 #include <variant>
-#include <bits/fs_fwd.h>
 
 namespace koszy::collections::hash {
 	// Returns the number of bits in T
@@ -40,56 +39,74 @@ namespace koszy::collections::hash {
 		return maskPos<T>(n) + static_cast<std::size_t>(static_cast<bool>(maskBit<T>(n)));
 	}
 
-	template<typename T, template<typename U> typename A=std::allocator>
+	template<typename T>
+	concept StatelessAllocator = std::allocator_traits<T>::is_always_equal::value;
+
+	template<typename T, typename A>
+	void deleter(A& allocator, T* pointer, const std::size_t size) {
+		for (std::size_t i{0U}; i != size; ++i) {
+			std::allocator_traits<A>::destroy(allocator, &pointer[i]);
+		}
+		std::allocator_traits<A>::deallocate(allocator, pointer, size);
+	}
+
+	template<typename T, typename A>
 	struct Deleter {
-		std::reference_wrapper<A<T>> allocator_;
+		std::reference_wrapper<A> allocator_;
 		std::size_t size_;
 
-		Deleter(A<T>& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {
+		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {
 		}
 
-		void operator()(T* pointer) const {
-			for (std::size_t i{0U}; i != this->size_; ++i) {
-				std::allocator_traits<A<T>>::destroy(this->allocator_, &pointer[i]);
-			}
-			std::allocator_traits<A<T>>::deallocate(this->allocator_, pointer, this->size_);
+		void operator()(T* pointer) {
+			deleter<T, A>(this->allocator_, pointer, this->size_);
 		}
 	};
 
-	template<
-		MaskType T,
-		template<typename U> typename A=std::allocator
-	>
+	template<typename T, StatelessAllocator A>
+	struct Deleter<T, A> {
+		[[no_unique_address]] A allocator_;
+		std::size_t size_;
+
+		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {
+		}
+
+		void operator()(T* pointer) {
+			deleter<T, A>(this->allocator_, pointer, this->size_);
+		}
+	};
+
+	template<MaskType T, typename A=std::allocator<T>>
 	class HashMask {
-		using HeapMask = std::unique_ptr<T[], Deleter<T, A>>;
+		using DynamicMask = std::unique_ptr<T[], Deleter<T, A>>;
 
-		constexpr static std::size_t N{std::max(static_cast<std::size_t>(sizeof(HeapMask) / sizeof(T)), static_cast<std::size_t>(1U))};
-		using StackMask = std::array<T, N>;
+		constexpr static std::size_t N{std::max(static_cast<std::size_t>(sizeof(DynamicMask) / sizeof(T)), static_cast<std::size_t>(1U))};
+		using StaticMask = std::array<T, N>;
 
-		static std::variant<StackMask, HeapMask> makeMask(A<T>& allocator, const std::size_t n) {
+		static std::variant<StaticMask, DynamicMask> makeMask(A& allocator, const std::size_t n) {
 			const std::size_t size{maskSize<T>(n)};
 			if (size <= N) {
-				return std::variant<StackMask, HeapMask>{StackMask{}};
+				return std::variant<StaticMask, DynamicMask>{StaticMask{}};
 			} else {
-				T * mask{std::allocator_traits<A<T>>::allocate(allocator, size)};
+				T* const mask{std::allocator_traits<A>::allocate(allocator, size)};
 				for (std::size_t i{0U}; i != size; ++i) {
-					std::allocator_traits<A<T>>::construct(allocator, &mask[i]);
+					std::allocator_traits<A>::construct(allocator, &mask[i]);
 				}
-				return std::variant<StackMask, HeapMask>{HeapMask{mask, Deleter<T, A>{allocator, size}}};
+				return std::variant<StaticMask, DynamicMask>{DynamicMask{mask, Deleter<T, A>{allocator, size}}};
 			}
 		}
 
 		public:
-			HashMask() : HashMask(0U, A<T>{}) {
+			HashMask() : allocator_{}, mask_{makeMask(this->allocator_, 0U)} {
 			}
 
-			HashMask(const std::size_t n) : HashMask(n, A<T>{}) {
+			HashMask(const std::size_t n) : allocator_{}, mask_{makeMask(this->allocator_, n)} {
 			}
 
-			HashMask(A<T>&& allocator) : HashMask(0U, std::forward<A<T>>(allocator)) {
+			HashMask(A&& allocator) : allocator_{std::forward<A>(allocator)}, mask_{makeMask(this->allocator_, 0U)} {
 			}
 
-			HashMask(const std::size_t n, A<T>&& allocator) : allocator_{std::forward<A<T>>(allocator)}, mask_{makeMask(this->allocator_, n)} {
+			HashMask(const std::size_t n, A&& allocator) : allocator_{std::forward<A>(allocator)}, mask_{makeMask(this->allocator_, n)} {
 			}
 
 			constexpr bool isSet(const std::size_t n) const {
@@ -109,8 +126,8 @@ namespace koszy::collections::hash {
 			}
 
 		private:
-			[[no_unique_address]] A<T> allocator_;
-			std::variant<StackMask, HeapMask> mask_;
+			[[no_unique_address]] A allocator_;
+			std::variant<StaticMask, DynamicMask> mask_;
 	};
 }
 
