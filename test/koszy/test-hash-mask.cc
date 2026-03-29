@@ -116,7 +116,9 @@ TEST(MaskBitTest, HandlesOdds) {
 template<typename T>
 class HashMaskTest : public testing::Test {
 	public:
-		koszy::collections::hash::HashMask<T> mask_{1U};
+		using MaskType = T;
+
+		koszy::collections::hash::HashMask<MaskType> mask_;
 };
 
 using HashMaskTypes = testing::Types<bool, std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t, std::uintmax_t>;
@@ -133,6 +135,11 @@ TYPED_TEST(HashMaskTest, SetAndUnset) {
 	for (std::size_t i{0U}; i != size; ++i) {
 		EXPECT_EQ(this->mask_.isSet(i), i == 0U);
 	}
+	this->mask_.unset(0U);
+	for (std::size_t i{0U}; i != size; ++i) {
+		EXPECT_EQ(this->mask_.isSet(i), false);
+	}
+	this->mask_.set(0U);
 
 	size = 1024U;
 	this->mask_.reset(size);
@@ -143,6 +150,33 @@ TYPED_TEST(HashMaskTest, SetAndUnset) {
 	this->mask_.set(512U);
 	for (std::size_t i{0U}; i != size; ++i) {
 		EXPECT_EQ(this->mask_.isSet(i), i == 512U);
+	}
+	this->mask_.unset(512U);
+	for (std::size_t i{0U}; i != size; ++i) {
+		EXPECT_EQ(this->mask_.isSet(i), false);
+	}
+	this->mask_.set(512U);
+}
+
+TYPED_TEST(HashMaskTest, CopyConstruction) {
+	using MaskType = typename TestFixture::MaskType;
+
+	std::size_t size{1U};
+	this->mask_.reset(size);
+
+	this->mask_.set(0U);
+	koszy::collections::hash::HashMask<MaskType> copy1{this->mask_};
+	for (std::size_t i{0U}; i != size; ++i) {
+		EXPECT_EQ(copy1.isSet(i), this->mask_.isSet(i));
+	}
+
+	size = 1024U;
+	this->mask_.reset(size);
+
+	this->mask_.set(512U);
+	koszy::collections::hash::HashMask<MaskType> copy2{this->mask_};
+	for (std::size_t i{0U}; i != size; ++i) {
+		EXPECT_EQ(copy2.isSet(i), this->mask_.isSet(i));
 	}
 }
 

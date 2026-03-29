@@ -10,9 +10,8 @@
 #include <variant>
 
 namespace koszy::collections::hash {
-	// Returns the number of bits in T
 	template<typename T> requires std::integral<T>
-	constexpr std::size_t bits() {
+	consteval std::size_t bits() {
 		return static_cast<std::size_t>(std::numeric_limits<T>::digits);
 	}
 
@@ -20,7 +19,7 @@ namespace koszy::collections::hash {
 	concept MaskType = std::has_single_bit(bits<T>());
 
 	template<MaskType T>
-	constexpr std::size_t shifts() {
+	consteval std::size_t shifts() {
 		return static_cast<std::size_t>(std::countr_zero(bits<T>()));
 	}
 
@@ -55,8 +54,7 @@ namespace koszy::collections::hash {
 		std::reference_wrapper<A> allocator_;
 		std::size_t size_;
 
-		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {
-		}
+		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {}
 
 		void operator()(T* pointer) {
 			deleter<T, A>(this->allocator_, pointer, this->size_);
@@ -68,12 +66,16 @@ namespace koszy::collections::hash {
 		[[no_unique_address]] A allocator_;
 		std::size_t size_;
 
-		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {
-		}
+		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {}
 
 		void operator()(T* pointer) {
 			deleter<T, A>(this->allocator_, pointer, this->size_);
 		}
+	};
+
+	template<typename... Ts>
+	struct Overloaded : Ts... {
+		using Ts::operator()...;
 	};
 
 	template<MaskType T, typename A=std::allocator<T>>
@@ -96,18 +98,47 @@ namespace koszy::collections::hash {
 			}
 		}
 
+		static std::variant<StaticMask, DynamicMask> makeMask(A& allocator, const std::variant<StaticMask, DynamicMask>& other) {
+			return std::visit(
+				Overloaded{
+					[](const StaticMask& other) -> std::variant<StaticMask, DynamicMask> { return std::variant<StaticMask, DynamicMask>{StaticMask{other}}; },
+					[&allocator](const DynamicMask& other) -> std::variant<StaticMask, DynamicMask> {
+						const std::size_t size{other.get_deleter().size_};
+						T* const mask{std::allocator_traits<A>::allocate(allocator, size)};
+						for (std::size_t i{0U}; i != size; ++i) {
+							std::allocator_traits<A>::construct(allocator, &mask[i], other[i]);
+						}
+						return std::variant<StaticMask, DynamicMask>{DynamicMask{mask, Deleter<T, A>{allocator, size}}};
+					}
+				},
+				other
+			);
+		}
+
 		public:
-			HashMask() : allocator_{}, mask_{makeMask(this->allocator_, 0U)} {
+			HashMask() : allocator_{}, mask_{makeMask(this->allocator_, 0U)} {}
+
+			HashMask(const std::size_t n) : allocator_{}, mask_{makeMask(this->allocator_, n)} {}
+
+			HashMask(A&& allocator) : allocator_{std::forward<A>(allocator)}, mask_{makeMask(this->allocator_, 0U)} {}
+
+			HashMask(const std::size_t n, A&& allocator) : allocator_{std::forward<A>(allocator)}, mask_{makeMask(this->allocator_, n)} {}
+
+			HashMask(const HashMask& other) : allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, mask_{makeMask(this->allocator_, other.mask_)} {}
+
+			HashMask(HashMask&&) = default;
+
+
+			HashMask& operator=(const HashMask& other) {
+				this->mask_ = makeMask(this->allocator_, other.mask_);
+				return *this;
 			}
 
-			HashMask(const std::size_t n) : allocator_{}, mask_{makeMask(this->allocator_, n)} {
-			}
+			HashMask& operator=(HashMask&&) = default;
 
-			HashMask(A&& allocator) : allocator_{std::forward<A>(allocator)}, mask_{makeMask(this->allocator_, 0U)} {
-			}
 
-			HashMask(const std::size_t n, A&& allocator) : allocator_{std::forward<A>(allocator)}, mask_{makeMask(this->allocator_, n)} {
-			}
+			~HashMask() = default;
+
 
 			constexpr bool isSet(const std::size_t n) const {
 				return std::visit([n](auto&& mask) -> bool { return static_cast<bool>((mask[maskPos<T>(n)] >> maskBit<T>(n)) & 1U); }, this->mask_);
@@ -131,4 +162,4 @@ namespace koszy::collections::hash {
 	};
 }
 
-#endif //HASH_MASK_H
+#endif // HASH_MASK_H
