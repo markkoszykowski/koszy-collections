@@ -9,7 +9,7 @@
 #include <memory>
 #include <variant>
 
-namespace koszy::collections::hash {
+namespace koszy::collections::hash::mask {
 	template<typename T> requires std::integral<T>
 	consteval std::size_t bits() {
 		return static_cast<std::size_t>(std::numeric_limits<T>::digits);
@@ -42,7 +42,7 @@ namespace koszy::collections::hash {
 	concept StatelessAllocator = std::allocator_traits<T>::is_always_equal::value;
 
 	template<typename T, typename A>
-	void deleter(A& allocator, T* pointer, const std::size_t size) {
+	void deleter(A& allocator, T* const pointer, const std::size_t size) {
 		for (std::size_t i{0U}; i != size; ++i) {
 			std::allocator_traits<A>::destroy(allocator, &pointer[i]);
 		}
@@ -56,7 +56,7 @@ namespace koszy::collections::hash {
 
 		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {}
 
-		void operator()(T* pointer) {
+		void operator()(T* const pointer) {
 			deleter<T, A>(this->allocator_, pointer, this->size_);
 		}
 	};
@@ -68,7 +68,7 @@ namespace koszy::collections::hash {
 
 		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {}
 
-		void operator()(T* pointer) {
+		void operator()(T* const pointer) {
 			deleter<T, A>(this->allocator_, pointer, this->size_);
 		}
 	};

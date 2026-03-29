@@ -3,8 +3,11 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
+#include <functional>
+#include <memory>
 #include <stdexcept>
+
+#include "koszy/hash-mask.h"
 
 namespace koszy::collections::hash {
 	constexpr std::size_t DEFAULT_INITIAL_CAPACITY{16U};
@@ -32,6 +35,42 @@ namespace koszy::collections::hash {
 	constexpr std::size_t arraySize(const std::size_t n, const float f) {
 		return nextPowerOfTwo(static_cast<std::size_t>(std::ceil(static_cast<long double>(n) / static_cast<long double>(f))));
 	}
+
+	template<typename T, typename A, typename M, typename MA>
+	void deleter(A& allocator, const mask::HashMask<M, MA>& mask, T* const pointer, const std::size_t size) {
+		for (std::size_t i{0U}; i != size; ++i) {
+			if (mask.isSet(i)) {
+				std::allocator_traits<A>::destroy(allocator, &pointer[i]);
+			}
+		}
+		std::allocator_traits<A>::deallocate(allocator, pointer, size);
+	}
+
+	template<typename T, typename A, typename M, typename MA>
+	struct HashDeleter {
+		std::reference_wrapper<A> allocator_;
+		std::reference_wrapper<const mask::HashMask<M, MA>> mask_;
+		std::size_t size_;
+
+		HashDeleter(A& allocator, const mask::HashMask<M, MA>& mask, const std::size_t n) : allocator_{allocator}, mask_{mask}, size_{n} {}
+
+		void operator()(T* pointer) {
+			deleter<T, A, M, MA>(this->allocator_, this->mask_, pointer, this->size_);
+		}
+	};
+
+	template<typename T, mask::StatelessAllocator A, typename M, typename MA>
+	struct HashDeleter<T, A, M, MA> {
+		[[no_unique_address]] A allocator_;
+		std::reference_wrapper<const mask::HashMask<M, MA>> mask_;
+		std::size_t size_;
+
+		HashDeleter(A& allocator, const mask::HashMask<M, MA>& mask, const std::size_t n) : allocator_{allocator}, mask_{mask}, size_{n} {}
+
+		void operator()(T* pointer) {
+			deleter<T, A, M, MA>(this->allocator_, this->mask_, pointer, this->size_);
+		}
+	};
 }
 
 #endif // HASH_COMMON_H

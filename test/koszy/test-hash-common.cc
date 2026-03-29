@@ -1,6 +1,3 @@
-#ifndef TEST_HASH_COMMON_H
-#define TEST_HASH_COMMON_H
-
 #include <limits>
 
 #include <gtest/gtest.h>
@@ -62,5 +59,3 @@ TEST(ArraySizeTest, HandlesOne) {
 	EXPECT_EQ(koszy::collections::hash::arraySize(1U, 0.5f), 2U);
 	EXPECT_EQ(koszy::collections::hash::arraySize(1U, 0.9999999f), 2U);
 }
-
-#endif // TEST_HASH_COMMON_H
