@@ -1,6 +1,11 @@
+#include <memory>
+#include <utility>
+
 #include <gtest/gtest.h>
 
 #include "koszy/hash-mask.h"
+
+#include "test/koszy/allocator.h"
 
 
 // Mask Size
@@ -113,12 +118,28 @@ TEST(MaskBitTest, HandlesOdds) {
 template<typename T>
 class HashMaskTest : public testing::Test {
 	public:
-		using MaskType = T;
+		using MaskType = std::tuple_element_t<0, T>;
+		using AllocatorType = std::tuple_element_t<1, T>;
 
-		koszy::collections::hash::mask::HashMask<MaskType> mask_;
+		koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> mask_;
 };
 
-using HashMaskTypes = testing::Types<bool, std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t, std::uintmax_t>;
+
+using HashMaskTypes = testing::Types<
+	std::pair<bool, std::allocator<bool>>,
+	std::pair<std::uint8_t, std::allocator<std::uint8_t>>,
+	std::pair<std::uint16_t, std::allocator<std::uint16_t>>,
+	std::pair<std::uint32_t, std::allocator<std::uint32_t>>,
+	std::pair<std::uint64_t, std::allocator<std::uint64_t>>,
+	std::pair<std::uintmax_t, std::allocator<std::uintmax_t>>,
+
+	std::pair<bool, koszy::collections::StatefulAllocator<bool>>,
+	std::pair<std::uint8_t, koszy::collections::StatefulAllocator<std::uint8_t>>,
+	std::pair<std::uint16_t, koszy::collections::StatefulAllocator<std::uint16_t>>,
+	std::pair<std::uint32_t, koszy::collections::StatefulAllocator<std::uint32_t>>,
+	std::pair<std::uint64_t, koszy::collections::StatefulAllocator<std::uint64_t>>,
+	std::pair<std::uintmax_t, koszy::collections::StatefulAllocator<std::uintmax_t>>
+>;
 
 TYPED_TEST_SUITE(HashMaskTest, HashMaskTypes);
 TYPED_TEST(HashMaskTest, SetAndUnset) {
@@ -157,12 +178,13 @@ TYPED_TEST(HashMaskTest, SetAndUnset) {
 
 TYPED_TEST(HashMaskTest, CopyConstruction) {
 	using MaskType = typename TestFixture::MaskType;
+	using AllocatorType = typename TestFixture::AllocatorType;
 
 	std::size_t size{1U};
 	this->mask_.reset(size);
 
 	this->mask_.set(0U);
-	koszy::collections::hash::mask::HashMask<MaskType> copy1{this->mask_};
+	koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> copy1{this->mask_};
 	for (std::size_t i{0U}; i != size; ++i) {
 		EXPECT_EQ(copy1.isSet(i), this->mask_.isSet(i));
 	}
@@ -171,7 +193,32 @@ TYPED_TEST(HashMaskTest, CopyConstruction) {
 	this->mask_.reset(size);
 
 	this->mask_.set(512U);
-	koszy::collections::hash::mask::HashMask<MaskType> copy2{this->mask_};
+	koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> copy2{this->mask_};
+	for (std::size_t i{0U}; i != size; ++i) {
+		EXPECT_EQ(copy2.isSet(i), this->mask_.isSet(i));
+	}
+}
+
+TYPED_TEST(HashMaskTest, CopyAssignment) {
+	using MaskType = typename TestFixture::MaskType;
+	using AllocatorType = typename TestFixture::AllocatorType;
+
+	std::size_t size{1U};
+	this->mask_.reset(size);
+
+	this->mask_.set(0U);
+	koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> copy1{};
+	copy1 = this->mask_;
+	for (std::size_t i{0U}; i != size; ++i) {
+		EXPECT_EQ(copy1.isSet(i), this->mask_.isSet(i));
+	}
+
+	size = 1024U;
+	this->mask_.reset(size);
+
+	this->mask_.set(512U);
+	koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> copy2{};
+	copy2 = this->mask_;
 	for (std::size_t i{0U}; i != size; ++i) {
 		EXPECT_EQ(copy2.isSet(i), this->mask_.isSet(i));
 	}

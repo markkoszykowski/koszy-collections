@@ -38,19 +38,19 @@ namespace koszy::collections::hash {
 
 	template<typename T, typename A, typename M, typename MA>
 	struct HashDeleter {
-		std::reference_wrapper<A> allocator_;
-		std::reference_wrapper<const mask::HashMask<M, MA>> mask_;
-		std::size_t size_;
+		std::reference_wrapper<A> allocator;
+		std::reference_wrapper<const mask::HashMask<M, MA>> mask;
+		std::size_t size;
 
-		HashDeleter(A& allocator, const mask::HashMask<M, MA>& mask, const std::size_t n) : allocator_{allocator}, mask_{mask}, size_{n} {}
+		HashDeleter(A& allocator, const mask::HashMask<M, MA>& mask, const std::size_t n) : allocator{allocator}, mask{mask}, size{n} {}
 
 		void operator()(T* pointer) {
-			for (std::size_t i{0U}; i != this->size_; ++i) {
-				if (this->mask_.get().isSet(i)) {
-					std::allocator_traits<A>::destroy(this->allocator_.get(), std::addressof(pointer[i]));
+			for (std::size_t i{0U}; i != this->size; ++i) {
+				if (this->mask.get().isSet(i)) {
+					std::allocator_traits<A>::destroy(this->allocator.get(), std::addressof(pointer[i]));
 				}
 			}
-			std::allocator_traits<A>::deallocate(this->allocator_.get(), pointer, this->size_);
+			std::allocator_traits<A>::deallocate(this->allocator.get(), pointer, this->size);
 		}
 	};
 }

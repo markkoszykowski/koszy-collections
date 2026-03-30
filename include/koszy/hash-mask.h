@@ -40,16 +40,16 @@ namespace koszy::collections::hash::mask {
 
 	template<typename T, typename A>
 	struct Deleter {
-		std::reference_wrapper<A> allocator_;
-		std::size_t size_;
+		std::reference_wrapper<A> allocator;
+		std::size_t size;
 
-		Deleter(A& allocator, const std::size_t n) : allocator_{allocator}, size_{n} {}
+		Deleter(A& allocator, const std::size_t n) : allocator{allocator}, size{n} {}
 
 		void operator()(T* const pointer) {
-			for (std::size_t i{0U}; i != this->size_; ++i) {
-				std::allocator_traits<A>::destroy(this->allocator_.get(), std::addressof(pointer[i]));
+			for (std::size_t i{0U}; i != this->size; ++i) {
+				std::allocator_traits<A>::destroy(this->allocator.get(), std::addressof(pointer[i]));
 			}
-			std::allocator_traits<A>::deallocate(this->allocator_.get(), pointer, this->size_);
+			std::allocator_traits<A>::deallocate(this->allocator.get(), pointer, this->size);
 		}
 	};
 
@@ -83,7 +83,7 @@ namespace koszy::collections::hash::mask {
 				Overloaded{
 					[](const StaticMask& other) -> std::variant<StaticMask, DynamicMask> { return std::variant<StaticMask, DynamicMask>{StaticMask{other}}; },
 					[&allocator](const DynamicMask& other) -> std::variant<StaticMask, DynamicMask> {
-						const std::size_t size{other.get_deleter().size_};
+						const std::size_t size{other.get_deleter().size};
 						T* const mask{std::allocator_traits<A>::allocate(allocator, size)};
 						for (std::size_t i{0U}; i != size; ++i) {
 							std::allocator_traits<A>::construct(allocator, std::addressof(mask[i]), other[i]);
@@ -96,12 +96,12 @@ namespace koszy::collections::hash::mask {
 		}
 
 		template<bool Move>
-		static std::variant<StaticMask, DynamicMask> moveMask(A& allocator, const std::variant<StaticMask, DynamicMask>& other) {
+		static std::variant<StaticMask, DynamicMask> moveMask(A& allocator, std::variant<StaticMask, DynamicMask>&& other) {
 			return std::visit(
 				Overloaded{
-					[](const StaticMask& other) -> std::variant<StaticMask, DynamicMask> { return std::variant<StaticMask, DynamicMask>{StaticMask{std::move(other)}}; },
-					[&allocator](const DynamicMask& other) -> std::variant<StaticMask, DynamicMask> {
-						const std::size_t size{other.get_deleter().size_};
+					[](StaticMask&& other) -> std::variant<StaticMask, DynamicMask> { return std::variant<StaticMask, DynamicMask>{StaticMask{std::move(other)}}; },
+					[&allocator](DynamicMask&& other) -> std::variant<StaticMask, DynamicMask> {
+						const std::size_t size{other.get_deleter().size};
 						if constexpr (Move) {
 							return std::variant<StaticMask, DynamicMask>{DynamicMask{other.release(), Deleter<T, A>{allocator, size}}};
 						} else {
@@ -113,7 +113,7 @@ namespace koszy::collections::hash::mask {
 						}
 					}
 				},
-				other
+				std::move(other)
 			);
 		}
 
@@ -128,7 +128,7 @@ namespace koszy::collections::hash::mask {
 
 			HashMask(const HashMask& other) : allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, mask_{copyMask(this->allocator_, other.mask_)} {}
 
-			HashMask(HashMask&&) = default;
+			HashMask(HashMask&& other) : allocator_{std::move(other.allocator_)}, mask_{moveMask<true>(this->allocator_, std::move(other.mask_))} {}
 
 
 			HashMask& operator=(const HashMask& other) {
@@ -146,13 +146,9 @@ namespace koszy::collections::hash::mask {
 				if constexpr (std::allocator_traits<A>::propagate_on_container_move_assignment::value) {
 					std::destroy_at(std::addressof(this->mask_));
 					this->allocator_ = std::move(other.allocator_);
-					std::construct_at(std::addressof(this->mask_), moveMask<true>(this->allocator_, other.mask_));
+					std::construct_at(std::addressof(this->mask_), moveMask<true>(this->allocator_, std::move(other.mask_)));
 				} else {
-					if (this->allocator_ == other.allocator_) {
-						this->mask_ = moveMask<true>(this->allocator_, other.mask_);
-					} else {
-						this->mask_ = moveMask<false>(this->allocator_, other.mask_);
-					}
+					this->mask_ = moveMask<std::allocator_traits<A>::is_always_equal::value>(this->allocator_, std::move(other.mask_));
 				}
 				return *this;
 			}

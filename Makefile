@@ -45,7 +45,7 @@ $(TEST): $(SRCOBJS) $(TESTOBJS) $(TESTOBJ)
 
 $(TESTDIR)/%.o: ./test/%.cc
 	@mkdir -p $(@D)
-	$(CXX) -c $(CXXFLAGS) $(INCLUDES) -o $@ $<
+	$(CXX) -c $(CXXFLAGS) $(INCLUDES) -iquote. -o $@ $<
 
 $(SRCDIR)/%.o: ./src/%.cc
 	@mkdir -p $(@D)
