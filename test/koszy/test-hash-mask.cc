@@ -121,7 +121,8 @@ class HashMaskTest : public testing::Test {
 		using MaskType = std::tuple_element_t<0, T>;
 		using AllocatorType = std::tuple_element_t<1, T>;
 
-		koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> mask_;
+		AllocatorType allocator_{};
+		koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> mask_{this->allocator_};
 };
 
 
@@ -207,7 +208,7 @@ TYPED_TEST(HashMaskTest, CopyAssignment) {
 	this->mask_.reset(size);
 
 	this->mask_.set(0U);
-	koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> copy1{};
+	koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> copy1{this->allocator_};
 	copy1 = this->mask_;
 	for (std::size_t i{0U}; i != size; ++i) {
 		EXPECT_EQ(copy1.isSet(i), this->mask_.isSet(i));
@@ -217,7 +218,7 @@ TYPED_TEST(HashMaskTest, CopyAssignment) {
 	this->mask_.reset(size);
 
 	this->mask_.set(512U);
-	koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> copy2{};
+	koszy::collections::hash::mask::HashMask<MaskType, AllocatorType> copy2{this->allocator_};
 	copy2 = this->mask_;
 	for (std::size_t i{0U}; i != size; ++i) {
 		EXPECT_EQ(copy2.isSet(i), this->mask_.isSet(i));
