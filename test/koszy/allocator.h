@@ -4,16 +4,18 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <source_location>
 #include <unordered_map>
+#include <utility>
 
 
 namespace koszy::collections {
 	namespace {
-		std::mutex globalMutex{};
-		std::atomic<int> globalId{0};
-		std::unordered_map<void*, int> globalBlocks{};
+		std::mutex GLOBAL_MUTEX{};
+		std::atomic<int> GLOBAL_ID{0};
+		std::unordered_map<void*, int> GLOBAL_BLOCKS{};
 	}
 
 	template<typename T>
@@ -23,49 +25,70 @@ namespace koszy::collections {
 		using propagate_on_container_move_assignment = std::true_type;
 		using is_always_equal = std::false_type;
 
+
 		std::allocator<T> allocator;
-		int id;
-
-		StatefulAllocator() : allocator{}, id{++globalId} {}
-
-		StatefulAllocator(const StatefulAllocator&) : allocator{}, id{++globalId} {}
-
-		StatefulAllocator(StatefulAllocator&& other) = default;
+		std::optional<int> id;
 
 
-		StatefulAllocator& operator=(const StatefulAllocator&) {
-			std::lock_guard<std::mutex> lock{globalMutex};
+		static std::optional<int> copy(const StatefulAllocator& allocator) {
+			if (!allocator.id.has_value()) {
+				throw std::logic_error{std::source_location::current().function_name()};
+			}
+			return std::make_optional(++GLOBAL_ID);
+		}
 
-			for (const std::pair<void* const, int>& pair: globalBlocks) {
-				if (pair.second == this->id) {
+		static std::optional<int> move(StatefulAllocator&& allocator) {
+			if (!allocator.id.has_value()) {
+				throw std::logic_error{std::source_location::current().function_name()};
+			}
+			return std::exchange(allocator.id, std::nullopt);
+		}
+
+		static void empty(const StatefulAllocator& allocator) {
+			if (!allocator.id.has_value()) {
+				throw std::logic_error{std::source_location::current().function_name()};
+			}
+
+			std::lock_guard<std::mutex> lock{GLOBAL_MUTEX};
+
+			for (const std::pair<void* const, int>& pair: GLOBAL_BLOCKS) {
+				if (pair.second == allocator.id.value()) {
 					throw std::logic_error{std::source_location::current().function_name()};
 				}
 			}
+		}
 
-			this->id = ++globalId;
 
+		StatefulAllocator() : allocator{}, id{std::make_optional(++GLOBAL_ID)} {}
+
+		StatefulAllocator(const StatefulAllocator& other) : allocator{}, id{copy(other)} {}
+
+		StatefulAllocator(StatefulAllocator&& other) : allocator{}, id{move(std::move(other))} {};
+
+		StatefulAllocator& operator=(const StatefulAllocator& other) {
+			empty(*this);
+			this->id = copy(other);
 			return *this;
 		}
 
-		StatefulAllocator& operator=(StatefulAllocator&& other) = default;
-
+		StatefulAllocator& operator=(StatefulAllocator&& other) {
+			empty(*this);
+			this->id = move(std::move(other));
+			return *this;
+		}
 
 		~StatefulAllocator() {
-			std::lock_guard<std::mutex> lock{globalMutex};
-
-			for (const std::pair<void* const, int>& pair: globalBlocks) {
-				if (pair.second == this->id) {
-					throw std::logic_error{std::source_location::current().function_name()};
-				}
+			if (this->id.has_value()) {
+				empty(*this);
 			}
 		}
 
 
 		T* allocate(const std::size_t n) {
-			std::lock_guard<std::mutex> lock{globalMutex};
+			std::lock_guard<std::mutex> lock{GLOBAL_MUTEX};
 
 			T* const block{std::allocator_traits<std::allocator<T>>::allocate(this->allocator, n)};
-			if (!globalBlocks.insert(std::make_pair(static_cast<void*>(block), this->id)).second) {
+			if (!GLOBAL_BLOCKS.insert(std::make_pair(static_cast<void*>(block), this->id.value())).second) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 
@@ -73,9 +96,9 @@ namespace koszy::collections {
 		}
 
 		void deallocate(T* const pointer, const std::size_t n) {
-			std::lock_guard<std::mutex> lock{globalMutex};
+			std::lock_guard<std::mutex> lock{GLOBAL_MUTEX};
 
-			if (globalBlocks.extract(static_cast<void*>(pointer)).mapped() != this->id) {
+			if (GLOBAL_BLOCKS.extract(static_cast<void*>(pointer)).mapped() != this->id.value()) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 			std::allocator_traits<std::allocator<T>>::deallocate(this->allocator, pointer, n);
