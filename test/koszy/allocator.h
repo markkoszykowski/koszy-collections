@@ -23,6 +23,7 @@ namespace koszy::collections {
 		using value_type = T;
 		using propagate_on_container_copy_assignment = std::true_type;
 		using propagate_on_container_move_assignment = std::true_type;
+		using propagate_on_container_swap = std::true_type;
 		using is_always_equal = std::false_type;
 
 
@@ -32,29 +33,21 @@ namespace koszy::collections {
 
 
 		static std::optional<int> copy(const StatefulAllocator& allocator) {
-			if (!allocator.id.has_value()) {
-				throw std::logic_error{std::source_location::current().function_name()};
-			}
 			return std::make_optional(++allocator.resources->id);
 		}
 
 		static std::optional<int> move(StatefulAllocator&& allocator) {
-			if (!allocator.id.has_value()) {
-				throw std::logic_error{std::source_location::current().function_name()};
-			}
 			return std::exchange(allocator.id, std::nullopt);
 		}
 
 		static void empty(const StatefulAllocator& allocator) {
-			if (!allocator.id.has_value()) {
-				throw std::logic_error{std::source_location::current().function_name()};
-			}
+			if (allocator.id.has_value()) {
+				std::lock_guard<std::mutex> lock{allocator.resources->lock};
 
-			std::lock_guard<std::mutex> lock{allocator.resources->lock};
-
-			for (const std::pair<void* const, int>& pair: allocator.resources->blocks) {
-				if (pair.second == allocator.id.value()) {
-					throw std::logic_error{std::source_location::current().function_name()};
+				for (const std::pair<void* const, int>& pair: allocator.resources->blocks) {
+					if (pair.second == allocator.id.value()) {
+						throw std::logic_error{std::source_location::current().function_name()};
+					}
 				}
 			}
 		}
@@ -64,7 +57,7 @@ namespace koszy::collections {
 
 		StatefulAllocator(const StatefulAllocator& other) : allocator{}, resources{other.resources}, id{copy(other)} {}
 
-		StatefulAllocator(StatefulAllocator&& other) : allocator{}, resources{std::move(other.resources)}, id{move(std::move(other))} {};
+		StatefulAllocator(StatefulAllocator&& other) noexcept : allocator{}, resources{std::move(other.resources)}, id{move(std::move(other))} {};
 
 		StatefulAllocator& operator=(const StatefulAllocator& other) {
 			empty(*this);
@@ -73,7 +66,7 @@ namespace koszy::collections {
 			return *this;
 		}
 
-		StatefulAllocator& operator=(StatefulAllocator&& other) {
+		StatefulAllocator& operator=(StatefulAllocator&& other) noexcept {
 			empty(*this);
 			this->resources = std::move(other.resources);
 			this->id = move(std::move(other));
@@ -81,9 +74,7 @@ namespace koszy::collections {
 		}
 
 		~StatefulAllocator() {
-			if (this->id.has_value()) {
-				empty(*this);
-			}
+			empty(*this);
 		}
 
 
