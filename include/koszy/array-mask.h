@@ -1,5 +1,5 @@
-#ifndef HASH_MASK_H
-#define HASH_MASK_H
+#ifndef ARRAY_MASK_H
+#define ARRAY_MASK_H
 
 #include <algorithm>
 #include <array>
@@ -11,7 +11,7 @@
 #include <utility>
 #include <variant>
 
-namespace koszy::collections::hash::mask {
+namespace koszy::collections::mask {
 	template<typename T> requires std::integral<T>
 	consteval std::size_t bits() {
 		return static_cast<std::size_t>(std::numeric_limits<T>::digits);
@@ -61,7 +61,7 @@ namespace koszy::collections::hash::mask {
 	};
 
 	template<MaskType T, typename A=std::allocator<T>>
-	class HashMask {
+	class ArrayMask {
 		using allocator_type = A;
 		using value_type = T;
 
@@ -127,20 +127,20 @@ namespace koszy::collections::hash::mask {
 		}
 
 		public:
-			constexpr HashMask() : allocator_{}, mask_{makeMask(this->allocator_, 0U)} {}
+			constexpr ArrayMask() : allocator_{}, mask_{makeMask(this->allocator_, 0U)} {}
 
-			constexpr HashMask(const std::size_t n) : allocator_{}, mask_{makeMask(this->allocator_, n)} {}
+			constexpr ArrayMask(const std::size_t n) : allocator_{}, mask_{makeMask(this->allocator_, n)} {}
 
-			constexpr HashMask(const A& allocator) : allocator_{allocator}, mask_{makeMask(this->allocator_, 0U)} {}
+			constexpr ArrayMask(const A& allocator) : allocator_{allocator}, mask_{makeMask(this->allocator_, 0U)} {}
 
-			constexpr HashMask(const std::size_t n, const A& allocator) : allocator_{allocator}, mask_{makeMask(this->allocator_, n)} {}
+			constexpr ArrayMask(const std::size_t n, const A& allocator) : allocator_{allocator}, mask_{makeMask(this->allocator_, n)} {}
 
-			constexpr HashMask(const HashMask& other) : allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, mask_{copyMask(this->allocator_, other.mask_)} {}
+			constexpr ArrayMask(const ArrayMask& other) : allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, mask_{copyMask(this->allocator_, other.mask_)} {}
 
-			constexpr HashMask(HashMask&& other) noexcept : allocator_{std::move(other.allocator_)}, mask_{moveMask<true>(this->allocator_, std::move(other.mask_))} {}
+			constexpr ArrayMask(ArrayMask&& other) noexcept : allocator_{std::move(other.allocator_)}, mask_{moveMask<true>(this->allocator_, std::move(other.mask_))} {}
 
 
-			constexpr HashMask& operator=(const HashMask& other) {
+			constexpr ArrayMask& operator=(const ArrayMask& other) {
 				if constexpr (std::allocator_traits<A>::propagate_on_container_copy_assignment::value) {
 					std::destroy_at(std::addressof(this->mask_));
 					this->allocator_ = other.allocator_;
@@ -151,7 +151,7 @@ namespace koszy::collections::hash::mask {
 				return *this;
 			}
 
-			constexpr HashMask& operator=(HashMask&& other) noexcept {
+			constexpr ArrayMask& operator=(ArrayMask&& other) noexcept {
 				if constexpr (std::allocator_traits<A>::propagate_on_container_move_assignment::value) {
 					std::destroy_at(std::addressof(this->mask_));
 					this->allocator_ = std::move(other.allocator_);
@@ -163,10 +163,10 @@ namespace koszy::collections::hash::mask {
 			}
 
 
-			constexpr ~HashMask() = default;
+			constexpr ~ArrayMask() = default;
 
 
-			constexpr friend void swap(HashMask<T, A>& a, HashMask<T, A>& b) noexcept {
+			constexpr friend void swap(ArrayMask<T, A>& a, ArrayMask<T, A>& b) noexcept {
 				using std::swap;
 				std::visit(
 					Visitor{
@@ -287,4 +287,4 @@ namespace koszy::collections::hash::mask {
 	};
 }
 
-#endif // HASH_MASK_H
+#endif // ARRAY_MASK_H

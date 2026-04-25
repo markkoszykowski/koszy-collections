@@ -11,7 +11,12 @@ int main(int argc, char** argv) {
 	// std::cout << map.bucket_count() << std::endl;
 	// std::cout << (map.max_load_factor() * map.bucket_count()) << std::endl;
 
-	koszy::collections::hash::OpenHashMap<std::string, std::string> map2{};
+	std::unordered_map<int, int> map1{};
+	// std::unordered_map<int, int> map2{};
+
+	// std::swap(map1, map2);
+
+	// koszy::collections::hash::OpenHashMap<std::string, std::string> map2{};
 	// std::cout.imbue(std::locale("en_US.UTF-8"));
 	// std::cout << sizeof(std::string{}) << std::endl;
 	// std::cout << sizeof(map2) << std::endl;
