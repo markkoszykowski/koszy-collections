@@ -139,88 +139,89 @@ using ArrayMaskTypes = testing::Types<
 	std::pair<std::uint16_t, koszy::collections::StatefulAllocator<std::uint16_t>>,
 	std::pair<std::uint32_t, koszy::collections::StatefulAllocator<std::uint32_t>>,
 	std::pair<std::uint64_t, koszy::collections::StatefulAllocator<std::uint64_t>>,
-	std::pair<std::uintmax_t, koszy::collections::StatefulAllocator<std::uintmax_t>>
+	std::pair<std::uintmax_t, koszy::collections::StatefulAllocator<std::uintmax_t>>,
+
+	std::pair<bool, koszy::collections::PropagatingStatefulAllocator<bool>>,
+	std::pair<std::uint8_t, koszy::collections::PropagatingStatefulAllocator<std::uint8_t>>,
+	std::pair<std::uint16_t, koszy::collections::PropagatingStatefulAllocator<std::uint16_t>>,
+	std::pair<std::uint32_t, koszy::collections::PropagatingStatefulAllocator<std::uint32_t>>,
+	std::pair<std::uint64_t, koszy::collections::PropagatingStatefulAllocator<std::uint64_t>>,
+	std::pair<std::uintmax_t, koszy::collections::PropagatingStatefulAllocator<std::uintmax_t>>
 >;
 
 TYPED_TEST_SUITE(ArrayMaskTest, ArrayMaskTypes);
 TYPED_TEST(ArrayMaskTest, SetAndUnset) {
-	std::size_t size{1U};
-	this->mask_.reset(size);
+	auto test{
+		[&](const std::size_t size, const std::size_t set) {
+			this->mask_.reset(size);
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(this->mask_.isSet(i), false);
+			}
+			this->mask_.set(set);
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(this->mask_.isSet(i), i == set);
+			}
+			this->mask_.unset(set);
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(this->mask_.isSet(i), false);
+			}
+		}
+	};
 
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(this->mask_.isSet(i), false);
-	}
-	this->mask_.set(0U);
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(this->mask_.isSet(i), i == 0U);
-	}
-	this->mask_.unset(0U);
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(this->mask_.isSet(i), false);
-	}
-	this->mask_.set(0U);
-
-	size = 1024U;
-	this->mask_.reset(size);
-
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(this->mask_.isSet(i), false);
-	}
-	this->mask_.set(512U);
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(this->mask_.isSet(i), i == 512U);
-	}
-	this->mask_.unset(512U);
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(this->mask_.isSet(i), false);
-	}
-	this->mask_.set(512U);
+	test(1U, 0U);
+	test(1024U, 512U);
 }
 
-TYPED_TEST(ArrayMaskTest, CopyConstruction) {
+TYPED_TEST(ArrayMaskTest, CopyMoveConstruction) {
 	using MaskType = typename TestFixture::MaskType;
 	using AllocatorType = typename TestFixture::AllocatorType;
 
-	std::size_t size{1U};
-	this->mask_.reset(size);
+	auto test{
+		[&](const std::size_t size, const std::size_t set) {
+			this->mask_.reset(size);
+			this->mask_.set(set);
+			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> copy{this->mask_};
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(copy.isSet(i), this->mask_.isSet(i));
+			}
+			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> move{std::move(copy)};
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(move.isSet(i), this->mask_.isSet(i));
+			}
+		}
+	};
 
-	this->mask_.set(0U);
-	koszy::collections::mask::ArrayMask<MaskType, AllocatorType> copy1{this->mask_};
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(copy1.isSet(i), this->mask_.isSet(i));
-	}
-
-	size = 1024U;
-	this->mask_.reset(size);
-
-	this->mask_.set(512U);
-	koszy::collections::mask::ArrayMask<MaskType, AllocatorType> copy2{this->mask_};
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(copy2.isSet(i), this->mask_.isSet(i));
-	}
+	test(1U, 0U);
+	test(1024U, 512U);
 }
 
-TYPED_TEST(ArrayMaskTest, CopyAssignment) {
+TYPED_TEST(ArrayMaskTest, CopyMoveAssignment) {
 	using MaskType = typename TestFixture::MaskType;
 	using AllocatorType = typename TestFixture::AllocatorType;
 
-	std::size_t size{1U};
-	this->mask_.reset(size);
+	auto testSize{
+		[&](const std::size_t initial, const std::size_t size) {
+			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> copy{initial, this->allocator_};
+			copy = this->mask_;
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(copy.isSet(i), this->mask_.isSet(i));
+			}
+			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> move{initial, this->allocator_};
+			move = std::move(copy);
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(move.isSet(i), this->mask_.isSet(i));
+			}
+		}
+	};
+	auto test{
+		[&](const std::size_t size, const std::size_t set) {
+			this->mask_.reset(size);
+			this->mask_.set(set);
+			testSize(size, size);
+			testSize(size + 1U, size);
+		}
+	};
 
-	this->mask_.set(0U);
-	koszy::collections::mask::ArrayMask<MaskType, AllocatorType> copy1{this->allocator_};
-	copy1 = this->mask_;
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(copy1.isSet(i), this->mask_.isSet(i));
-	}
-
-	size = 1024U;
-	this->mask_.reset(size);
-
-	this->mask_.set(512U);
-	koszy::collections::mask::ArrayMask<MaskType, AllocatorType> copy2{this->allocator_};
-	copy2 = this->mask_;
-	for (std::size_t i{0U}; i != size; ++i) {
-		EXPECT_EQ(copy2.isSet(i), this->mask_.isSet(i));
-	}
+	test(1U, 0U);
+	test(1024U, 512U);
 }
