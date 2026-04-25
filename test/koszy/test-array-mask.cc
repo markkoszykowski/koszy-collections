@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -224,4 +225,51 @@ TYPED_TEST(ArrayMaskTest, CopyMoveAssignment) {
 
 	test(1U, 0U);
 	test(1024U, 512U);
+}
+
+
+TYPED_TEST(ArrayMaskTest, SwapTest) {
+	using MaskType = typename TestFixture::MaskType;
+	using AllocatorType = typename TestFixture::AllocatorType;
+
+	auto test{
+		[&](const std::size_t leftSize, const std::size_t leftSet, const std::size_t rightSize, const std::size_t rightSet) {
+			using std::swap;
+
+			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> left{leftSize, this->allocator_};
+			left.set(leftSet);
+
+			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> right{rightSize, this->allocator_};
+			right.set(rightSet);
+
+			for (std::size_t i{0U}; i != leftSize; ++i) {
+				EXPECT_EQ(left.isSet(i), i == leftSet);
+			}
+			for (std::size_t i{0U}; i != rightSize; ++i) {
+				EXPECT_EQ(right.isSet(i), i == rightSet);
+			}
+
+			swap(left, right);
+
+			for (std::size_t i{0U}; i != leftSize; ++i) {
+				EXPECT_EQ(right.isSet(i), i == leftSet);
+			}
+			for (std::size_t i{0U}; i != rightSize; ++i) {
+				EXPECT_EQ(left.isSet(i), i == rightSet);
+			}
+
+			swap(left, right);
+
+			for (std::size_t i{0U}; i != leftSize; ++i) {
+				EXPECT_EQ(left.isSet(i), i == leftSet);
+			}
+			for (std::size_t i{0U}; i != rightSize; ++i) {
+				EXPECT_EQ(right.isSet(i), i == rightSet);
+			}
+		}
+	};
+
+	test(2U, 0U, 2U, 1U);
+	test(1024U, 128U, 1024U, 256U);
+	test(1U, 0U, 1024U, 512U);
 }
