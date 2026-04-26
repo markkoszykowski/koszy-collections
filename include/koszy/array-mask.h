@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cstdint>
 #include <concepts>
 #include <functional>
 #include <limits>
@@ -11,9 +12,9 @@
 #include <utility>
 #include <variant>
 
-namespace koszy::collections::mask {
-	constexpr static std::size_t ONE{1U};
+#include "koszy/common.h"
 
+namespace koszy::collections::mask {
 	template<typename T> requires std::integral<T>
 	consteval std::size_t bits() {
 		return static_cast<std::size_t>(std::numeric_limits<T>::digits);
@@ -50,16 +51,11 @@ namespace koszy::collections::mask {
 		Deleter(A& allocator, const std::size_t n) : allocator{allocator}, size{n} {}
 
 		constexpr void operator()(T* const pointer) {
-			for (std::size_t i{0U}; i != this->size; ++i) {
+			for (std::size_t i{ZERO}; i != this->size; ++i) {
 				std::allocator_traits<A>::destroy(this->allocator.get(), std::addressof(pointer[i]));
 			}
 			std::allocator_traits<A>::deallocate(this->allocator.get(), pointer, this->size);
 		}
-	};
-
-	template<typename... Ts>
-	struct Visitor : Ts... {
-		using Ts::operator()...;
 	};
 
 	template<MaskType T, typename A=std::allocator<T>>
@@ -67,6 +63,7 @@ namespace koszy::collections::mask {
 		using allocator_type = A;
 		using value_type = T;
 
+		constexpr static T ZERO_T{0U};
 		constexpr static T ONE_T{1U};
 
 		using DynamicMask = std::unique_ptr<T[], Deleter<T, A>>;
@@ -81,8 +78,8 @@ namespace koszy::collections::mask {
 				return std::variant<StaticMask, DynamicMask>{StaticMask{}};
 			} else {
 				T* const mask{std::allocator_traits<A>::allocate(allocator, size)};
-				for (std::size_t i{0U}; i != size; ++i) {
-					std::allocator_traits<A>::construct(allocator, std::addressof(mask[i]));
+				for (std::size_t i{ZERO}; i != size; ++i) {
+					std::allocator_traits<A>::construct(allocator, std::addressof(mask[i]), ZERO_T);
 				}
 				return std::variant<StaticMask, DynamicMask>{DynamicMask{mask, Deleter<T, A>{allocator, size}}};
 			}
@@ -96,7 +93,7 @@ namespace koszy::collections::mask {
 		constexpr static std::variant<StaticMask, DynamicMask> copyMask(A& allocator, const DynamicMask& other) {
 			const std::size_t size{other.get_deleter().size};
 			T* const mask{std::allocator_traits<A>::allocate(allocator, size)};
-			for (std::size_t i{0U}; i != size; ++i) {
+			for (std::size_t i{ZERO}; i != size; ++i) {
 				std::allocator_traits<A>::construct(allocator, std::addressof(mask[i]), other[i]);
 			}
 			return std::variant<StaticMask, DynamicMask>{DynamicMask{mask, Deleter<T, A>{allocator, size}}};
@@ -119,7 +116,7 @@ namespace koszy::collections::mask {
 			} else {
 				const std::size_t size{other.get_deleter().size};
 				T* const mask{std::allocator_traits<A>::allocate(allocator, size)};
-				for (std::size_t i{0U}; i != size; ++i) {
+				for (std::size_t i{ZERO}; i != size; ++i) {
 					std::allocator_traits<A>::construct(allocator, std::addressof(mask[i]), std::move(other[i]));
 				}
 				return std::variant<StaticMask, DynamicMask>{DynamicMask{mask, Deleter<T, A>{allocator, size}}};
@@ -132,20 +129,20 @@ namespace koszy::collections::mask {
 		}
 
 		public:
-			constexpr ArrayMask() : allocator_{}, mask_{makeMask(this->allocator_, 0U)} {}
+			constexpr ArrayMask() : allocator_{}, mask_{makeMask(this->allocator_, ZERO)} {}
 
 			constexpr ArrayMask(const std::size_t n) : allocator_{}, mask_{makeMask(this->allocator_, n)} {}
 
-			constexpr ArrayMask(const A& allocator) : allocator_{allocator}, mask_{makeMask(this->allocator_, 0U)} {}
+			constexpr ArrayMask(const A& allocator) : allocator_{allocator}, mask_{makeMask(this->allocator_, ZERO)} {}
 
 			constexpr ArrayMask(const std::size_t n, const A& allocator) : allocator_{allocator}, mask_{makeMask(this->allocator_, n)} {}
 
-			constexpr ArrayMask(const ArrayMask& other) : allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, mask_{copyMask(this->allocator_, other.mask_)} {}
+			constexpr ArrayMask(const ArrayMask<T, A>& other) : allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, mask_{copyMask(this->allocator_, other.mask_)} {}
 
-			constexpr ArrayMask(ArrayMask&& other) noexcept : allocator_{std::move(other.allocator_)}, mask_{moveMask<true>(this->allocator_, std::move(other.mask_))} {}
+			constexpr ArrayMask(ArrayMask<T, A>&& other) noexcept : allocator_{std::move(other.allocator_)}, mask_{moveMask<true>(this->allocator_, std::move(other.mask_))} {}
 
 
-			constexpr ArrayMask& operator=(const ArrayMask& other) {
+			constexpr ArrayMask<T, A>& operator=(const ArrayMask<T, A>& other) {
 				std::visit(
 					Visitor{
 						[&](StaticMask&, const StaticMask& otherMask) {
@@ -178,7 +175,7 @@ namespace koszy::collections::mask {
 								const std::size_t thisSize{thisMask.get_deleter().size};
 								const std::size_t otherSize{otherMask.get_deleter().size};
 								if (const std::size_t size{thisSize}; thisSize == otherSize) {
-									for (std::size_t i{0U}; i != size; ++i) {
+									for (std::size_t i{ZERO}; i != size; ++i) {
 										thisMask[i] = otherMask[i];
 									}
 								} else {
@@ -192,7 +189,7 @@ namespace koszy::collections::mask {
 				return *this;
 			}
 
-			constexpr ArrayMask& operator=(ArrayMask&& other) noexcept {
+			constexpr ArrayMask<T, A>& operator=(ArrayMask<T, A>&& other) noexcept {
 				std::visit(
 					Visitor{
 						[&](StaticMask&, StaticMask&& otherMask) {
@@ -229,7 +226,7 @@ namespace koszy::collections::mask {
 								const std::size_t thisSize{thisMask.get_deleter().size};
 								const std::size_t otherSize{otherMask.get_deleter().size};
 								if (const std::size_t size{thisSize}; thisSize == otherSize) {
-									for (std::size_t i{0U}; i != size; ++i) {
+									for (std::size_t i{ZERO}; i != size; ++i) {
 										thisMask[i] = std::move(otherMask[i]);
 									}
 								} else {
@@ -272,7 +269,7 @@ namespace koszy::collections::mask {
 							} else {
 								const std::size_t size{bMask.get_deleter().size};
 								T* const temp{std::allocator_traits<A>::allocate(a.allocator_, size)};
-								for (std::size_t i{0U}; i != size; ++i) {
+								for (std::size_t i{ZERO}; i != size; ++i) {
 									std::allocator_traits<A>::construct(a.allocator_, std::addressof(temp[i]), std::move(bMask[i]));
 								}
 								b.mask_ = std::variant<StaticMask, DynamicMask>{StaticMask{std::move(aMask)}};
@@ -294,7 +291,7 @@ namespace koszy::collections::mask {
 							} else {
 								const std::size_t size{aMask.get_deleter().size};
 								T* const temp{std::allocator_traits<A>::allocate(b.allocator_, size)};
-								for (std::size_t i{0U}; i != size; ++i) {
+								for (std::size_t i{ZERO}; i != size; ++i) {
 									std::allocator_traits<A>::construct(b.allocator_, std::addressof(temp[i]), std::move(aMask[i]));
 								}
 								a.mask_ = std::variant<StaticMask, DynamicMask>{StaticMask{std::move(bMask)}};
@@ -321,13 +318,13 @@ namespace koszy::collections::mask {
 								const std::size_t aSize{aMask.get_deleter().size};
 								const std::size_t bSize{bMask.get_deleter().size};
 								if (const std::size_t size{aSize}; aSize == bSize) {
-									for (std::size_t i{0U}; i != size; ++i) {
+									for (std::size_t i{ZERO}; i != size; ++i) {
 										swap(aMask[i], bMask[i]);
 									}
 								} else {
 									T* const aTemp{std::allocator_traits<A>::allocate(b.allocator_, aSize)};
 									T* const bTemp{std::allocator_traits<A>::allocate(a.allocator_, bSize)};
-									for (std::size_t i{0U}; i != std::max(aSize, bSize); ++i) {
+									for (std::size_t i{ZERO}; i != std::max(aSize, bSize); ++i) {
 										if (i < aSize) {
 											std::allocator_traits<A>::construct(b.allocator_, std::addressof(aTemp[i]), std::move(aMask[i]));
 										}
@@ -350,16 +347,16 @@ namespace koszy::collections::mask {
 				return std::visit([n](const auto& mask) -> bool { return static_cast<bool>((mask[maskPos<T>(n)] >> maskBit<T>(n)) & ONE_T); }, this->mask_);
 			}
 
-			constexpr void set(const std::size_t n) {
-				std::visit([n](auto& mask) { mask[maskPos<T>(n)] |= (ONE_T << maskBit<T>(n)); }, this->mask_);
+			constexpr void set(const std::size_t i) {
+				std::visit([i](auto& mask) { mask[maskPos<T>(i)] |= (ONE_T << maskBit<T>(i)); }, this->mask_);
 			}
 
-			constexpr void unset(const std::size_t n) {
-				std::visit([n](auto& mask) { mask[maskPos<T>(n)] &= ~(ONE_T << maskBit<T>(n)); }, this->mask_);
+			constexpr void unset(const std::size_t i) {
+				std::visit([i](auto& mask) { mask[maskPos<T>(i)] &= ~(ONE_T << maskBit<T>(i)); }, this->mask_);
 			}
 
-			constexpr void reset(const std::size_t n) {
-				this->mask_ = makeMask(this->allocator_, n);
+			constexpr void reset(const std::size_t i) {
+				this->mask_ = makeMask(this->allocator_, i);
 			}
 
 		private:

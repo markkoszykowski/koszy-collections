@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "koszy/array-common.h"
+#include "koszy/common.h"
 
 
 // NextPowerOfTwo

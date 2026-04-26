@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "koszy/array-common.h"
+#include "koszy/common.h"
 #include "koszy/array-mask.h"
 
 namespace koszy::collections::hash {
