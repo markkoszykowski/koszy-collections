@@ -2,6 +2,7 @@
 #define ALLOCATOR_H
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -10,12 +11,11 @@
 #include <unordered_map>
 #include <utility>
 
-
 namespace koszy::collections {
 	struct Resources {
 		std::mutex lock;
 		std::atomic<int> id;
-		std::unordered_map<void*, int> blocks;
+		std::unordered_map<void*, std::pair<int, std::size_t>> blocks;
 	};
 
 	template<typename T>
@@ -37,8 +37,8 @@ namespace koszy::collections {
 			if (allocator.id.has_value()) {
 				std::lock_guard<std::mutex> lock{allocator.resources->lock};
 
-				for (const std::pair<void* const, int>& pair: allocator.resources->blocks) {
-					if (pair.second == allocator.id.value()) {
+				for (const std::pair<void* const, std::pair<int, std::size_t>>& pair: allocator.resources->blocks) {
+					if (pair.second.first == allocator.id.value()) {
 						throw std::logic_error{std::source_location::current().function_name()};
 					}
 				}
@@ -75,7 +75,7 @@ namespace koszy::collections {
 			std::lock_guard<std::mutex> lock{this->resources->lock};
 
 			T* const block{std::allocator_traits<std::allocator<T>>::allocate(this->allocator, n)};
-			if (!this->resources->blocks.insert(std::make_pair(static_cast<void*>(block), this->id.value())).second) {
+			if (!this->resources->blocks.insert(std::make_pair(static_cast<void*>(block), std::make_pair(this->id.value(), n))).second) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 
@@ -85,9 +85,11 @@ namespace koszy::collections {
 		void deallocate(T* const pointer, const std::size_t n) {
 			std::lock_guard<std::mutex> lock{this->resources->lock};
 
-			if (this->resources->blocks.extract(static_cast<void*>(pointer)).mapped() != this->id.value()) {
+			const std::pair<int, std::size_t> value{this->resources->blocks.extract(static_cast<void*>(pointer)).mapped()};
+			if (value.first != this->id.value() || value.second != n) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
+
 			std::allocator_traits<std::allocator<T>>::deallocate(this->allocator, pointer, n);
 		}
 	};

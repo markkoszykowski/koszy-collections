@@ -30,22 +30,31 @@ namespace koszy::collections::array {
 		}
 	};
 
+
 	template<typename T, typename A=std::allocator<T>, typename M=std::uintptr_t, typename MA=std::allocator<M>>
 	class DynamicArray {
 		using Mask = mask::ArrayMask<M, MA>;
 		using Array = std::unique_ptr<T[], Deleter<T, A, M, MA>>;
 
 
+		constexpr static Array makeArray(A& allocator, const Mask& mask) {
+			return Array{nullptr, Deleter<T, A, M, MA>{allocator, mask, ZERO}};
+		}
+
 		constexpr static Array makeArray(A& allocator, const Mask& mask, const std::size_t n) {
 			return Array{std::allocator_traits<A>::allocate(allocator, n), Deleter<T, A, M, MA>{allocator, mask, n}};
 		}
 
+		constexpr static Array copyArray(A& allocator, const Mask& mask, const std::size_t n) {
+			return Array{std::allocator_traits<A>::allocate(allocator, n), Deleter<T, A, M, MA>{allocator, mask, n}};
+		}
+
 		public:
-			constexpr DynamicArray() : mask_{}, allocator_{}, array_{nullptr, Deleter<T, A, M, MA>{this->mask_, this->allocator_, ZERO}}, size_{ZERO} {}
+			constexpr DynamicArray() : mask_{}, allocator_{}, array_{makeArray(this->mask_, this->allocator_)}, size_{ZERO} {}
 
 			constexpr DynamicArray(const std::size_t n) : mask_{n}, allocator_{}, array_{makeArray(this->mask_, this->allocator_, n)}, size_{ZERO} {}
 
-			constexpr DynamicArray(const A& allocator) : mask_{}, allocator_{allocator}, array_{nullptr, Deleter<T, A, M, MA>{this->mask_, this->allocator_, ZERO}}, size_{ZERO} {}
+			constexpr DynamicArray(const A& allocator) : mask_{}, allocator_{allocator}, array_{makeArray(this->mask_, this->allocator_)}, size_{ZERO} {}
 
 			constexpr DynamicArray(const DynamicArray<T, A, M, MA>& other) = delete;
 
@@ -64,8 +73,16 @@ namespace koszy::collections::array {
 				return this->array_.get_deleter().size;
 			}
 
+			[[nodiscard]] constexpr std::size_t empty() const {
+				return this->size_ == ZERO;
+			}
+
 			[[nodiscard]] constexpr std::size_t size() const {
 				return this->size_;
+			}
+
+			[[nodiscard]] constexpr std::size_t maxSize() const {
+				return MAX_POWER_OF_TWO;
 			}
 
 			[[nodiscard]] constexpr bool isSet(const std::size_t i) const {
@@ -88,4 +105,4 @@ namespace koszy::collections::array {
 	};
 }
 
-#endif //DYNAMIC_ARRAY_H
+#endif // DYNAMIC_ARRAY_H

@@ -9,6 +9,7 @@
 namespace koszy::collections {
 	constexpr static std::size_t ZERO{0U};
 	constexpr static std::size_t ONE{1U};
+	constexpr static std::size_t MAX_POWER_OF_TWO{ONE << (std::numeric_limits<std::size_t>::digits - 1)};
 
 	template<typename... Ts>
 	struct Visitor : Ts... {
@@ -16,7 +17,7 @@ namespace koszy::collections {
 	};
 
 	constexpr std::size_t nextPowerOfTwo(const std::size_t n) {
-		if (constexpr std::size_t max{ONE << (std::numeric_limits<std::size_t>::digits - 1)}; max < n) [[unlikely]] {
+		if (MAX_POWER_OF_TWO < n) [[unlikely]] {
 			throw std::invalid_argument{"n is larger than greatest power of two"};
 		}
 
