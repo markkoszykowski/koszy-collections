@@ -1,6 +1,7 @@
 #ifndef DYNAMIC_ARRAY_H
 #define DYNAMIC_ARRAY_H
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -10,89 +11,86 @@
 #include "koszy/array-mask.h"
 
 namespace koszy::collections::array {
-	template<typename T, typename A, typename M, typename MA>
-	struct Deleter {
-		using Mask = mask::ArrayMask<M, MA>;
-
-		std::reference_wrapper<const Mask> mask;
-		std::reference_wrapper<A> allocator;
-		std::size_t size;
-
-		constexpr Deleter(const Mask& mask, A& allocator, const std::size_t n) : mask{mask}, allocator{allocator}, size{n} {}
-
-		constexpr void operator()(T* const pointer) {
-			for (std::size_t i{ZERO}; i != this->size; ++i) {
-				if (this->mask.get().isSet(i)) {
-					std::allocator_traits<A>::destroy(this->allocator.get(), std::addressof(pointer[i]));
-				}
-			}
-			std::allocator_traits<A>::deallocate(this->allocator.get(), pointer, this->size);
-		}
-	};
-
-
 	template<typename T, typename A=std::allocator<T>, typename M=std::uintptr_t, typename MA=std::allocator<M>>
 	class DynamicArray {
 		using allocator_type = A;
 		using value_type = T;
 
 		using Mask = mask::ArrayMask<M, MA>;
-		using Array = std::unique_ptr<T[], Deleter<T, A, M, MA>>;
+
+		struct Deleter;
+		using Array = std::unique_ptr<T[], Deleter>;
 
 
-		constexpr static Array makeArray(const Mask& mask, A& allocator) {
-			return Array{nullptr, Deleter<T, A, M, MA>{mask, allocator, ZERO}};
+		constexpr static Array makeArray(DynamicArray<T, A, M, MA>& array) {
+			return Array{nullptr, Deleter{array, ZERO}};
 		}
 
-		constexpr static Array makeArray(const Mask& mask, A& allocator, const std::size_t n) {
-			return Array{std::allocator_traits<A>::allocate(allocator, n), Deleter<T, A, M, MA>{mask, allocator, n}};
+		constexpr static Array makeArray(DynamicArray<T, A, M, MA>& array, const std::size_t n) {
+			return Array{std::allocator_traits<A>::allocate(array.allocator_, n), Deleter{array, n}};
 		}
 
-		constexpr static Array copyArray(const Mask& mask, A& allocator, const Array& other) {
+		constexpr static Array copyArray(DynamicArray<T, A, M, MA>& array, const Array& other) {
 			if (other.get() == nullptr) {
-				return makeArray(mask, allocator);
+				return makeArray(array);
 			}
 			const std::size_t size{other.get_deleter().size};
-			T* const array{std::allocator_traits<A>::allocate(allocator, size)};
+			T* const pointer{std::allocator_traits<A>::allocate(array.allocator_, size)};
 			for (std::size_t i{ZERO}; i != size; ++i) {
-				if (mask.isSet(i)) {
-					std::allocator_traits<A>::construct(allocator, std::addressof(array[i]), other[i]);
+				if (array.mask_.isSet(i)) {
+					std::allocator_traits<A>::construct(array.allocator_, std::addressof(pointer[i]), other[i]);
 				}
 			}
-			return Array{array, Deleter<T, A, M, MA>{mask, allocator, size}};
+			return Array{pointer, Deleter{array, size}};
 		}
 
 		template<bool Move>
-		constexpr static Array moveArray(const Mask& mask, A& allocator, Array&& other) {
+		constexpr static Array moveArray(DynamicArray<T, A, M, MA>& array, Array&& other) {
 			if (other.get() == nullptr) {
-				return makeArray(mask, allocator);
+				return makeArray(array);
 			}
 			if constexpr (Move) {
-				return Array{other.release(), Deleter<T, A, M, MA>{allocator, mask, other.get_deleter().size}};
+				return Array{other.release(), Deleter{array, other.get_deleter().size}};
 			} else {
 				const std::size_t size{other.get_deleter().size};
-				T* const array{std::allocator_traits<A>::allocate(allocator, size)};
+				T* const pointer{std::allocator_traits<A>::allocate(array.allocator_, size)};
 				for (std::size_t i{ZERO}; i != size; ++i) {
-					if (mask.isSet(i)) {
-						std::allocator_traits<A>::construct(allocator, std::addressof(array[i]), other[i]);
+					if (array.mask_.isSet(i)) {
+						std::allocator_traits<A>::construct(array.allocator_, std::addressof(pointer[i]), other[i]);
 					}
 				}
-				return Array{array, Deleter<T, A, M, MA>{mask, allocator, size}};
+				return Array{pointer, Deleter{array, size}};
 			}
 		}
 
+		struct Deleter {
+			std::reference_wrapper<DynamicArray<T, A, M, MA>> array;
+			std::size_t size;
+
+			constexpr Deleter(DynamicArray<T, A, M, MA>& array, const std::size_t n) : array{array}, size{n} {}
+
+			constexpr void operator()(T* const pointer) {
+				for (std::size_t i{ZERO}; i != this->size; ++i) {
+					if (this->array.get().mask_.isSet(i)) {
+						std::allocator_traits<A>::destroy(this->array.get().allocator_, std::addressof(pointer[i]));
+					}
+				}
+				std::allocator_traits<A>::deallocate(this->array.get().allocator_, pointer, this->size);
+			}
+		};
+
 		public:
-			constexpr DynamicArray() : mask_{}, allocator_{}, array_{makeArray(this->mask_, this->allocator_)}, size_{ZERO} {}
+			constexpr DynamicArray() : allocator_{}, mask_{}, array_{makeArray(*this)}, size_{ZERO} {}
 
-			constexpr DynamicArray(const std::size_t n) : mask_{n}, allocator_{}, array_{makeArray(this->mask_, this->allocator_, n)}, size_{ZERO} {}
+			constexpr DynamicArray(const std::size_t n) : allocator_{}, mask_{n}, array_{makeArray(*this, n)}, size_{ZERO} {}
 
-			constexpr DynamicArray(const A& allocator) : mask_{}, allocator_{allocator}, array_{makeArray(this->mask_, this->allocator_)}, size_{ZERO} {}
+			constexpr DynamicArray(const A& allocator) : allocator_{allocator}, mask_{}, array_{makeArray(*this)}, size_{ZERO} {}
 
-			constexpr DynamicArray(const std::size_t n, const A& allocator) : mask_{}, allocator_{allocator}, array_{makeArray(this->mask_, this->allocator_, n)}, size_{ZERO} {}
+			constexpr DynamicArray(const std::size_t n, const A& allocator) : allocator_{allocator}, mask_{n}, array_{makeArray(*this, n)}, size_{ZERO} {}
 
-			constexpr DynamicArray(const DynamicArray<T, A, M, MA>& other) : mask_{other.mask_}, allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, array_{copyArray(this->mask_, this->allocator_, other.array_)}, size_{other.size_} {}
+			constexpr DynamicArray(const DynamicArray<T, A, M, MA>& other) : allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, mask_{other.mask_}, array_{copyArray(*this, other.array_)}, size_{other.size_} {}
 
-			constexpr DynamicArray(DynamicArray<T, A, M, MA>&& other) noexcept : mask_{std::move(other.mask_)}, allocator_{std::move(other.allocator_)}, array_{moveArray<true>(this->mask_, this->allocator_, std::move(other.array_))}, size_{other.size_} {}
+			constexpr DynamicArray(DynamicArray<T, A, M, MA>&& other) noexcept : allocator_{std::move(other.allocator_)}, mask_{std::move(other.mask_)}, array_{moveArray<true>(*this, std::move(other.array_))}, size_{other.size_} {}
 
 
 			constexpr DynamicArray<T, A, M, MA>& operator=(const DynamicArray<T, A, M, MA>& other) {
@@ -100,7 +98,7 @@ namespace koszy::collections::array {
 					this->array_.reset();
 					this->mask_ = other.mask_;
 					this->allocator_ = other.allocator_;
-					this->array_ = copyMask(this->mask_, this->allocator_, other.array_);
+					this->array_ = copyMask(*this, other.array_);
 				} else {
 					const std::size_t thisSize{this->array_.get_deleter().size};
 					const std::size_t otherSize{other.array_.get_deleter().size};
@@ -124,7 +122,7 @@ namespace koszy::collections::array {
 					} else {
 						this->array_.reset();
 						this->mask_ = other.mask_;
-						this->array_ = copyMask(this->mask_, this->allocator_, other.array_);
+						this->array_ = copyMask(*this, other.array_);
 					}
 				}
 				return *this;
@@ -135,11 +133,11 @@ namespace koszy::collections::array {
 					this->array_.reset();
 					this->mask_ = std::move(other.mask_);
 					this->allocator_ = std::move(other.allocator_);
-					this->array_ = moveArray<true>(this->mask_, this->allocator_, std::move(other.array_));
+					this->array_ = moveArray<true>(*this, std::move(other.array_));
 				} else if constexpr (std::allocator_traits<A>::is_always_equal::value) {
 					this->array_.reset();
 					this->mask_ = std::move(other.mask_);
-					this->array_ = moveArray<true>(this->mask_, this->allocator_, std::move(other.array_));
+					this->array_ = moveArray<true>(*this, std::move(other.array_));
 				} else {
 					const std::size_t thisSize{this->array_.get_deleter().size};
 					const std::size_t otherSize{other.array_.get_deleter().size};
@@ -163,7 +161,7 @@ namespace koszy::collections::array {
 					} else {
 						this->array_.reset();
 						this->mask_ = std::move(other.mask_);
-						this->array_ = moveArray<false>(this->mask_, this->allocator_, std::move(other.array_));
+						this->array_ = moveArray<false>(*this, std::move(other.array_));
 					}
 				}
 				return *this;
@@ -182,16 +180,16 @@ namespace koszy::collections::array {
 					T* const bTemp{b.array_.release()};
 					swap(a.mask_, b.mask_);
 					swap(a.allocator_, b.allocator_);
-					a.array_ = Array{bTemp, Deleter<T, A, M, MA>{a.mask_, a.allocator_, bSize}};
-					b.array_ = Array{aTemp, Deleter<T, A, M, MA>{b.mask_, b.allocator_, aSize}};
+					a.array_ = Array{bTemp, Deleter{a, bSize}};
+					b.array_ = Array{aTemp, Deleter{b, aSize}};
 				} else if constexpr (std::allocator_traits<A>::is_always_equal::value) {
 					const std::size_t aSize{a.array_.get_deleter().size};
 					const std::size_t bSize{b.array_.get_deleter().size};
 					T* const aTemp{a.array_.release()};
 					T* const bTemp{b.array_.release()};
 					swap(a.mask_, b.mask_);
-					a.array_ = Array{bTemp, Deleter<T, A, M, MA>{a.mask_, a.allocator_, bSize}};
-					b.array_ = Array{aTemp, Deleter<T, A, M, MA>{b.mask_, b.allocator_, aSize}};
+					a.array_ = Array{bTemp, Deleter{a, bSize}};
+					b.array_ = Array{aTemp, Deleter{b, aSize}};
 				} else {
 					const std::size_t aSize{a.array_.get_deleter().size};
 					const std::size_t bSize{b.array_.get_deleter().size};
@@ -226,8 +224,8 @@ namespace koszy::collections::array {
 							}
 						}
 						swap(a.mask_, b.mask_);
-						a.array_ = Array{bTemp, Deleter<T, A, M, MA>{a.mask_, a.allocator_, bSize}};
-						b.array_ = Array{aTemp, Deleter<T, A, M, MA>{b.mask_, b.allocator_, aSize}};
+						a.array_ = Array{bTemp, Deleter{a, bSize}};
+						b.array_ = Array{aTemp, Deleter{b, aSize}};
 					}
 				}
 			}
@@ -294,8 +292,8 @@ namespace koszy::collections::array {
 			}
 
 		private:
-			Mask mask_;
 			[[no_unique_address]] A allocator_;
+			Mask mask_;
 			Array array_;
 			std::size_t size_;
 	};
