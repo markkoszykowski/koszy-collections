@@ -33,6 +33,9 @@ namespace koszy::collections::array {
 
 	template<typename T, typename A=std::allocator<T>, typename M=std::uintptr_t, typename MA=std::allocator<M>>
 	class DynamicArray {
+		using allocator_type = A;
+		using value_type = T;
+
 		using Mask = mask::ArrayMask<M, MA>;
 		using Array = std::unique_ptr<T[], Deleter<T, A, M, MA>>;
 
@@ -85,12 +88,14 @@ namespace koszy::collections::array {
 
 			constexpr DynamicArray(const A& allocator) : mask_{}, allocator_{allocator}, array_{makeArray(this->mask_, this->allocator_)}, size_{ZERO} {}
 
+			constexpr DynamicArray(const std::size_t n, const A& allocator) : mask_{}, allocator_{allocator}, array_{makeArray(this->mask_, this->allocator_, n)}, size_{ZERO} {}
+
 			constexpr DynamicArray(const DynamicArray<T, A, M, MA>& other) : mask_{other.mask_}, allocator_{std::allocator_traits<A>::select_on_container_copy_construction(other.allocator_)}, array_{copyArray(this->mask_, this->allocator_, other.array_)}, size_{other.size_} {}
 
 			constexpr DynamicArray(DynamicArray<T, A, M, MA>&& other) noexcept : mask_{std::move(other.mask_)}, allocator_{std::move(other.allocator_)}, array_{moveArray<true>(this->mask_, this->allocator_, std::move(other.array_))}, size_{other.size_} {}
 
 
-			constexpr DynamicArray<T, A, M, MA> operator=(const DynamicArray<T, A, M, MA>& other) {
+			constexpr DynamicArray<T, A, M, MA>& operator=(const DynamicArray<T, A, M, MA>& other) {
 				if constexpr (std::allocator_traits<A>::propagate_on_container_copy_assignment::value) {
 					this->array_.reset();
 					this->mask_ = other.mask_;
@@ -125,7 +130,7 @@ namespace koszy::collections::array {
 				return *this;
 			}
 
-			constexpr DynamicArray<T, A, M, MA> operator=(DynamicArray<T, A, M, MA>&& other) noexcept {
+			constexpr DynamicArray<T, A, M, MA>& operator=(DynamicArray<T, A, M, MA>&& other) noexcept {
 				if constexpr (std::allocator_traits<A>::propagate_on_container_move_assignment::value) {
 					this->array_.reset();
 					this->mask_ = std::move(other.mask_);
@@ -243,7 +248,7 @@ namespace koszy::collections::array {
 				return MAX_POWER_OF_TWO;
 			}
 
-			[[nodiscard]] constexpr bool isSet(const std::size_t i) const {
+			[[nodiscard]] constexpr bool contains(const std::size_t i) const {
 				return this->mask_.isSet(i);
 			}
 
@@ -253,6 +258,39 @@ namespace koszy::collections::array {
 
 			[[nodiscard]] constexpr T& operator[](const std::size_t i) {
 				return this->array_[i];
+			}
+
+			constexpr void insert(const std::size_t i, const T& value) {
+				std::allocator_traits<A>::construct(this->allocator_, std::addressof(this->array_[i]), value);
+				this->mask_.set(i);
+				++this->size_;
+			}
+
+			constexpr void insert(const std::size_t i, T&& value) {
+				std::allocator_traits<A>::construct(this->allocator_, std::addressof(this->array_[i]), std::move(value));
+				this->mask_.set(i);
+				++this->size_;
+			}
+
+			template<typename... Args>
+			constexpr void emplace(const std::size_t i, Args&&... args) {
+				std::allocator_traits<A>::construct(this->allocator_, std::addressof(this->array_[i]), std::forward<Args>(args)...);
+				this->mask_.set(i);
+				++this->size_;
+			}
+
+			constexpr void erase(const std::size_t i) {
+				std::allocator_traits<A>::destroy(this->allocator_, std::addressof(this->array_[i]));
+				this->mask_.unset(i);
+				--this->size_;
+			}
+
+			constexpr T extract(const std::size_t i) {
+				const T value{std::move(this->array_[i])};
+				std::allocator_traits<A>::destroy(this->allocator_, std::addressof(this->array_[i]));
+				this->mask_.unset(i);
+				--this->size_;
+				return value;
 			}
 
 		private:

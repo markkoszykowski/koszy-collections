@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -126,7 +127,6 @@ class ArrayMaskTest : public testing::Test {
 		koszy::collections::mask::ArrayMask<MaskType, AllocatorType> mask_{this->allocator_};
 };
 
-
 using ArrayMaskTypes = testing::Types<
 	std::pair<bool, std::allocator<bool>>,
 	std::pair<std::uint8_t, std::allocator<std::uint8_t>>,
@@ -151,6 +151,7 @@ using ArrayMaskTypes = testing::Types<
 >;
 
 TYPED_TEST_SUITE(ArrayMaskTest, ArrayMaskTypes);
+
 TYPED_TEST(ArrayMaskTest, SetAndUnset) {
 	auto test{
 		[&](const std::size_t size, const std::size_t set) {
