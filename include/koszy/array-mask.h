@@ -57,11 +57,11 @@ namespace koszy::collections::mask {
 		struct DynamicMask : std::pair<pointer_type, size_type> {
 			constexpr DynamicMask(const pointer_type first, const size_type second) : std::pair<pointer_type, size_type>(first, second) {}
 
-			constexpr value_type& operator[](const size_type i) {
+			[[nodiscard]] constexpr value_type& operator[](const size_type i) {
 				return *(this->first + i);
 			}
 
-			constexpr const value_type& operator[](const size_type i) const {
+			[[nodiscard]] constexpr const value_type& operator[](const size_type i) const {
 				return *(this->first + i);
 			}
 		};
@@ -187,7 +187,7 @@ namespace koszy::collections::mask {
 			dstArrayMask.mask.template emplace<StaticMask>(srcMask);
 		}
 
-		constexpr static void copy(allocator_type& allocator, ArrayMask& dstArrayMask, DynamicMask& dstMask, const StaticMask& srcMask, const std::false_type) {
+		constexpr static void copy(allocator_type& allocator, ArrayMask& dstArrayMask, DynamicMask& dstMask, const StaticMask& srcMask, std::false_type) {
 			destroy(allocator, dstMask);
 			dstArrayMask.mask.template emplace<StaticMask>(srcMask);
 		}
@@ -196,7 +196,7 @@ namespace koszy::collections::mask {
 			arrayMask.mask.template emplace<DynamicMask>(copyDynamic(allocator, srcMask));
 		}
 
-		constexpr static void copy(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, const DynamicMask& srcMask, const std::false_type) {
+		constexpr static void copy(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, const DynamicMask& srcMask, std::false_type) {
 			if (const size_type size{dstMask.second}; dstMask.second == srcMask.second) {
 				for (size_type i{0U}; i != size; ++i) {
 					dstMask[i] = srcMask[i];
@@ -228,7 +228,7 @@ namespace koszy::collections::mask {
 			dstArrayMask.mask.template emplace<StaticMask>(std::move(srcMask));
 		}
 
-		constexpr static void move(allocator_type& allocator, ArrayMask& dstArrayMask, DynamicMask& dstMask, StaticMask&& srcMask, const std::false_type) {
+		constexpr static void move(allocator_type& allocator, ArrayMask& dstArrayMask, DynamicMask& dstMask, StaticMask&& srcMask, std::false_type) {
 			destroy(allocator, dstMask);
 			dstArrayMask.mask.template emplace<StaticMask>(std::move(srcMask));
 		}
@@ -237,11 +237,11 @@ namespace koszy::collections::mask {
 			arrayMask.mask.template emplace<DynamicMask>(std::exchange(srcMask.first, nullptr), std::exchange(srcMask.second, 0U));
 		}
 
-		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, StaticMask&, DynamicMask&& srcMask, const std::false_type) {
+		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, StaticMask&, DynamicMask&& srcMask, std::false_type) {
 			arrayMask.mask.template emplace<DynamicMask>(moveDynamic(allocator, std::move(srcMask)));
 		}
 
-		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, DynamicMask&& srcMask, const std::false_type) {
+		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, DynamicMask&& srcMask, std::false_type) {
 			if (const size_type size{dstMask.second}; dstMask.second == srcMask.second) {
 				for (size_type i{0U}; i != size; ++i) {
 					dstMask[i] = std::move(srcMask[i]);
@@ -294,13 +294,13 @@ namespace koszy::collections::mask {
 								swap(leftMask, rightMask);
 							},
 							[&](StaticMask& leftMask, DynamicMask& rightMask) {
-								DynamicMask temp{moveDynamic(leftAllocator, rightMask)};
+								DynamicMask temp{moveDynamic(leftAllocator, std::move(rightMask))};
 								destroy(rightAllocator, rightMask);
 								rightArrayMask.mask.template emplace<StaticMask>(std::move(leftMask));
 								leftArrayMask.mask.template emplace<DynamicMask>(std::move(temp));
 							},
 							[&](DynamicMask& leftMask, StaticMask& rightMask) {
-								DynamicMask temp{moveDynamic(rightAllocator, leftMask)};
+								DynamicMask temp{moveDynamic(rightAllocator, std::move(leftMask))};
 								destroy(leftAllocator, leftMask);
 								leftArrayMask.mask.template emplace<StaticMask>(std::move(rightMask));
 								rightArrayMask.mask.template emplace<DynamicMask>(std::move(temp));
@@ -311,11 +311,11 @@ namespace koszy::collections::mask {
 										swap(leftMask[i], rightMask[i]);
 									}
 								} else {
-									DynamicMask leftTemp{moveDynamic(rightAllocator, leftMask)};
-									DynamicMask rightTemp{moveDynamic(leftAllocator, rightMask)};
+									DynamicMask leftTemp{moveDynamic(rightAllocator, std::move(leftMask))};
+									DynamicMask rightTemp{moveDynamic(leftAllocator, std::move(rightMask))};
 									destroy(leftAllocator, leftMask);
 									destroy(rightAllocator, rightMask);
-									leftArrayMask.mask.template emplace<StaticMask>(std::move(rightTemp));
+									leftArrayMask.mask.template emplace<DynamicMask>(std::move(rightTemp));
 									rightArrayMask.mask.template emplace<DynamicMask>(std::move(leftTemp));
 								}
 							}

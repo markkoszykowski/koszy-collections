@@ -102,12 +102,12 @@ namespace koszy::collections {
 		T* allocate(const std::size_t n) {
 			std::lock_guard<std::mutex> lock{this->resources->lock};
 
-			T* const block{std::allocator_traits<std::allocator<T>>::allocate(this->allocator, n)};
-			if (!this->resources->blocks.insert(std::make_pair(static_cast<void*>(block), std::make_pair(this->id.value(), n))).second) {
+			T* const pointer{std::allocator_traits<std::allocator<T>>::allocate(this->allocator, n)};
+			if (!this->resources->blocks.insert(std::make_pair(static_cast<void*>(pointer), std::make_pair(this->id.value(), n))).second) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 
-			return block;
+			return pointer;
 		}
 
 		void deallocate(T* const pointer, const std::size_t n) {
