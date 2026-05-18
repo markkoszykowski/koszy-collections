@@ -1,11 +1,12 @@
 INCLUDES := -iquote./include
-CXXFLAGS := -save-temps -std=c++26 -Wconversion -Wpedantic -Wextra -Wall -g
+CXXFLAGS := -save-temps -std=c++26 -Wconversion -Wpedantic -Wextra -Wall
 LDFLAGS  :=
 LDLIBS   :=
 
-BUILD   := ./build
-SRCDIR  := $(BUILD)/src
-TESTDIR := $(BUILD)/test
+BUILD     := ./build
+SRCDIR    := $(BUILD)/src
+TESTDIR   := $(BUILD)/test
+REPORTDIR := $(BUILD)/report
 
 SRC  := $(shell find ./src -type f -name *.cc ! -name main.cc)
 TEST := $(shell find ./test -type f -name *.cc ! -name main.cc)
@@ -39,17 +40,22 @@ $(TARGET): $(SRCOBJS) $(SRCOBJ)
 test: $(TEST)
 	$(TEST)
 
+.PHONY: report
+report: test
+	mkdir -p $(REPORTDIR)
+	gcovr --html-nested -o $(REPORTDIR)/
+
 $(TEST): $(SRCOBJS) $(TESTOBJS) $(TESTOBJ)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TEST) $(TESTOBJ) $(SRCOBJS) $(TESTOBJS) $(LDLIBS) -fsanitize=address -fsanitize=leak -fsanitize=undefined -lgtest
+	$(CXX) $(CXXFLAGS) --coverage -fsanitize=address -fsanitize=leak -fsanitize=undefined -g -O0 $(LDFLAGS) -o $(TEST) $(TESTOBJ) $(SRCOBJS) $(TESTOBJS) $(LDLIBS) -lgtest
 
-
-$(TESTDIR)/%.o: ./test/%.cc
-	@mkdir -p $(@D)
-	$(CXX) -c $(CXXFLAGS) $(INCLUDES) -iquote. -o $@ $<
 
 $(SRCDIR)/%.o: ./src/%.cc
 	@mkdir -p $(@D)
 	$(CXX) -c $(CXXFLAGS) $(INCLUDES) -o $@ $<
+
+$(TESTDIR)/%.o: ./test/%.cc
+	@mkdir -p $(@D)
+	$(CXX) -c $(CXXFLAGS) --coverage -fsanitize=address -fsanitize=leak -fsanitize=undefined -g -O0 $(INCLUDES) -iquote. -o $@ $<
 
 
 .PHONY: clean

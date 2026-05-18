@@ -19,6 +19,27 @@ namespace koszy::collections {
 	};
 
 	template<typename T>
+	struct GlobalAllocator {
+		using value_type = T;
+		using propagate_on_container_copy_assignment = std::false_type;
+		using propagate_on_container_move_assignment = std::false_type;
+		using propagate_on_container_swap = std::false_type;
+		using is_always_equal = std::true_type;
+
+		static_assert(std::allocator_traits<std::allocator<value_type>>::is_always_equal::value);
+
+		[[no_unique_address]] std::allocator<value_type> allocator;
+
+		value_type* allocate(const std::size_t n) {
+			return std::allocator_traits<std::allocator<value_type>>::allocate(this->allocator, n);
+		}
+
+		void deallocate(value_type* const pointer, const std::size_t n) {
+			std::allocator_traits<std::allocator<value_type>>::deallocate(this->allocator, pointer, n);
+		}
+	};
+
+	template<typename T>
 	struct InternalAllocator {
 		[[no_unique_address]] std::allocator<T> allocator;
 		std::shared_ptr<Resources> resources;
@@ -53,22 +74,29 @@ namespace koszy::collections {
 		InternalAllocator(InternalAllocator&& other) noexcept : allocator{}, resources{std::move(other.resources)}, id{move(std::move(other))} {};
 
 		InternalAllocator& operator=(const InternalAllocator& other) {
-			empty(*this);
-			this->resources = other.resources;
-			this->id = copy(other);
+			if (this != std::addressof(other)) {
+				empty(*this);
+				this->resources = other.resources;
+				this->id = copy(other);
+			}
 			return *this;
 		}
 
 		InternalAllocator& operator=(InternalAllocator&& other) noexcept {
-			empty(*this);
-			this->resources = std::move(other.resources);
-			this->id = move(std::move(other));
+			if (this != std::addressof(other)) {
+				empty(*this);
+				this->resources = std::move(other.resources);
+				this->id = move(std::move(other));
+			}
 			return *this;
 		}
 
 		~InternalAllocator() {
 			empty(*this);
 		}
+
+
+		[[nodiscard]] bool operator==(const InternalAllocator& other) const = default;
 
 
 		T* allocate(const std::size_t n) {
@@ -102,13 +130,15 @@ namespace koszy::collections {
 		using propagate_on_container_swap = std::false_type;
 		using is_always_equal = std::false_type;
 
-		InternalAllocator<T> allocator;
+		InternalAllocator<value_type> allocator;
 
-		T* allocate(const std::size_t n) {
+		[[nodiscard]] bool operator==(const StatefulAllocator&) const = default;
+
+		value_type* allocate(const std::size_t n) {
 			return this->allocator.allocate(n);
 		}
 
-		void deallocate(T* const pointer, const std::size_t n) {
+		void deallocate(value_type* const pointer, const std::size_t n) {
 			this->allocator.deallocate(pointer, n);
 		}
 	};
@@ -121,13 +151,15 @@ namespace koszy::collections {
 		using propagate_on_container_swap = std::true_type;
 		using is_always_equal = std::false_type;
 
-		InternalAllocator<T> allocator;
+		InternalAllocator<value_type> allocator;
 
-		T* allocate(const std::size_t n) {
+		[[nodiscard]] bool operator==(const PropagatingStatefulAllocator&) const = default;
+
+		value_type* allocate(const std::size_t n) {
 			return this->allocator.allocate(n);
 		}
 
-		void deallocate(T* const pointer, const std::size_t n) {
+		void deallocate(value_type* const pointer, const std::size_t n) {
 			this->allocator.deallocate(pointer, n);
 		}
 	};
