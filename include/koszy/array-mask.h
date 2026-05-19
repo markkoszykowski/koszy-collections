@@ -49,30 +49,82 @@ namespace koszy::collections::mask {
 		using allocator_type = A;
 		using value_type = T;
 		using pointer_type = std::allocator_traits<allocator_type>::pointer;
+		using const_pointer = std::allocator_traits<allocator_type>::const_pointer;
 		using size_type = std::allocator_traits<allocator_type>::size_type;
 
 		constexpr static value_type ZERO_VALUE{0U};
 		constexpr static value_type ONE_VALUE{1U};
 
-		struct DynamicMask : std::pair<pointer_type, size_type> {
-			constexpr DynamicMask(const pointer_type first, const size_type second) : std::pair<pointer_type, size_type>(first, second) {}
+		struct DynamicMask {
+			std::pair<pointer_type, size_type> mask;
 
-			[[nodiscard]] constexpr value_type& operator[](const size_type i) {
-				return *(this->first + i);
+			constexpr DynamicMask(const pointer_type first, const size_type second) : mask{first, second} {}
+
+			constexpr DynamicMask(const DynamicMask&) = delete;
+
+			constexpr DynamicMask(DynamicMask&& other) noexcept : mask{std::exchange(other.mask.first, nullptr), std::exchange(other.mask.second, 0U)} {}
+
+			constexpr DynamicMask& operator=(const DynamicMask&) = delete;
+
+			constexpr DynamicMask& operator=(DynamicMask&& other) noexcept {
+				this->mask = std::make_pair(std::exchange(other.mask.first, nullptr), std::exchange(other.mask.second, 0U));
+				return *this;
 			}
 
-			[[nodiscard]] constexpr const value_type& operator[](const size_type i) const {
-				return *(this->first + i);
+			[[nodiscard]] constexpr pointer_type data() & noexcept {
+				return this->mask.first;
+			}
+
+			[[nodiscard]] constexpr const_pointer data() const & noexcept {
+				return this->mask.first;
+			}
+
+			[[nodiscard]] constexpr size_type size() const & noexcept {
+				return this->mask.second;
+			}
+
+			[[nodiscard]] constexpr value_type& operator[](const size_type i) & noexcept {
+				return *(this->mask.first + i);
+			}
+
+			[[nodiscard]] constexpr const value_type& operator[](const size_type i) const & noexcept {
+				return *(this->mask.first + i);
+			}
+
+			[[nodiscard]] constexpr value_type&& operator[](const size_type i) && noexcept {
+				return std::move(*(this->mask.first + i));
 			}
 		};
 
 		constexpr static std::size_t N{std::max(sizeof(DynamicMask) / sizeof(value_type), ONE)};
 
-		struct StaticMask : std::array<value_type, N> {
+		struct StaticMask {
+			std::array<value_type, N> mask;
+
+			[[nodiscard]] constexpr pointer_type data() & noexcept {
+				return this->mask.data();
+			}
+
+			[[nodiscard]] constexpr const_pointer data() const & noexcept {
+				return this->mask.data();
+			}
+
+			[[nodiscard]] constexpr size_type size() const & noexcept {
+				return this->mask.size();
+			}
+
+			[[nodiscard]] constexpr value_type& operator[](const size_type i) & noexcept {
+				return this->mask[i];
+			}
+
+			[[nodiscard]] constexpr const value_type& operator[](const size_type i) const & noexcept {
+				return this->mask[i];
+			}
+
+			[[nodiscard]] constexpr value_type&& operator[](const size_type i) && noexcept {
+				return std::move(this->mask[i]);
+			}
 		};
-
-
-		static_assert(std::is_same_v<typename StaticMask::size_type, typename std::allocator_traits<allocator_type>::size_type>);
 
 
 		constexpr static void destroy(allocator_type& allocator, const pointer_type pointer, const size_type n, const size_type size) noexcept(std::is_nothrow_destructible_v<value_type>) {
@@ -94,7 +146,7 @@ namespace koszy::collections::mask {
 		}
 
 		constexpr static void destroy(allocator_type& allocator, DynamicMask& mask) noexcept(std::is_nothrow_destructible_v<value_type>) {
-			destroy(allocator, std::exchange(mask.first, nullptr), std::exchange(mask.second, 0U));
+			destroy(allocator, std::exchange(mask.mask.first, nullptr), std::exchange(mask.mask.second, 0U));
 		}
 
 		constexpr static void destroy(allocator_type& allocator, ArrayMask& arrayMask) noexcept(std::is_nothrow_destructible_v<value_type>) {
@@ -108,48 +160,58 @@ namespace koszy::collections::mask {
 			size_type n;
 			size_type size;
 
-			constexpr Guard(allocator_type& allocator, const size_type n) : allocator{allocator}, pointer{std::allocator_traits<allocator_type>::allocate(this->allocator.get(), n)}, n{n}, size{0U} {}
+			constexpr Guard(allocator_type& allocator, const size_type n) : allocator{allocator},
+				pointer{std::allocator_traits<allocator_type>::allocate(this->allocator.get(), n)},
+				n{n},
+				size{0U}
+			{}
 
 			constexpr Guard(const Guard&) = delete;
 
-			constexpr Guard(Guard&&) = delete;
+			constexpr Guard(Guard&& other) noexcept : allocator{std::move(other.allocator)},
+				pointer{std::exchange(other.pointer, nullptr)},
+				n{std::exchange(other.n, 0U)},
+				size{std::exchange(other.size, 0U)}
+			{}
 
 			constexpr Guard& operator=(const Guard&) = delete;
 
-			constexpr Guard operator=(Guard&&) = delete;
+			constexpr Guard& operator=(Guard&& other) noexcept {
+				this->allocator = std::move(other.allocator);
+				this->pointer = std::exchange(other.pointer, nullptr);
+				this->n = std::exchange(other.n, 0U);
+				this->size = std::exchange(other.size, 0U);
+				return *this;
+			}
 
 			constexpr ~Guard() noexcept(std::is_nothrow_destructible_v<value_type>) {
 				destroy(this->allocator.get(), std::exchange(this->pointer, nullptr), std::exchange(this->n, 0U), std::exchange(this->size, 0U));
 			}
 
-			constexpr DynamicMask release() noexcept(std::is_nothrow_move_assignable_v<pointer_type> && std::is_nothrow_move_assignable_v<size_type>) {
-				return DynamicMask{std::exchange(this->pointer, nullptr), std::exchange(this->size, 0U)};
+			constexpr DynamicMask release() noexcept {
+				pointer_type pointer{std::exchange(this->pointer, nullptr)};
+				size_type n{std::exchange(this->n, 0U)};
+				size_type size{std::exchange(this->size, 0U)};
+				return DynamicMask{pointer, n};
 			}
 		};
 
 
-		constexpr static DynamicMask makeDynamic(allocator_type& allocator, const size_type size) {
+		constexpr static Guard makeDynamic(allocator_type& allocator, const size_type size) {
 			Guard guard{allocator, size};
 			for (; guard.size != guard.n; ++guard.size) {
 				std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.size, ZERO_VALUE);
 			}
-			return guard.release();
+			return guard;
 		}
 
-		constexpr static DynamicMask copyDynamic(allocator_type& allocator, const DynamicMask& other) {
-			Guard guard{allocator, other.second};
+		template<typename DynamicMask>
+		constexpr static Guard cloneDynamic(allocator_type& allocator, DynamicMask&& other) {
+			Guard guard{allocator, other.size()};
 			for (; guard.size != guard.n; ++guard.size) {
-				std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.size, other[guard.size]);
+				std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.size, std::forward<DynamicMask>(other)[guard.size]);
 			}
-			return guard.release();
-		}
-
-		constexpr static DynamicMask moveDynamic(allocator_type& allocator, DynamicMask&& other) {
-			Guard guard{allocator, other.second};
-			for (; guard.size != guard.n; ++guard.size) {
-				std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.size, std::move(other[guard.size]));
-			}
-			return guard.release();
+			return guard;
 		}
 
 
@@ -158,7 +220,7 @@ namespace koszy::collections::mask {
 			if (size <= N) {
 				return std::variant<StaticMask, DynamicMask>{std::in_place_type<StaticMask>};
 			} else {
-				return std::variant<StaticMask, DynamicMask>{std::in_place_type<DynamicMask>, makeDynamic(allocator, size)};
+				return std::variant<StaticMask, DynamicMask>{std::in_place_type<DynamicMask>, makeDynamic(allocator, size).release()};
 			}
 		}
 
@@ -172,15 +234,15 @@ namespace koszy::collections::mask {
 
 		constexpr ArrayMask(const ArrayMask&) = delete;
 
-		constexpr ArrayMask(ArrayMask&&) = default;
+		constexpr ArrayMask(ArrayMask&&) noexcept = default;
 
 
 		constexpr ArrayMask& operator=(const ArrayMask&) = delete;
 
-		constexpr ArrayMask& operator=(ArrayMask&&) = default;
+		constexpr ArrayMask& operator=(ArrayMask&&) noexcept = default;
 
 
-		constexpr ~ArrayMask() = default;
+		constexpr ~ArrayMask() noexcept = default;
 
 
 		constexpr static void copy(allocator_type&, ArrayMask& dstArrayMask, auto&, const StaticMask& srcMask, auto) {
@@ -193,17 +255,17 @@ namespace koszy::collections::mask {
 		}
 
 		constexpr static void copy(allocator_type& allocator, ArrayMask& arrayMask, auto&, const DynamicMask& srcMask, auto) {
-			arrayMask.mask.template emplace<DynamicMask>(copyDynamic(allocator, srcMask));
+			arrayMask.mask.template emplace<DynamicMask>(cloneDynamic(allocator, srcMask).release());
 		}
 
 		constexpr static void copy(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, const DynamicMask& srcMask, std::false_type) {
-			if (const size_type size{dstMask.second}; dstMask.second == srcMask.second) {
+			if (const size_type size{dstMask.size()}; dstMask.size() == srcMask.size()) {
 				for (size_type i{0U}; i != size; ++i) {
 					dstMask[i] = srcMask[i];
 				}
 			} else {
 				destroy(allocator, dstMask);
-				arrayMask.mask.template emplace<DynamicMask>(copyDynamic(allocator, srcMask));
+				arrayMask.mask.template emplace<DynamicMask>(cloneDynamic(allocator, srcMask).release());
 			}
 		}
 
@@ -234,21 +296,21 @@ namespace koszy::collections::mask {
 		}
 
 		constexpr static void move(allocator_type&, ArrayMask& arrayMask, auto&, DynamicMask&& srcMask, auto) {
-			arrayMask.mask.template emplace<DynamicMask>(std::exchange(srcMask.first, nullptr), std::exchange(srcMask.second, 0U));
+			arrayMask.mask.template emplace<DynamicMask>(std::move(srcMask));
 		}
 
 		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, StaticMask&, DynamicMask&& srcMask, std::false_type) {
-			arrayMask.mask.template emplace<DynamicMask>(moveDynamic(allocator, std::move(srcMask)));
+			arrayMask.mask.template emplace<DynamicMask>(cloneDynamic(allocator, std::move(srcMask)).release());
 		}
 
 		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, DynamicMask&& srcMask, std::false_type) {
-			if (const size_type size{dstMask.second}; dstMask.second == srcMask.second) {
+			if (const size_type size{dstMask.size()}; dstMask.size() == srcMask.size()) {
 				for (size_type i{0U}; i != size; ++i) {
 					dstMask[i] = std::move(srcMask[i]);
 				}
 			} else {
 				destroy(allocator, dstMask);
-				arrayMask.mask.template emplace<DynamicMask>(moveDynamic(allocator, std::move(srcMask)));
+				arrayMask.mask.template emplace<DynamicMask>(cloneDynamic(allocator, std::move(srcMask)).release());
 			}
 		}
 
@@ -294,29 +356,29 @@ namespace koszy::collections::mask {
 								swap(leftMask, rightMask);
 							},
 							[&](StaticMask& leftMask, DynamicMask& rightMask) {
-								DynamicMask temp{moveDynamic(leftAllocator, std::move(rightMask))};
+								Guard temp{cloneDynamic(leftAllocator, std::move(rightMask))};
 								destroy(rightAllocator, rightMask);
 								rightArrayMask.mask.template emplace<StaticMask>(std::move(leftMask));
-								leftArrayMask.mask.template emplace<DynamicMask>(std::move(temp));
+								leftArrayMask.mask.template emplace<DynamicMask>(temp.release());
 							},
 							[&](DynamicMask& leftMask, StaticMask& rightMask) {
-								DynamicMask temp{moveDynamic(rightAllocator, std::move(leftMask))};
+								Guard temp{cloneDynamic(rightAllocator, std::move(leftMask))};
 								destroy(leftAllocator, leftMask);
 								leftArrayMask.mask.template emplace<StaticMask>(std::move(rightMask));
-								rightArrayMask.mask.template emplace<DynamicMask>(std::move(temp));
+								rightArrayMask.mask.template emplace<DynamicMask>(temp.release());
 							},
 							[&](DynamicMask& leftMask, DynamicMask& rightMask) {
-								if (const size_type size{leftMask.second}; leftMask.second == rightMask.second) {
+								if (const size_type size{leftMask.size()}; leftMask.size() == rightMask.size()) {
 									for (size_type i{0U}; i != size; ++i) {
 										swap(leftMask[i], rightMask[i]);
 									}
 								} else {
-									DynamicMask leftTemp{moveDynamic(rightAllocator, std::move(leftMask))};
-									DynamicMask rightTemp{moveDynamic(leftAllocator, std::move(rightMask))};
+									Guard leftTemp{cloneDynamic(rightAllocator, std::move(leftMask))};
+									Guard rightTemp{cloneDynamic(leftAllocator, std::move(rightMask))};
 									destroy(leftAllocator, leftMask);
 									destroy(rightAllocator, rightMask);
-									leftArrayMask.mask.template emplace<DynamicMask>(std::move(rightTemp));
-									rightArrayMask.mask.template emplace<DynamicMask>(std::move(leftTemp));
+									leftArrayMask.mask.template emplace<DynamicMask>(rightTemp.release());
+									rightArrayMask.mask.template emplace<DynamicMask>(leftTemp.release());
 								}
 							}
 						},
@@ -328,15 +390,15 @@ namespace koszy::collections::mask {
 		}
 
 
-		[[nodiscard]] constexpr bool isSet(const size_type i) const {
+		[[nodiscard]] constexpr bool isSet(const size_type i) const noexcept {
 			return std::visit([i](const auto& mask) -> bool { return static_cast<bool>((mask[maskPos<value_type, size_type>(i)] >> maskBit<value_type, size_type>(i)) & ONE_VALUE); }, this->mask);
 		}
 
-		constexpr void set(const size_type i) {
+		constexpr void set(const size_type i) noexcept {
 			std::visit([i](auto& mask) { mask[maskPos<value_type, size_type>(i)] |= (ONE_VALUE << maskBit<value_type, size_type>(i)); }, this->mask);
 		}
 
-		constexpr void unset(const size_type i) {
+		constexpr void unset(const size_type i) noexcept {
 			std::visit([i](auto& mask) { mask[maskPos<value_type, size_type>(i)] &= ~(ONE_VALUE << maskBit<value_type, size_type>(i)); }, this->mask);
 		}
 	};
