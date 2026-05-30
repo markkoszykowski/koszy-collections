@@ -46,7 +46,7 @@ report: test
 	gcovr --html-nested -o $(REPORTDIR)/
 
 $(TEST): $(SRCOBJS) $(TESTOBJS) $(TESTOBJ)
-	$(CXX) $(CXXFLAGS) --coverage -fsanitize=address -fsanitize=leak -fsanitize=undefined -g -O0 $(LDFLAGS) -o $(TEST) $(TESTOBJ) $(SRCOBJS) $(TESTOBJS) $(LDLIBS) -lgtest
+	$(CXX) $(CXXFLAGS) --coverage -fsanitize=address -fsanitize=leak -fsanitize=undefined -g -O0 $(LDFLAGS) -o $(TEST) $(TESTOBJ) $(SRCOBJS) $(TESTOBJS) $(LDLIBS) -lstdc++exp -lgtest -Wl,--wrap=__cxa_throw
 
 
 $(SRCDIR)/%.o: ./src/%.cc

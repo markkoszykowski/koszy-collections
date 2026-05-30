@@ -71,7 +71,7 @@ namespace koszy::collections {
 
 		InternalAllocator(const InternalAllocator& other) : allocator{}, resources{other.resources}, id{copy(other)} {}
 
-		InternalAllocator(InternalAllocator&& other) noexcept : allocator{}, resources{std::move(other.resources)}, id{move(std::move(other))} {};
+		InternalAllocator(InternalAllocator&& other) : allocator{}, resources{std::move(other.resources)}, id{move(std::move(other))} {};
 
 		InternalAllocator& operator=(const InternalAllocator& other) {
 			if (this != std::addressof(other)) {
@@ -82,7 +82,7 @@ namespace koszy::collections {
 			return *this;
 		}
 
-		InternalAllocator& operator=(InternalAllocator&& other) noexcept {
+		InternalAllocator& operator=(InternalAllocator&& other) {
 			if (this != std::addressof(other)) {
 				empty(*this);
 				this->resources = std::move(other.resources);
@@ -113,8 +113,8 @@ namespace koszy::collections {
 		void deallocate(T* const pointer, const std::size_t n) {
 			std::lock_guard<std::mutex> lock{this->resources->lock};
 
-			const std::pair<int, std::size_t> value{this->resources->blocks.extract(static_cast<void*>(pointer)).mapped()};
-			if (value.first != this->id.value() || value.second != n) {
+			const std::unordered_map<void*, std::pair<int, std::size_t>>::node_type value{this->resources->blocks.extract(static_cast<void*>(pointer))};
+			if (value.empty() || value.mapped().first != this->id.value() || value.mapped().second != n) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 
