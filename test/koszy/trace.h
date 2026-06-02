@@ -2,6 +2,7 @@
 #define TRACE_H
 
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <iostream>
 #include <memory>
@@ -9,11 +10,20 @@
 #include <stacktrace>
 
 namespace koszy::trace {
-	std::optional<std::stacktrace> _trace(const void*) noexcept;
+	std::optional<std::pmr::stacktrace> _trace(const void*) noexcept;
 
 	template<typename T>
-	std::optional<std::stacktrace> trace(const T& t) noexcept {
+	requires (!std::is_same_v<T, std::exception_ptr> || sizeof(T) != sizeof(void*))
+	std::optional<std::pmr::stacktrace> trace(const T& t) noexcept {
 		return _trace(std::addressof(t));
+	}
+
+	template<typename T>
+	requires (std::is_same_v<T, std::exception_ptr> && sizeof(T) == sizeof(void*))
+	std::optional<std::pmr::stacktrace> trace(const T exception) noexcept {
+		void* pointer{nullptr};
+		std::memcpy(std::addressof(pointer), std::addressof(exception), sizeof(void*));
+		return _trace(pointer);
 	}
 
 	inline void terminate() noexcept {
@@ -23,7 +33,11 @@ namespace koszy::trace {
 			}
 		} catch (const std::exception& exception) {
 			std::cerr << exception.what() << '\n';
-			if (const std::optional<std::stacktrace> stacktrace{trace<std::exception>(exception)}; stacktrace.has_value()) {
+			if (const std::optional<std::pmr::stacktrace> stacktrace{trace(exception)}; stacktrace.has_value()) {
+				std::cerr << stacktrace.value() << '\n';
+			}
+		} catch (...) {
+			if (const std::optional<std::pmr::stacktrace> stacktrace{trace(std::current_exception())}; stacktrace.has_value()) {
 				std::cerr << stacktrace.value() << '\n';
 			}
 		}
