@@ -22,7 +22,7 @@ namespace koszy::trace {
 	requires (std::is_same_v<T, std::exception_ptr> && sizeof(T) == sizeof(void*))
 	std::optional<std::pmr::stacktrace> trace(const T exception) noexcept {
 		void* pointer{nullptr};
-		std::memcpy(std::addressof(pointer), std::addressof(exception), sizeof(void*));
+		std::memcpy(std::addressof(pointer), std::addressof(exception), sizeof(pointer));
 		return _trace(pointer);
 	}
 
@@ -37,6 +37,7 @@ namespace koszy::trace {
 				std::cerr << stacktrace.value() << '\n';
 			}
 		} catch (...) {
+			std::cerr << "unknown exception\n";
 			if (const std::optional<std::pmr::stacktrace> stacktrace{trace(std::current_exception())}; stacktrace.has_value()) {
 				std::cerr << stacktrace.value() << '\n';
 			}
