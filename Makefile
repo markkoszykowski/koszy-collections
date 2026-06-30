@@ -49,7 +49,7 @@ test: $(TEST)
 .PHONY: report
 report: test
 	mkdir -p $(REPORTDIR)
-	gcovr --html-nested -o $(REPORTDIR)/
+	gcovr --html-nested -o $(REPORTDIR)/ $(TESTDIR)/
 
 $(TEST): $(TESTOBJS) $(TESTOBJ)
 	$(CXX) $(CXXFLAGS) $(TESTCXXFLAGS) $(LDFLAGS) $(TESTLDFLAGS) -o $(TEST) $(TESTOBJ) $(TESTOBJS) $(LDLIBS) $(TESTLDLIBS)

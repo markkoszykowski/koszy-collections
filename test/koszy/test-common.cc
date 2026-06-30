@@ -1,9 +1,41 @@
 #include <cstdint>
 #include <limits>
+#include <type_traits>
 
 #include <gtest/gtest.h>
 
 #include "koszy/common.h"
+
+
+// LikeT
+
+TEST(LikeTTest, HandlesLValue) {
+	struct Foo {};
+	struct Bar {};
+	struct FooBar {
+		Foo foo;
+		Bar bar;
+	};
+
+	constexpr bool nonConstTest{std::is_same_v<koszy::collections::like_t<FooBar&, Foo>, Foo&>};
+	EXPECT_TRUE(nonConstTest);
+	constexpr bool constTest{std::is_same_v<koszy::collections::like_t<const FooBar&, Foo>, const Foo&>};
+	EXPECT_TRUE(constTest);
+}
+
+TEST(LikeTTest, HandlesRValue) {
+	struct Foo {};
+	struct Bar {};
+	struct FooBar {
+		Foo foo;
+		Bar bar;
+	};
+
+	constexpr bool nonConstTest{std::is_same_v<koszy::collections::like_t<FooBar&&, Foo>, Foo&&>};
+	EXPECT_TRUE(nonConstTest);
+	constexpr bool constTest{std::is_same_v<koszy::collections::like_t<const FooBar&&, Foo>, const Foo&&>};
+	EXPECT_TRUE(constTest);
+}
 
 
 // NextPowerOfTwo

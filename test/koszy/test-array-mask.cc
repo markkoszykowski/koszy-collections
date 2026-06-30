@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdint>
+#include <exception>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -118,7 +119,7 @@ TEST(MaskBitTest, HandlesOdds) {
 
 // ArrayMask
 
-template<typename T>
+template <typename T>
 class ArrayMaskTest : public testing::Test {
 	public:
 		using MaskType = std::tuple_element_t<0, T>;
@@ -340,4 +341,29 @@ TYPED_TEST(ArrayMaskTest, SwapTest) {
 	test(1024U, 128U, 1024U, 256U);
 	test(1U, 0U, 1024U, 512U);
 	test(1024U, 128U, 2048U, 256U);
+}
+
+TYPED_TEST(ArrayMaskTest, GuardTest) {
+	using MaskType = TestFixture::MaskType;
+	using AllocatorType = TestFixture::AllocatorType;
+
+	try {
+		koszy::collections::mask::Guard<MaskType, AllocatorType> guard{this->allocator_one_, 2048U};
+		throw std::exception{};
+	} catch (...) {}
+}
+
+TEST(ArrayMaskTest, RuleOfFive) {
+	constexpr bool copyConstructible{std::is_trivially_copy_constructible_v<koszy::collections::mask::ArrayMask<unsigned int>>};
+	EXPECT_TRUE(copyConstructible);
+	constexpr bool moveConstructible{std::is_trivially_move_constructible_v<koszy::collections::mask::ArrayMask<unsigned int>>};
+	EXPECT_TRUE(moveConstructible);
+
+	constexpr bool copyAssignable{std::is_trivially_copy_assignable_v<koszy::collections::mask::ArrayMask<unsigned int>>};
+	EXPECT_TRUE(copyAssignable);
+	constexpr bool moveAssignable{std::is_trivially_move_assignable_v<koszy::collections::mask::ArrayMask<unsigned int>>};
+	EXPECT_TRUE(moveAssignable);
+
+	constexpr bool destructible{std::is_trivially_destructible_v<koszy::collections::mask::ArrayMask<unsigned int>>};
+	EXPECT_TRUE(destructible);
 }
