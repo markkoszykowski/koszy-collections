@@ -1,24 +1,38 @@
 #ifndef ALLOCATOR_H
 #define ALLOCATOR_H
 
-#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <stdexcept>
 #include <source_location>
 #include <unordered_map>
 #include <utility>
 
 namespace koszy::collections {
-	struct Resources {
+	struct MemoryResource {
 		std::mutex lock;
-		std::atomic<int> id;
-		std::unordered_map<void*, std::pair<int, std::size_t>> blocks;
+		std::unordered_map<void*, std::size_t> blocks;
+
+		MemoryResource() = default;
+
+		MemoryResource(const MemoryResource&) = delete;
+
+		MemoryResource(MemoryResource&&) = delete;
+
+		MemoryResource& operator=(const MemoryResource&) = delete;
+
+		MemoryResource& operator=(MemoryResource&&) = delete;
+
+		~MemoryResource() {
+			if (!this->blocks.empty()) {
+				throw std::logic_error{std::source_location::current().function_name()};
+			}
+		}
 	};
 
-	template<typename T>
+
+	template <typename T>
 	struct GlobalAllocator {
 		using value_type = T;
 		using propagate_on_container_copy_assignment = std::false_type;
@@ -30,7 +44,7 @@ namespace koszy::collections {
 
 		[[no_unique_address]] std::allocator<value_type> allocator;
 
-		value_type* allocate(const std::size_t n) {
+		[[nodiscard]] value_type* allocate(const std::size_t n) {
 			return std::allocator_traits<std::allocator<value_type>>::allocate(this->allocator, n);
 		}
 
@@ -39,71 +53,38 @@ namespace koszy::collections {
 		}
 	};
 
-	template<typename T>
+	template <typename T>
 	struct InternalAllocator {
-		[[no_unique_address]] std::allocator<T> allocator;
-		std::shared_ptr<Resources> resources;
-		std::optional<int> id;
+		[[no_unique_address]] GlobalAllocator<T> allocator;
+		std::shared_ptr<MemoryResource> resource;
 
+		InternalAllocator() : allocator{}, resource{std::make_shared<MemoryResource>()} {}
 
-		static std::optional<int> copy(const InternalAllocator& allocator) {
-			return std::make_optional(++allocator.resources->id);
-		}
+		InternalAllocator(const InternalAllocator& other) : allocator{}, resource{other.resource} {}
 
-		static std::optional<int> move(InternalAllocator&& allocator) {
-			return std::exchange(allocator.id, std::nullopt);
-		}
-
-		static void empty(const InternalAllocator& allocator) {
-			if (allocator.id.has_value()) {
-				const std::lock_guard<std::mutex> lock{allocator.resources->lock};
-
-				for (const std::pair<void* const, std::pair<int, std::size_t>>& pair: allocator.resources->blocks) {
-					if (pair.second.first == allocator.id.value()) {
-						throw std::logic_error{std::source_location::current().function_name()};
-					}
-				}
-			}
-		}
-
-
-		InternalAllocator() : allocator{}, resources{std::make_shared<Resources>()}, id{std::make_optional(++this->resources->id)} {}
-
-		InternalAllocator(const InternalAllocator& other) : allocator{}, resources{other.resources}, id{copy(other)} {}
-
-		InternalAllocator(InternalAllocator&& other) : allocator{}, resources{std::move(other.resources)}, id{move(std::move(other))} {};
+		InternalAllocator(InternalAllocator&& other) noexcept : allocator{}, resource{other.resource} {};
 
 		InternalAllocator& operator=(const InternalAllocator& other) {
-			if (this != std::addressof(other)) {
-				empty(*this);
-				this->resources = other.resources;
-				this->id = copy(other);
-			}
+			this->resource = other.resource;
 			return *this;
 		}
 
-		InternalAllocator& operator=(InternalAllocator&& other) {
-			if (this != std::addressof(other)) {
-				empty(*this);
-				this->resources = std::move(other.resources);
-				this->id = move(std::move(other));
-			}
+		InternalAllocator& operator=(InternalAllocator&& other) noexcept {
+			this->resource = other.resource;
 			return *this;
 		}
 
-		~InternalAllocator() {
-			empty(*this);
-		}
+		~InternalAllocator() noexcept = default;
 
+		[[nodiscard]] bool operator==(const InternalAllocator& other) const {
+			return this->resource == other.resource;
+		};
 
-		[[nodiscard]] bool operator==(const InternalAllocator& other) const = default;
+		[[nodiscard]] T* allocate(const std::size_t n) {
+			const std::lock_guard<std::mutex> lock{this->resource->lock};
 
-
-		T* allocate(const std::size_t n) {
-			const std::lock_guard<std::mutex> lock{this->resources->lock};
-
-			T* const pointer{std::allocator_traits<std::allocator<T>>::allocate(this->allocator, n)};
-			if (!this->resources->blocks.insert(std::make_pair(static_cast<void*>(pointer), std::make_pair(this->id.value(), n))).second) {
+			T* const pointer{std::allocator_traits<GlobalAllocator<T>>::allocate(this->allocator, n)};
+			if (!this->resource->blocks.emplace(static_cast<void*>(pointer), n).second) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 
@@ -111,18 +92,18 @@ namespace koszy::collections {
 		}
 
 		void deallocate(T* const pointer, const std::size_t n) {
-			const std::lock_guard<std::mutex> lock{this->resources->lock};
+			const std::lock_guard<std::mutex> lock{this->resource->lock};
 
-			const std::unordered_map<void*, std::pair<int, std::size_t>>::node_type value{this->resources->blocks.extract(static_cast<void*>(pointer))};
-			if (value.empty() || value.mapped().first != this->id.value() || value.mapped().second != n) {
+			const std::unordered_map<void*, std::size_t>::node_type value{this->resource->blocks.extract(static_cast<void*>(pointer))};
+			if (value.empty() || value.mapped() != n) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 
-			std::allocator_traits<std::allocator<T>>::deallocate(this->allocator, pointer, n);
+			std::allocator_traits<GlobalAllocator<T>>::deallocate(this->allocator, pointer, n);
 		}
 	};
 
-	template<typename T>
+	template <typename T>
 	struct StatefulAllocator {
 		using value_type = T;
 		using propagate_on_container_copy_assignment = std::false_type;
@@ -134,7 +115,7 @@ namespace koszy::collections {
 
 		[[nodiscard]] bool operator==(const StatefulAllocator&) const = default;
 
-		value_type* allocate(const std::size_t n) {
+		[[nodiscard]] value_type* allocate(const std::size_t n) {
 			return this->allocator.allocate(n);
 		}
 
@@ -143,7 +124,7 @@ namespace koszy::collections {
 		}
 	};
 
-	template<typename T>
+	template <typename T>
 	struct PropagatingStatefulAllocator {
 		using value_type = T;
 		using propagate_on_container_copy_assignment = std::true_type;
@@ -155,7 +136,7 @@ namespace koszy::collections {
 
 		[[nodiscard]] bool operator==(const PropagatingStatefulAllocator&) const = default;
 
-		value_type* allocate(const std::size_t n) {
+		[[nodiscard]] value_type* allocate(const std::size_t n) {
 			return this->allocator.allocate(n);
 		}
 

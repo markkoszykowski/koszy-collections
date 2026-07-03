@@ -111,20 +111,33 @@ namespace koszy::collections::mask {
 		std::variant<StaticMask, DynamicMask> mask;
 
 
+		constexpr static void bitwiseor(value_type& value, const auto i) noexcept {
+			value = static_cast<value_type>(value | i);
+		}
+
+		constexpr static void bitwiseand(value_type& value, const auto i) {
+			value = static_cast<value_type>(value & i);
+		}
+
+		constexpr static void bitwisexor(value_type& value, const auto i) {
+			value = static_cast<value_type>(value ^ i);
+		}
+
+
 		[[nodiscard]] constexpr bool isSet(const size_type i) const noexcept {
 			return std::visit([i](const auto& mask) -> bool { return static_cast<bool>((mask[maskPos<value_type, size_type>(i)] >> maskBit<value_type, size_type>(i)) & ONE_VALUE); }, this->mask);
 		}
 
 		constexpr void set(const size_type i) noexcept {
-			std::visit([i](auto& mask) { mask[maskPos<value_type, size_type>(i)] |= (ONE_VALUE << maskBit<value_type, size_type>(i)); }, this->mask);
+			std::visit([i](auto& mask) { bitwiseor(mask[maskPos<value_type, size_type>(i)], (ONE_VALUE << maskBit<value_type, size_type>(i))); }, this->mask);
 		}
 
 		constexpr void unset(const size_type i) noexcept {
-			std::visit([i](auto& mask) { mask[maskPos<value_type, size_type>(i)] &= ~(ONE_VALUE << maskBit<value_type, size_type>(i)); }, this->mask);
+			std::visit([i](auto& mask) { bitwiseand(mask[maskPos<value_type, size_type>(i)], ~(ONE_VALUE << maskBit<value_type, size_type>(i))); }, this->mask);
 		}
 
 		constexpr void toggle(const size_type i) noexcept {
-			std::visit([i](auto& mask) { mask[maskPos<value_type, size_type>(i)] ^= (ONE_VALUE << maskBit<value_type, size_type>(i)); }, this->mask);
+			std::visit([i](auto& mask) { bitwisexor(mask[maskPos<value_type, size_type>(i)], (ONE_VALUE << maskBit<value_type, size_type>(i))); }, this->mask);
 		}
 
 
@@ -192,7 +205,7 @@ namespace koszy::collections::mask {
 			[[nodiscard]] constexpr DynamicMask release() noexcept {
 				const pointer data{std::exchange(this->data, nullptr)};
 				const size_type size{std::exchange(this->size, 0U)};
-				const size_type len{std::exchange(this->len, 0U)};
+				[[maybe_unused]] const size_type len{std::exchange(this->len, 0U)};
 				return DynamicMask{data, data + size};
 			}
 		};
