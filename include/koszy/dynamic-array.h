@@ -108,10 +108,13 @@ namespace koszy::collections::array {
 			constexpr Guard& operator=(const Guard&) = delete;
 
 			constexpr Guard& operator=(Guard&& other) noexcept {
+				destroy(this->allocator.get(), this->mask.get(), this->data, this->size);
+
 				this->allocator = std::move(other.allocator);
 				this->mask = std::move(other.mask);
 				this->data = std::exchange(other.data, nullptr);
 				this->size = std::exchange(other.size, 0U);
+
 				return *this;
 			}
 
@@ -170,6 +173,8 @@ namespace koszy::collections::array {
 
 		constexpr DynamicArray(allocator_type& allocator, const size_type n) : begin{construct(allocator, n)}, end{this->begin + n} {}
 
+		constexpr DynamicArray(const pointer begin, const pointer end) : begin{begin}, end{end} {}
+
 
 		template <typename M, typename MA>
 		constexpr static DynamicArray copy(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const DynamicArray& other) {
@@ -199,9 +204,12 @@ namespace koszy::collections::array {
 		constexpr Guard& operator=(const Guard&) = delete;
 
 		constexpr Guard& operator=(Guard&& other) noexcept {
+			DynamicArray<T, A>::destroy(this->allocator.get(), this->mask.get(), this->array);
+
 			this->allocator = std::move(other.allocator);
 			this->mask = std::move(other.mask);
 			this->array = DynamicArray<T, A>::move(std::move(other.array));
+
 			return *this;
 		}
 

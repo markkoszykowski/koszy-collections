@@ -191,10 +191,13 @@ namespace koszy::collections::mask {
 			constexpr Guard& operator=(const Guard&) = delete;
 
 			constexpr Guard& operator=(Guard&& other) noexcept {
+				destroy(this->allocator.get(), this->data, this->size, this->len);
+
 				this->allocator = std::move(other.allocator);
 				this->data = std::exchange(other.data, nullptr);
 				this->size = std::exchange(other.size, 0U);
 				this->len = std::exchange(other.len, 0U);
+
 				return *this;
 			}
 
@@ -425,8 +428,11 @@ namespace koszy::collections::mask {
 		constexpr Guard& operator=(const Guard&) = delete;
 
 		constexpr Guard& operator=(Guard&& other) noexcept {
+			ArrayMask<T, A>::destroy(this->allocator.get(), this->mask);
+
 			this->allocator = std::move(other.allocator);
 			this->mask = ArrayMask<T, A>::move(std::move(other.mask));
+
 			return *this;
 		}
 

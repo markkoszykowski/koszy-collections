@@ -370,6 +370,13 @@ TYPED_TEST(ArrayMaskTest, GuardTest) {
 		ArrayMask mask{guard.release()};
 		ArrayMask::destroy(this->allocatorOne, mask);
 	}
+
+	{
+		Guard guard{this->allocatorOne, 2048U};
+		Guard moveConstructed{std::move(guard)};
+		Guard moveAssigned{this->allocatorOne, 2048U};
+		moveAssigned = std::move(moveConstructed);
+	}
 }
 
 TYPED_TEST(ArrayMaskTest, RuleOfFive) {

@@ -138,6 +138,7 @@ TYPED_TEST(DynamicArrayTest, GuardTest) {
 	using MaskAllocatorType = TestFixture::MaskAllocatorType;
 	using MaskGuard = koszy::collections::mask::Guard<MaskType, MaskAllocatorType>;
 	using Guard = koszy::collections::array::Guard<ArrayType, AllocatorType, MaskType, MaskAllocatorType>;
+	using DynamicArray = koszy::collections::array::DynamicArray<ArrayType, AllocatorType>;
 
 	try {
 		const std::size_t size{2048U};
@@ -145,6 +146,23 @@ TYPED_TEST(DynamicArrayTest, GuardTest) {
 		Guard guard{this->allocator, maskGuard.mask, size};
 		throw std::exception{};
 	} catch (...) {}
+
+	{
+		const std::size_t size{2048U};
+		MaskGuard maskGuard{this->maskAllocator, size};
+		Guard guard{this->allocator, maskGuard.mask, size};
+		DynamicArray array{guard.release()};
+		DynamicArray::destroy(this->allocator, maskGuard.mask, array);
+	}
+
+	{
+		const std::size_t size{2048U};
+		MaskGuard maskGuard{this->maskAllocator, size};
+		Guard guard{this->allocator, maskGuard.mask, size};
+		Guard moveConstructed{std::move(guard)};
+		Guard moveAssigned{this->allocator, maskGuard.mask, size};
+		moveAssigned = std::move(moveConstructed);
+	}
 }
 
 TYPED_TEST(DynamicArrayTest, RuleOfFive) {
