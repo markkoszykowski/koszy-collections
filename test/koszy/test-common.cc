@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <exception>
 #include <limits>
 #include <type_traits>
 
@@ -17,10 +18,8 @@ TEST(LikeTTest, HandlesLValue) {
 		Bar bar;
 	};
 
-	constexpr bool nonConstTest{std::is_same_v<koszy::collections::like_t<FooBar&, Foo>, Foo&>};
-	EXPECT_TRUE(nonConstTest);
-	constexpr bool constTest{std::is_same_v<koszy::collections::like_t<const FooBar&, Foo>, const Foo&>};
-	EXPECT_TRUE(constTest);
+	static_assert(std::is_same_v<koszy::collections::like_t<FooBar&, Foo>, Foo&>);
+	static_assert(std::is_same_v<koszy::collections::like_t<const FooBar&, Foo>, const Foo&>);
 }
 
 TEST(LikeTTest, HandlesRValue) {
@@ -31,10 +30,8 @@ TEST(LikeTTest, HandlesRValue) {
 		Bar bar;
 	};
 
-	constexpr bool nonConstTest{std::is_same_v<koszy::collections::like_t<FooBar&&, Foo>, Foo&&>};
-	EXPECT_TRUE(nonConstTest);
-	constexpr bool constTest{std::is_same_v<koszy::collections::like_t<const FooBar&&, Foo>, const Foo&&>};
-	EXPECT_TRUE(constTest);
+	static_assert(std::is_same_v<koszy::collections::like_t<FooBar&&, Foo>, Foo&&>);
+	static_assert(std::is_same_v<koszy::collections::like_t<const FooBar&&, Foo>, const Foo&&>);
 }
 
 

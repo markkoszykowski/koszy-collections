@@ -120,13 +120,12 @@ TEST(MaskBitTest, HandlesOdds) {
 // ArrayMask
 
 template <typename T>
-class ArrayMaskTest : public testing::Test {
-	public:
-		using MaskType = std::tuple_element_t<0, T>;
-		using AllocatorType = std::tuple_element_t<1, T>;
+struct ArrayMaskTest : testing::Test {
+	using MaskType = std::tuple_element_t<0, T>;
+	using AllocatorType = std::tuple_element_t<1, T>;
 
-		AllocatorType allocator_one_{};
-		AllocatorType allocator_two_{};
+	AllocatorType allocatorOne{};
+	AllocatorType allocatorTwo{};
 };
 
 using ArrayMaskTypes = testing::Types<
@@ -164,10 +163,11 @@ TYPED_TEST_SUITE(ArrayMaskTest, ArrayMaskTypes);
 TYPED_TEST(ArrayMaskTest, SetAndUnset) {
 	using MaskType = TestFixture::MaskType;
 	using AllocatorType = TestFixture::AllocatorType;
+	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, AllocatorType>;
 
 	auto test{
 		[&](const std::size_t size, const std::size_t set) {
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> mask{this->allocator_one_, size};
+			ArrayMask mask{this->allocatorOne, size};
 			mask.set(set);
 			for (std::size_t i{0U}; i != size; ++i) {
 				EXPECT_EQ(mask.isSet(i), i == set);
@@ -176,7 +176,15 @@ TYPED_TEST(ArrayMaskTest, SetAndUnset) {
 			for (std::size_t i{0U}; i != size; ++i) {
 				EXPECT_EQ(mask.isSet(i), false);
 			}
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::destroy(this->allocator_one_, mask);
+			mask.toggle(set);
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(mask.isSet(i), i == set);
+			}
+			mask.toggle(set);
+			for (std::size_t i{0U}; i != size; ++i) {
+				EXPECT_EQ(mask.isSet(i), false);
+			}
+			ArrayMask::destroy(this->allocatorOne, mask);
 		}
 	};
 
@@ -187,34 +195,35 @@ TYPED_TEST(ArrayMaskTest, SetAndUnset) {
 TYPED_TEST(ArrayMaskTest, Copy) {
 	using MaskType = TestFixture::MaskType;
 	using AllocatorType = TestFixture::AllocatorType;
+	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, AllocatorType>;
 
 	auto testCopy{
 		[&](AllocatorType& allocator, const std::size_t size, const std::optional<std::size_t> set, AllocatorType& allocatorCopy, const std::size_t sizeCopy, const std::optional<std::size_t> setCopy) {
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> mask{allocator, size};
+			ArrayMask mask{allocator, size};
 			if (set.has_value()) {
 				mask.set(set.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> copy{allocatorCopy, sizeCopy};
+			ArrayMask copy{allocatorCopy, sizeCopy};
 			if (setCopy.has_value()) {
 				copy.set(setCopy.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::copy(allocatorCopy, copy, allocator, mask);
+			ArrayMask::copy(allocatorCopy, copy, allocator, mask);
 			for (std::size_t i{0U}; i != size; ++i) {
 				EXPECT_EQ(copy.isSet(i), set.has_value() && i == set.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::destroy(allocatorCopy, copy);
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::destroy(allocator, mask);
+			ArrayMask::destroy(allocatorCopy, copy);
+			ArrayMask::destroy(allocator, mask);
 		}
 	};
 
 	auto test{
 		[&](const std::size_t size, const std::optional<std::size_t> set, const std::size_t sizeCopy, const std::optional<std::size_t> setCopy) {
-			testCopy(this->allocator_one_, size, set, this->allocator_one_, sizeCopy, setCopy);
-			AllocatorType one{this->allocator_one_};
-			AllocatorType two{this->allocator_two_};
+			testCopy(this->allocatorOne, size, set, this->allocatorOne, sizeCopy, setCopy);
+			AllocatorType one{this->allocatorOne};
+			AllocatorType two{this->allocatorTwo};
 			testCopy(one, size, set, two, sizeCopy, setCopy);
 		}
 	};
@@ -236,34 +245,35 @@ TYPED_TEST(ArrayMaskTest, Copy) {
 TYPED_TEST(ArrayMaskTest, Move) {
 	using MaskType = TestFixture::MaskType;
 	using AllocatorType = TestFixture::AllocatorType;
+	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, AllocatorType>;
 
 	auto testMove{
 		[&](AllocatorType& allocator, const std::size_t size, const std::optional<std::size_t> set, AllocatorType& allocatorMove, const std::size_t sizeMove, const std::optional<std::size_t> setMove) {
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> mask{allocator, size};
+			ArrayMask mask{allocator, size};
 			if (set.has_value()) {
 				mask.set(set.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> move{allocatorMove, sizeMove};
+			ArrayMask move{allocatorMove, sizeMove};
 			if (setMove.has_value()) {
 				move.set(setMove.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::move(allocatorMove, move, std::move(allocator), std::move(mask));
+			ArrayMask::move(allocatorMove, move, std::move(allocator), std::move(mask));
 			for (std::size_t i{0U}; i != size; ++i) {
 				EXPECT_EQ(move.isSet(i), set.has_value() && i == set.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::destroy(allocatorMove, move);
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::destroy(allocator, mask);
+			ArrayMask::destroy(allocatorMove, move);
+			ArrayMask::destroy(allocator, mask);
 		}
 	};
 
 	auto test{
 		[&](const std::size_t size, const std::optional<std::size_t> set, const std::size_t sizeMove, const std::optional<std::size_t> setMove) {
-			testMove(this->allocator_one_, size, set, this->allocator_one_, sizeMove, setMove);
-			AllocatorType one{this->allocator_one_};
-			AllocatorType two{this->allocator_two_};
+			testMove(this->allocatorOne, size, set, this->allocatorOne, sizeMove, setMove);
+			AllocatorType one{this->allocatorOne};
+			AllocatorType two{this->allocatorTwo};
 			testMove(one, size, set, two, sizeMove, setMove);
 		}
 	};
@@ -285,10 +295,11 @@ TYPED_TEST(ArrayMaskTest, Move) {
 TYPED_TEST(ArrayMaskTest, SwapTest) {
 	using MaskType = TestFixture::MaskType;
 	using AllocatorType = TestFixture::AllocatorType;
+	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, AllocatorType>;
 
 	auto testSwap{
 		[&](AllocatorType& allocatorLeft, const std::size_t sizeLeft, const std::optional<std::size_t> setLeft, AllocatorType& allocatorRight, const std::size_t sizeRight, const std::optional<std::size_t> setRight) {
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType> left{allocatorLeft, sizeLeft};
+			ArrayMask left{allocatorLeft, sizeLeft};
 			if (setLeft.has_value()) {
 				left.set(setLeft.value());
 			}
@@ -305,7 +316,7 @@ TYPED_TEST(ArrayMaskTest, SwapTest) {
 				EXPECT_EQ(right.isSet(i), setRight.has_value() && i == setRight.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::swap(allocatorLeft, left, allocatorRight, right);
+			ArrayMask::swap(allocatorLeft, left, allocatorRight, right);
 
 			for (std::size_t i{0U}; i != sizeLeft; ++i) {
 				EXPECT_EQ(right.isSet(i), setLeft.has_value() && i == setLeft.value());
@@ -314,7 +325,7 @@ TYPED_TEST(ArrayMaskTest, SwapTest) {
 				EXPECT_EQ(left.isSet(i), setRight.has_value() && i == setRight.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::swap(allocatorLeft, left, allocatorRight, right);
+			ArrayMask::swap(allocatorLeft, left, allocatorRight, right);
 
 			for (std::size_t i{0U}; i != sizeLeft; ++i) {
 				EXPECT_EQ(left.isSet(i), setLeft.has_value() && i == setLeft.value());
@@ -323,16 +334,16 @@ TYPED_TEST(ArrayMaskTest, SwapTest) {
 				EXPECT_EQ(right.isSet(i), setRight.has_value() && i == setRight.value());
 			}
 
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::destroy(allocatorRight, right);
-			koszy::collections::mask::ArrayMask<MaskType, AllocatorType>::destroy(allocatorLeft, left);
+			ArrayMask::destroy(allocatorRight, right);
+			ArrayMask::destroy(allocatorLeft, left);
 		}
 	};
 
 	auto test{
 		[&](const std::size_t sizeLeft, const std::optional<std::size_t> setLeft, const std::size_t sizeRight, const std::optional<std::size_t> setRight) {
-			testSwap(this->allocator_one_, sizeLeft, setLeft, this->allocator_one_, sizeRight, setRight);
-			AllocatorType one{this->allocator_one_};
-			AllocatorType two{this->allocator_two_};
+			testSwap(this->allocatorOne, sizeLeft, setLeft, this->allocatorOne, sizeRight, setRight);
+			AllocatorType one{this->allocatorOne};
+			AllocatorType two{this->allocatorTwo};
 			testSwap(one, sizeLeft, setLeft, two, sizeRight, setRight);
 		}
 	};
@@ -346,24 +357,31 @@ TYPED_TEST(ArrayMaskTest, SwapTest) {
 TYPED_TEST(ArrayMaskTest, GuardTest) {
 	using MaskType = TestFixture::MaskType;
 	using AllocatorType = TestFixture::AllocatorType;
+	using Guard = koszy::collections::mask::Guard<MaskType, AllocatorType>;
+	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, AllocatorType>;
 
 	try {
-		koszy::collections::mask::Guard<MaskType, AllocatorType> guard{this->allocator_one_, 2048U};
+		Guard guard{this->allocatorOne, 2048U};
 		throw std::exception{};
 	} catch (...) {}
+
+	{
+		Guard guard{this->allocatorOne, 2048U};
+		ArrayMask mask{guard.release()};
+		ArrayMask::destroy(this->allocatorOne, mask);
+	}
 }
 
-TEST(ArrayMaskTest, RuleOfFive) {
-	constexpr bool copyConstructible{std::is_trivially_copy_constructible_v<koszy::collections::mask::ArrayMask<unsigned int>>};
-	EXPECT_TRUE(copyConstructible);
-	constexpr bool moveConstructible{std::is_trivially_move_constructible_v<koszy::collections::mask::ArrayMask<unsigned int>>};
-	EXPECT_TRUE(moveConstructible);
+TYPED_TEST(ArrayMaskTest, RuleOfFive) {
+	using MaskType = TestFixture::MaskType;
+	using AllocatorType = TestFixture::AllocatorType;
+	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, AllocatorType>;
 
-	constexpr bool copyAssignable{std::is_trivially_copy_assignable_v<koszy::collections::mask::ArrayMask<unsigned int>>};
-	EXPECT_TRUE(copyAssignable);
-	constexpr bool moveAssignable{std::is_trivially_move_assignable_v<koszy::collections::mask::ArrayMask<unsigned int>>};
-	EXPECT_TRUE(moveAssignable);
+	static_assert(std::is_trivially_copy_constructible_v<ArrayMask>);
+	static_assert(std::is_trivially_move_constructible_v<ArrayMask>);
 
-	constexpr bool destructible{std::is_trivially_destructible_v<koszy::collections::mask::ArrayMask<unsigned int>>};
-	EXPECT_TRUE(destructible);
+	static_assert(std::is_trivially_copy_assignable_v<ArrayMask>);
+	static_assert(std::is_trivially_move_assignable_v<ArrayMask>);
+
+	static_assert(std::is_trivially_destructible_v<ArrayMask>);
 }

@@ -44,7 +44,7 @@ namespace koszy::collections::array {
 
 		template <typename Self>
 		[[nodiscard]] constexpr like_t<Self, value_type> operator[](this Self&& self, const size_type i) noexcept {
-			return std::forward_like<Self>(*(self.data + i));
+			return std::forward_like<Self>(*(self.begin + i));
 		}
 
 		template <typename Value> requires std::is_same_v<std::remove_cvref_t<Value>, value_type>
@@ -63,7 +63,7 @@ namespace koszy::collections::array {
 
 
 		template <typename M, typename MA>
-		constexpr static void destroy(allocator_type& allocator, const pointer data, const size_type size, const mask::ArrayMask<M, MA>& mask) noexcept(std::is_nothrow_destructible_v<value_type>) {
+		constexpr static void destroy(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const pointer data, const size_type size) noexcept(std::is_nothrow_destructible_v<value_type>) {
 			if (data != nullptr) {
 				if constexpr (!std::is_trivially_destructible_v<value_type>) {
 					for (size_type i{0U}; i != size; ++i) {
@@ -77,8 +77,8 @@ namespace koszy::collections::array {
 		}
 
 		template <typename M, typename MA>
-		constexpr static void destroy(allocator_type& allocator, DynamicArray& array, const mask::ArrayMask<M, MA>& mask) noexcept(std::is_nothrow_destructible_v<value_type>) {
-			destroy(allocator, std::exchange(array.pointer, nullptr), std::exchange(array.n, 0U), mask);
+		constexpr static void destroy(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, DynamicArray& array) noexcept(std::is_nothrow_destructible_v<value_type>) {
+			destroy(allocator, mask, array.data(), array.size());
 		}
 
 
@@ -87,227 +87,130 @@ namespace koszy::collections::array {
 			using mask_type = mask::ArrayMask<M, MA>;
 
 			std::reference_wrapper<allocator_type> allocator;
-			pointer_type pointer;
-			size_type size;
 			std::reference_wrapper<const mask_type> mask;
+			pointer data;
+			size_type size;
 
 			constexpr Guard(allocator_type& allocator, const size_type size, const mask_type& mask) : allocator{allocator},
-				pointer{std::allocator_traits<allocator_type>::allocate(this->allocator.get(), size)},
-				size{size},
-				mask{mask}
+				mask{mask},
+				data{std::allocator_traits<allocator_type>::allocate(allocator, size)},
+				size{size}
 			{}
 
 			constexpr Guard(const Guard&) = delete;
 
 			constexpr Guard(Guard&& other) noexcept : allocator{std::move(other.allocator)},
-				pointer{std::exchange(other.pointer, nullptr)},
-				size{std::exchange(other.size, 0U)},
-				mask{std::move(other.mask)}
+				mask{std::move(other.mask)},
+				data{std::exchange(other.data, nullptr)},
+				size{std::exchange(other.size, 0U)}
 			{}
 
 			constexpr Guard& operator=(const Guard&) = delete;
 
 			constexpr Guard& operator=(Guard&& other) noexcept {
 				this->allocator = std::move(other.allocator);
-				this->pointer = std::exchange(other.pointer, nullptr);
-				this->size = std::exchange(other.size, 0U);
 				this->mask = std::move(other.mask);
+				this->data = std::exchange(other.data, nullptr);
+				this->size = std::exchange(other.size, 0U);
 				return *this;
 			}
 
-			constexpr ~Guard() noexcept(std::is_nothrow_destructible_v<value_type>) {
-				destroy(this->allocator.get(), this->pointer, this->size, this->mask.get());
+			constexpr ~Guard() noexcept {
+				destroy(this->allocator.get(), this->mask.get(), this->data, this->size);
 			}
 
 			constexpr DynamicArray release() noexcept {
-				return DynamicArray{std::exchange(this->pointer, nullptr), std::exchange(this->size, 0U)};
+				const pointer data{std::exchange(this->data, nullptr)};
+				const size_type size{std::exchange(this->size, 0U)};
+				return DynamicArray{data, size};
 			}
 		};
 
 
-		template <typename Array> requires std::is_same_v<std::remove_cvref_t<Array>, DynamicArray>
-		constexpr static Guard cloneDynamic(allocator_type& allocator, Array&& other) {
-			Guard guard{allocator, other.size()};
-			for (; guard.end != guard.size; ++guard.end) {
-				std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.end, std::forward<Array>(other)[guard.end]);
+		template <typename Array, typename M, typename MA, typename OM, typename OMA> requires std::is_same_v<std::remove_cvref_t<Array>, DynamicArray>
+		[[nodiscard]] constexpr static Guard<M, MA> guard(allocator_type& allocator, mask::ArrayMask<M, MA>& mask, const mask::ArrayMask<OM, OMA>& otherMask, Array&& otherArray) {
+			Guard guard{allocator, otherArray.size(), mask};
+			for (size_type i{0U}; i != guard.size; ++i) {
+				if (otherMask.isSet(i)) {
+					std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.end, std::forward<Array>(otherArray)[i]);
+					mask.set(i);
+				}
 			}
 			return guard;
 		}
 
-
-		constexpr DynamicArray(allocator_type& allocator) : array_{nullptr, Deleter{}} {}
-
-		constexpr DynamicArray(const std::size_t n) : array_{nullptr, Deleter{}} {
-			Deleter& deleter{this->array_.get_deleter()};
-			this->array_.reset(std::allocator_traits<A>::allocate(deleter.allocator, n));
-			deleter.size = n;
-			deleter.mask.reset(n);
-		}
-
-		constexpr DynamicArray(const A& allocator) : array_{nullptr, Deleter{allocator}} {}
-
-		constexpr DynamicArray(const std::size_t n, const A& allocator) : array_{nullptr, Deleter{allocator}} {
-			Deleter& deleter{this->array_.get_deleter()};
-			this->array_.reset(std::allocator_traits<A>::allocate(deleter.allocator, n));
-			deleter.size = n;
-			deleter.mask.reset(n);
-		}
-
-		constexpr DynamicArray(const DynamicArray<T, A, M>& that) : array_{nullptr, Deleter{std::allocator_traits<A>::select_on_container_copy_construction(that.array_.get_deleter().allocator)}} {
-			const std::size_t size{that.array_.get_deleter().size};
-			if (size != ZERO) {
-				Deleter& thisDeleter{this->array_.get_deleter()};
-				this->array_.reset(std::allocator_traits<A>::allocate(thisDeleter.allocator, size));
-				thisDeleter.size = size;
-				thisDeleter.mask.reset(size);
-
-				const Deleter& thatDeleter{that.array_.get_deleter()};
-				for (std::size_t i{ZERO}; i != size; ++i) {
-					if (thatDeleter.mask.isSet(i)) {
-						std::allocator_traits<A>::construct(thisDeleter.allocator, std::addressof(this->array_.get()[i]), that.array_.get()[i]);
-					}
+		template <typename Array, typename M, typename MA, typename OM, typename OMA> requires std::is_same_v<std::remove_cvref_t<Array>, DynamicArray>
+		[[nodiscard]] constexpr static Guard<M, MA> guard(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const mask::ArrayMask<OM, OMA>& otherMask, Array&& otherArray) {
+			Guard guard{allocator, otherArray.size(), mask};
+			for (size_type i{0U}; i != guard.size; ++i) {
+				if (otherMask.isSet(i)) {
+					std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.end, std::forward<Array>(otherArray)[i]);
 				}
 			}
+			return guard;
 		}
 
-		constexpr DynamicArray(DynamicArray<T, A, M>&& other) noexcept : allocator_{std::move(other.allocator_)}, mask_{std::move(other.mask_)}, array_{moveArray<true>(*this, std::move(other.array_))}, size_{other.size_} {}
+		template <typename Array, typename M, typename MA, typename OM, typename OMA> requires std::is_same_v<std::remove_cvref_t<Array>, DynamicArray>
+		[[nodiscard]] constexpr static DynamicArray clone(allocator_type& allocator, mask::ArrayMask<M, MA>& mask, const mask::ArrayMask<OM, OMA>& otherMask, Array&& otherArray) {
+			return guard(allocator, mask, otherMask, std::forward<Array>(otherArray)).release();
+		}
+
+		template <typename Array, typename M, typename MA, typename OM, typename OMA> requires std::is_same_v<std::remove_cvref_t<Array>, DynamicArray>
+		[[nodiscard]] constexpr static DynamicArray clone(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const mask::ArrayMask<OM, OMA>& otherMask, Array&& otherArray) {
+			return guard(allocator, mask, otherMask, std::forward<Array>(otherArray)).release();
+		}
 
 
-		constexpr DynamicArray<T, A, M>& operator=(const DynamicArray<T, A, M>& other) {
-			if constexpr (std::allocator_traits<A>::propagate_on_container_copy_assignment::value) {
-				this->array_.reset();
-				this->mask_ = other.mask_;
-				this->allocator_ = other.allocator_;
-				this->array_ = copyMask(*this, other.array_);
-			} else {
-				const std::size_t thisSize{this->array_.get_deleter().size};
-				const std::size_t otherSize{other.array_.get_deleter().size};
-				if (const std::size_t size{thisSize}; thisSize == otherSize) {
-					for (std::size_t i{ZERO}; i != size; ++i) {
-						if (this->mask_.isSet(i)) {
-							if (other.mask_.isSet(i)) {
-								this->array_[i] = other.array_[i];
-							} else {
-								std::allocator_traits<A>::destroy(this->allocator_, std::addressof(this->array_[i]));
-							}
-						} else {
-							if (other.mask_.isSet(i)) {
-								std::allocator_traits<A>::construct(this->allocator_, std::addressof(this->array_[i]), other.array_[i]);
-							} else {
-								// nothing
-							}
-						}
-					}
-					this->mask_ = other.mask_;
-				} else {
-					this->array_.reset();
-					this->mask_ = other.mask_;
-					this->array_ = copyMask(*this, other.array_);
-				}
-			}
+		[[nodiscard]] constexpr static pointer construct(allocator_type& allocator, const size_type n) {
+			return n == 0U ? nullptr : std::allocator_traits<allocator_type>::allocate(allocator, n);
+		}
+
+
+		constexpr explicit DynamicArray(allocator_type&) : begin{nullptr}, end{nullptr} {}
+
+		constexpr DynamicArray(allocator_type& allocator, const size_type n) : begin{construct(allocator, n)}, end{this->begin + n} {}
+
+
+		template <typename M, typename MA>
+		constexpr static DynamicArray copy(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const DynamicArray& other) {
+			return clone(allocator, mask, mask, other);
+		}
+
+
+		constexpr static DynamicArray move(DynamicArray&& other) {
+			return DynamicArray{std::exchange(other.begin, nullptr), std::exchange(other.end, nullptr)};
+		}
+	};
+
+	template <typename T, typename A, typename M, typename MA>
+	struct Guard {
+		std::reference_wrapper<A> allocator;
+		std::reference_wrapper<const mask::ArrayMask<M, MA>> mask;
+		DynamicArray<T, A> array;
+
+		constexpr explicit Guard(DynamicArray<T, A>::allocator_type& allocator, const mask::ArrayMask<M, MA>& mask) : allocator{allocator}, mask{mask}, array{allocator} {}
+
+		constexpr explicit Guard(DynamicArray<T, A>::allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const DynamicArray<T, A>::size_type n) : allocator{allocator}, mask{mask}, array{allocator, n} {}
+
+		constexpr Guard(const Guard&) = delete;
+
+		constexpr Guard(Guard&& other) noexcept : allocator{std::move(other.allocator)}, mask{std::move(other.mask)}, array{DynamicArray<T, A>::move(std::move(other.array))} {}
+
+		constexpr Guard& operator=(const Guard&) = delete;
+
+		constexpr Guard& operator=(Guard&& other) noexcept {
+			this->allocator = std::move(other.allocator);
+			this->mask = std::move(other.mask);
+			this->array = DynamicArray<T, A>::move(std::move(other.array));
 			return *this;
 		}
 
-		constexpr DynamicArray<T, A, M>& operator=(DynamicArray<T, A, M>&& other) noexcept {
-			if constexpr (std::allocator_traits<A>::propagate_on_container_move_assignment::value) {
-				this->array_.reset();
-				this->mask_ = std::move(other.mask_);
-				this->allocator_ = std::move(other.allocator_);
-				this->array_ = moveArray<true>(*this, std::move(other.array_));
-			} else if constexpr (std::allocator_traits<A>::is_always_equal::value) {
-				this->array_.reset();
-				this->mask_ = std::move(other.mask_);
-				this->array_ = moveArray<true>(*this, std::move(other.array_));
-			} else {
-				const std::size_t thisSize{this->array_.get_deleter().size};
-				const std::size_t otherSize{other.array_.get_deleter().size};
-				if (const std::size_t size{thisSize}; thisSize == otherSize) {
-					for (std::size_t i{ZERO}; i != size; ++i) {
-						if (this->mask_.isSet(i)) {
-							if (other.mask_.isSet(i)) {
-								this->array_[i] = std::move(other.array_[i]);
-							} else {
-								std::allocator_traits<A>::destroy(this->allocator_, std::addressof(this->array_[i]));
-							}
-						} else {
-							if (other.mask_.isSet(i)) {
-								std::allocator_traits<A>::construct(this->allocator_, std::addressof(this->array_[i]), std::move(other.array_[i]));
-							} else {
-								// nothing
-							}
-						}
-					}
-					this->mask_ = std::move(other.mask_);
-				} else {
-					this->array_.reset();
-					this->mask_ = std::move(other.mask_);
-					this->array_ = moveArray<false>(*this, std::move(other.array_));
-				}
-			}
-			return *this;
+		constexpr ~Guard() noexcept {
+			DynamicArray<T, A>::destroy(this->allocator.get(), this->mask.get(), this->array);
 		}
 
-
-		~DynamicArray() = default;
-
-
-		constexpr friend void swap(DynamicArray<T, A, M>& a, DynamicArray<T, A, M>& b) noexcept {
-			using std::swap;
-			if constexpr (std::allocator_traits<A>::propagate_on_container_swap::value) {
-				const std::size_t aSize{a.array_.get_deleter().size};
-				const std::size_t bSize{b.array_.get_deleter().size};
-				T* const aTemp{a.array_.release()};
-				T* const bTemp{b.array_.release()};
-				swap(a.mask_, b.mask_);
-				swap(a.allocator_, b.allocator_);
-				a.array_ = Array{bTemp, Deleter{a, bSize}};
-				b.array_ = Array{aTemp, Deleter{b, aSize}};
-			} else if constexpr (std::allocator_traits<A>::is_always_equal::value) {
-				const std::size_t aSize{a.array_.get_deleter().size};
-				const std::size_t bSize{b.array_.get_deleter().size};
-				T* const aTemp{a.array_.release()};
-				T* const bTemp{b.array_.release()};
-				swap(a.mask_, b.mask_);
-				a.array_ = Array{bTemp, Deleter{a, bSize}};
-				b.array_ = Array{aTemp, Deleter{b, aSize}};
-			} else {
-				const std::size_t aSize{a.array_.get_deleter().size};
-				const std::size_t bSize{b.array_.get_deleter().size};
-				if (const std::size_t size{aSize}; aSize == bSize) {
-					for (std::size_t i{ZERO}; i != size; ++i) {
-						if (a.mask_.isSet(i)) {
-							if (b.mask_.isSet(i)) {
-								swap(a.array_[i], b.array_[i]);
-							} else {
-								std::allocator_traits<A>::construct(b.allocator_, std::addressof(b.array_[i]), std::move(a.array_[i]));
-								std::allocator_traits<A>::destroy(a.allocator_, std::addressof(a.array_[i]));
-							}
-						} else {
-							if (b.mask_.isSet(i)) {
-								std::allocator_traits<A>::construct(a.allocator_, std::addressof(a.array_[i]), std::move(b.array_[i]));
-								std::allocator_traits<A>::destroy(b.allocator_, std::addressof(b.array_[i]));
-							} else {
-								// nothing
-							}
-						}
-					}
-					swap(a.mask_, b.mask_);
-				} else {
-					T* const aTemp{std::allocator_traits<A>::allocate(b.allocator_, aSize)};
-					T* const bTemp{std::allocator_traits<A>::allocate(a.allocator_, bSize)};
-					for (std::size_t i{ZERO}; i != std::max(aSize, bSize); ++i) {
-						if (i < aSize && a.mask_.isSet(i)) {
-							std::allocator_traits<A>::construct(b.allocator_, std::addressof(aTemp[i]), std::move(a.array_[i]));
-						}
-						if (i < bSize && b.mask_.isSet(i)) {
-							std::allocator_traits<A>::construct(a.allocator_, std::addressof(bTemp[i]), std::move(b.array_[i]));
-						}
-					}
-					swap(a.mask_, b.mask_);
-					a.array_ = Array{bTemp, Deleter{a, bSize}};
-					b.array_ = Array{aTemp, Deleter{b, aSize}};
-				}
-			}
+		[[nodiscard]] constexpr DynamicArray<T, A> release() noexcept {
+			return DynamicArray<T, A>::move(std::move(this->array));
 		}
 	};
 }

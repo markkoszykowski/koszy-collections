@@ -123,6 +123,10 @@ namespace koszy::collections::mask {
 			std::visit([i](auto& mask) { mask[maskPos<value_type, size_type>(i)] &= ~(ONE_VALUE << maskBit<value_type, size_type>(i)); }, this->mask);
 		}
 
+		constexpr void toggle(const size_type i) noexcept {
+			std::visit([i](auto& mask) { mask[maskPos<value_type, size_type>(i)] ^= (ONE_VALUE << maskBit<value_type, size_type>(i)); }, this->mask);
+		}
+
 
 		constexpr static void destroy(allocator_type&, StaticMask&) noexcept(std::is_nothrow_destructible_v<value_type>) {
 		}
@@ -158,7 +162,7 @@ namespace koszy::collections::mask {
 			size_type len;
 
 			constexpr Guard(allocator_type& allocator, const size_type size) : allocator{allocator},
-				data{std::allocator_traits<allocator_type>::allocate(this->allocator.get(), size)},
+				data{std::allocator_traits<allocator_type>::allocate(allocator, size)},
 				size{size},
 				len{0U}
 			{}
@@ -194,23 +198,23 @@ namespace koszy::collections::mask {
 		};
 
 
-		template <typename Dynamic> requires std::is_same_v<std::remove_cvref_t<Dynamic>, DynamicMask>
-		[[nodiscard]] constexpr static Guard guard(allocator_type& allocator, Dynamic&& other) {
+		template <typename Mask> requires std::is_same_v<std::remove_cvref_t<Mask>, DynamicMask>
+		[[nodiscard]] constexpr static Guard guard(allocator_type& allocator, Mask&& other) {
 			Guard guard{allocator, other.size()};
 			for (; guard.len != guard.size; ++guard.len) {
-				std::allocator_traits<allocator_type>::construct(allocator, std::to_address(guard.data + guard.len), std::forward<Dynamic>(other)[guard.len]);
+				std::allocator_traits<allocator_type>::construct(allocator, std::to_address(guard.data + guard.len), std::forward<Mask>(other)[guard.len]);
 			}
 			return guard;
 		}
 
-		template <typename Static> requires std::is_same_v<std::remove_cvref_t<Static>, StaticMask>
-		[[nodiscard]] constexpr static StaticMask clone(allocator_type&, Static&& other) {
-			return StaticMask{std::forward<Static>(other)};
+		template <typename Mask> requires std::is_same_v<std::remove_cvref_t<Mask>, StaticMask>
+		[[nodiscard]] constexpr static StaticMask clone(allocator_type&, Mask&& other) {
+			return StaticMask{std::forward<Mask>(other)};
 		}
 
-		template <typename Dynamic> requires std::is_same_v<std::remove_cvref_t<Dynamic>, DynamicMask>
-		[[nodiscard]] constexpr static DynamicMask clone(allocator_type& allocator, Dynamic&& other) {
-			return guard(allocator, std::forward<Dynamic>(other)).release();
+		template <typename Mask> requires std::is_same_v<std::remove_cvref_t<Mask>, DynamicMask>
+		[[nodiscard]] constexpr static DynamicMask clone(allocator_type& allocator, Mask&& other) {
+			return guard(allocator, std::forward<Mask>(other)).release();
 		}
 
 		[[nodiscard]] constexpr static StaticMask move(StaticMask&& other) {
@@ -245,8 +249,8 @@ namespace koszy::collections::mask {
 		constexpr explicit ArrayMask(DynamicMask mask) : mask{std::in_place_type<DynamicMask>, std::move(mask)} {}
 
 
-		constexpr static ArrayMask copy(allocator_type& allocator, const ArrayMask& arrayMask) {
-			return std::visit([&](const auto& mask) -> ArrayMask { return ArrayMask{clone(allocator, mask)}; }, arrayMask.mask);
+		constexpr static ArrayMask copy(allocator_type& allocator, const ArrayMask& other) {
+			return std::visit([&](const auto& mask) -> ArrayMask { return ArrayMask{clone(allocator, mask)}; }, other.mask);
 		}
 
 		template <typename Mask>
@@ -287,8 +291,8 @@ namespace koszy::collections::mask {
 		}
 
 
-		constexpr static ArrayMask move(allocator_type&, ArrayMask&& arrayMask) {
-			return std::visit([&](auto&& mask) -> ArrayMask { return ArrayMask{move(std::move(mask))}; }, std::move(arrayMask.mask));
+		constexpr static ArrayMask move(ArrayMask&& other) {
+			return std::visit([&](auto&& mask) -> ArrayMask { return ArrayMask{move(std::move(mask))}; }, std::move(other.mask));
 		}
 
 		template <typename Mask>
@@ -392,7 +396,7 @@ namespace koszy::collections::mask {
 		}
 	};
 
-	template <typename T, typename A=std::allocator<T>>
+	template <typename T, typename A>
 	struct Guard {
 		std::reference_wrapper<A> allocator;
 		ArrayMask<T, A> mask;
@@ -403,13 +407,13 @@ namespace koszy::collections::mask {
 
 		constexpr Guard(const Guard&) = delete;
 
-		constexpr Guard(Guard&& other) noexcept : allocator{std::move(other.allocator)}, mask{ArrayMask<T, A>::move(this->allocator.get(), std::move(other.mask))} {}
+		constexpr Guard(Guard&& other) noexcept : allocator{std::move(other.allocator)}, mask{ArrayMask<T, A>::move(std::move(other.mask))} {}
 
 		constexpr Guard& operator=(const Guard&) = delete;
 
 		constexpr Guard& operator=(Guard&& other) noexcept {
 			this->allocator = std::move(other.allocator);
-			this->mask = ArrayMask<T, A>::move(this->allocator.get(), std::move(other.mask));
+			this->mask = ArrayMask<T, A>::move(std::move(other.mask));
 			return *this;
 		}
 
@@ -418,7 +422,7 @@ namespace koszy::collections::mask {
 		}
 
 		[[nodiscard]] constexpr ArrayMask<T, A> release() noexcept {
-			return ArrayMask<T, A>::move(this->allocator.get(), std::move(this->mask));
+			return ArrayMask<T, A>::move(std::move(this->mask));
 		}
 	};
 }

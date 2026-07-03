@@ -56,7 +56,7 @@ namespace koszy::collections {
 
 		static void empty(const InternalAllocator& allocator) {
 			if (allocator.id.has_value()) {
-				std::lock_guard<std::mutex> lock{allocator.resources->lock};
+				const std::lock_guard<std::mutex> lock{allocator.resources->lock};
 
 				for (const std::pair<void* const, std::pair<int, std::size_t>>& pair: allocator.resources->blocks) {
 					if (pair.second.first == allocator.id.value()) {
@@ -100,7 +100,7 @@ namespace koszy::collections {
 
 
 		T* allocate(const std::size_t n) {
-			std::lock_guard<std::mutex> lock{this->resources->lock};
+			const std::lock_guard<std::mutex> lock{this->resources->lock};
 
 			T* const pointer{std::allocator_traits<std::allocator<T>>::allocate(this->allocator, n)};
 			if (!this->resources->blocks.insert(std::make_pair(static_cast<void*>(pointer), std::make_pair(this->id.value(), n))).second) {
@@ -111,7 +111,7 @@ namespace koszy::collections {
 		}
 
 		void deallocate(T* const pointer, const std::size_t n) {
-			std::lock_guard<std::mutex> lock{this->resources->lock};
+			const std::lock_guard<std::mutex> lock{this->resources->lock};
 
 			const std::unordered_map<void*, std::pair<int, std::size_t>>::node_type value{this->resources->blocks.extract(static_cast<void*>(pointer))};
 			if (value.empty() || value.mapped().first != this->id.value() || value.mapped().second != n) {

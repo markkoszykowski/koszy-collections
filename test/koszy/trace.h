@@ -12,14 +12,12 @@
 namespace koszy::trace {
 	std::optional<std::pmr::stacktrace> _trace(const void*) noexcept;
 
-	template<typename T>
-	requires (!std::is_same_v<T, std::exception_ptr> || sizeof(T) != sizeof(void*))
+	template <typename T> requires (!std::is_same_v<T, std::exception_ptr> || sizeof(T) != sizeof(void*))
 	std::optional<std::pmr::stacktrace> trace(const T& t) noexcept {
 		return _trace(std::addressof(t));
 	}
 
-	template<typename T>
-	requires (std::is_same_v<T, std::exception_ptr> && sizeof(T) == sizeof(void*))
+	template <typename T> requires (std::is_same_v<T, std::exception_ptr> && sizeof(T) == sizeof(void*))
 	std::optional<std::pmr::stacktrace> trace(const T exception) noexcept {
 		void* pointer{nullptr};
 		std::memcpy(std::addressof(pointer), std::addressof(exception), sizeof(pointer));
