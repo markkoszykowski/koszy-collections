@@ -23,49 +23,45 @@ namespace koszy::collections::array {
 		using pointer = std::allocator_traits<allocator_type>::pointer;
 		using const_pointer = std::allocator_traits<allocator_type>::const_pointer;
 
-		pointer begin;
-		pointer end;
+		pointer start;
+		pointer finish;
 
 		[[nodiscard]] constexpr pointer data() & noexcept {
-			return this->begin;
+			return this->start;
 		}
 
 		[[nodiscard]] constexpr const_pointer data() const & noexcept {
-			return this->begin;
+			return this->start;
 		}
 
 		[[nodiscard]] constexpr size_type size() const & noexcept {
-			const difference_type size{this->end - this->begin};
-			if (size < 0) {
-				std::unreachable();
-			}
-			return static_cast<size_type>(size);
+			return koszy::collections::size<allocator_type>(this->start, this->finish);
 		}
 
 		template <typename Self>
 		[[nodiscard]] constexpr like_t<Self, value_type> operator[](this Self&& self, const size_type i) noexcept {
-			return std::forward_like<Self>(*(self.begin + i));
+			return std::forward_like<Self>(*(self.start + i));
 		}
 
 		template <typename Value> requires std::is_same_v<std::remove_cvref_t<Value>, value_type>
 		constexpr void insert(allocator_type& allocator, const size_type i, Value&& value) {
-			std::allocator_traits<A>::construct(allocator, std::to_address(this->begin + i), std::forward<Value>(value));
+			std::allocator_traits<A>::construct(allocator, std::to_address(this->start + i), std::forward<Value>(value));
 		}
 
 		template <typename... Args>
 		constexpr void emplace(allocator_type& allocator, const size_type i, Args&&... args) {
-			std::allocator_traits<A>::construct(allocator, std::to_address(this->begin + i), std::forward<Args>(args)...);
+			std::allocator_traits<A>::construct(allocator, std::to_address(this->start + i), std::forward<Args>(args)...);
 		}
 
 		constexpr void erase(allocator_type& allocator, const size_type i) {
-			std::allocator_traits<A>::destroy(allocator, std::to_address(this->begin + i));
+			std::allocator_traits<A>::destroy(allocator, std::to_address(this->start + i));
 		}
 
 
 		template <typename M, typename MA>
 		constexpr static void destroy(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const pointer data, const size_type size) noexcept(std::is_nothrow_destructible_v<value_type>) {
 			if (data != nullptr) {
-				if constexpr (!std::is_trivially_destructible_v<value_type>) {
+				if constexpr (must_destroy_t<value_type, allocator_type>::value) {
 					for (size_type i{0U}; i != size; ++i) {
 						if (mask.isSet(i)) {
 							std::allocator_traits<allocator_type>::destroy(allocator, std::to_address(data + i));
@@ -169,11 +165,11 @@ namespace koszy::collections::array {
 		}
 
 
-		constexpr explicit DynamicArray(allocator_type&) : begin{nullptr}, end{nullptr} {}
+		constexpr explicit DynamicArray(allocator_type&) : start{nullptr}, finish{nullptr} {}
 
-		constexpr DynamicArray(allocator_type& allocator, const size_type n) : begin{construct(allocator, n)}, end{this->begin + n} {}
+		constexpr DynamicArray(allocator_type& allocator, const size_type n) : start{construct(allocator, n)}, finish{this->start + n} {}
 
-		constexpr DynamicArray(const pointer begin, const pointer end) : begin{begin}, end{end} {}
+		constexpr DynamicArray(const pointer begin, const pointer end) : start{begin}, finish{end} {}
 
 
 		template <typename M, typename MA>
@@ -183,7 +179,7 @@ namespace koszy::collections::array {
 
 
 		constexpr static DynamicArray move(DynamicArray&& other) {
-			return DynamicArray{std::exchange(other.begin, nullptr), std::exchange(other.end, nullptr)};
+			return DynamicArray{std::exchange(other.start, nullptr), std::exchange(other.finish, nullptr)};
 		}
 	};
 

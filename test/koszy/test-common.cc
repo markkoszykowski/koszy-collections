@@ -1,6 +1,8 @@
 #include <cstdint>
 #include <exception>
 #include <limits>
+#include <memory_resource>
+#include <string>
 #include <type_traits>
 
 #include <gtest/gtest.h>
@@ -32,6 +34,25 @@ TEST(LikeTTest, HandlesRValue) {
 
 	static_assert(std::is_same_v<koszy::collections::like_t<FooBar&&, Foo>, Foo&&>);
 	static_assert(std::is_same_v<koszy::collections::like_t<const FooBar&&, Foo>, const Foo&&>);
+}
+
+
+// MustDestroyT
+
+TEST(MustDestroyTTest, Test) {
+	static_assert(!koszy::collections::must_destroy_t<int, std::allocator<int>>::value);
+
+	static_assert(koszy::collections::must_destroy_t<std::string, std::pmr::polymorphic_allocator<std::string>>::value);
+	static_assert(koszy::collections::must_destroy_t<int, std::pmr::polymorphic_allocator<int>>::value);
+	static_assert(koszy::collections::must_destroy_t<std::string, std::pmr::polymorphic_allocator<std::string>>::value);
+}
+
+
+// Size
+
+TEST(SizeTest, Test) {
+	EXPECT_EQ(koszy::collections::size<std::allocator<std::int32_t>>(nullptr, nullptr), 0U);
+	EXPECT_EQ(koszy::collections::size<std::allocator<std::int32_t>>(reinterpret_cast<const std::int32_t*>(std::uintptr_t{16U}), reinterpret_cast<const std::int32_t*>(std::uintptr_t{32U})), 4U);
 }
 
 

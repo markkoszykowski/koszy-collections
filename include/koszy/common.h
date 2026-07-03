@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <type_traits>
 
@@ -23,6 +24,28 @@ namespace koszy::collections {
 		std::conditional_t<std::is_lvalue_reference_v<Self&&>, const Member&, const Member&&>,
 		std::conditional_t<std::is_lvalue_reference_v<Self&&>, Member&, Member&&>
 	>;
+
+	template <typename T, typename A>
+	using must_destroy_t = std::bool_constant<!std::is_same_v<A, std::allocator<T>> || !std::is_trivially_destructible_v<T>>;
+
+	template <typename A>
+	using size_type = std::allocator_traits<A>::size_type;
+	template <typename A>
+	using difference_type = std::allocator_traits<A>::difference_type;
+	template <typename A>
+	using pointer = std::allocator_traits<A>::pointer;
+	template <typename A>
+	using const_pointer = std::allocator_traits<A>::const_pointer;
+
+
+	template <typename A>
+	constexpr size_type<A> size(const const_pointer<A> begin, const const_pointer<A> end) {
+		const difference_type<A> size{end - begin};
+		if (size < 0) {
+			std::unreachable();
+		}
+		return static_cast<size_type<A>>(size);
+	}
 
 	constexpr std::size_t nextPowerOfTwo(const std::size_t n) {
 		if (MAX_POWER_OF_TWO < n) [[unlikely]] {
