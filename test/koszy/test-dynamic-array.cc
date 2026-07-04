@@ -131,6 +131,84 @@ TYPED_TEST(DynamicArrayTest, MoveElementTest) {
 	ArrayMask::destroy(this->maskAllocator, mask);
 }
 
+TYPED_TEST(DynamicArrayTest, Copy) {
+	using ArrayType = TestFixture::ArrayType;
+	using AllocatorType = TestFixture::AllocatorType;
+	using MaskType = TestFixture::MaskType;
+	using MaskAllocatorType = TestFixture::MaskAllocatorType;
+	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, MaskAllocatorType>;
+	using DynamicArray = koszy::collections::array::DynamicArray<ArrayType, AllocatorType>;
+
+	auto test{
+		[&](const std::size_t size, const std::optional<std::size_t> set) {
+			ArrayMask mask{this->maskAllocator, size};
+			DynamicArray array{this->allocator, size};
+			if (set.has_value()) {
+				array.emplace(this->allocator, set.value(), LOREM_IPSUM);
+				mask.set(set.value());
+			}
+
+			ArrayMask copyMask{this->maskAllocator, size};
+			DynamicArray copy{DynamicArray::copy(this->allocator, copyMask, mask, array)};
+			if (set.has_value()) {
+				EXPECT_EQ(copy[set.value()], LOREM_IPSUM);
+			}
+
+			DynamicArray::destroy(this->allocator, copyMask, copy);
+			ArrayMask::destroy(this->maskAllocator, copyMask);
+			DynamicArray::destroy(this->allocator, mask, array);
+			ArrayMask::destroy(this->maskAllocator, mask);
+		}
+	};
+
+	test(1U, 0U);
+	test(1U, std::nullopt);
+
+	test(32U, 15U);
+	test(32U, std::nullopt);
+
+	test(1024U, 128U);
+	test(1024U, std::nullopt);
+}
+
+TYPED_TEST(DynamicArrayTest, Move) {
+	using ArrayType = TestFixture::ArrayType;
+	using AllocatorType = TestFixture::AllocatorType;
+	using MaskType = TestFixture::MaskType;
+	using MaskAllocatorType = TestFixture::MaskAllocatorType;
+	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, MaskAllocatorType>;
+	using DynamicArray = koszy::collections::array::DynamicArray<ArrayType, AllocatorType>;
+
+	auto test{
+		[&](const std::size_t size, const std::optional<std::size_t> set) {
+			ArrayMask mask{this->maskAllocator, size};
+			DynamicArray array{this->allocator, size};
+			if (set.has_value()) {
+				array.emplace(this->allocator, set.value(), LOREM_IPSUM);
+				mask.set(set.value());
+			}
+
+			DynamicArray move{DynamicArray::move(std::move(array))};
+			if (set.has_value()) {
+				EXPECT_EQ(move[set.value()], LOREM_IPSUM);
+			}
+
+			DynamicArray::destroy(this->allocator, mask, move);
+			DynamicArray::destroy(this->allocator, mask, array);
+			ArrayMask::destroy(this->maskAllocator, mask);
+		}
+	};
+
+	test(1U, 0U);
+	test(1U, std::nullopt);
+
+	test(32U, 15U);
+	test(1U, std::nullopt);
+
+	test(1024U, 128U);
+	test(1U, std::nullopt);
+}
+
 TYPED_TEST(DynamicArrayTest, GuardTest) {
 	using ArrayType = TestFixture::ArrayType;
 	using AllocatorType = TestFixture::AllocatorType;

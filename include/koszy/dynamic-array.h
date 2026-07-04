@@ -117,12 +117,6 @@ namespace koszy::collections::array {
 			constexpr ~Guard() noexcept {
 				destroy(this->allocator.get(), this->mask.get(), this->data, this->size);
 			}
-
-			constexpr DynamicArray release() noexcept {
-				const pointer data{std::exchange(this->data, nullptr)};
-				const size_type size{std::exchange(this->size, 0U)};
-				return DynamicArray{data, size};
-			}
 		};
 
 
@@ -131,32 +125,17 @@ namespace koszy::collections::array {
 			Guard guard{allocator, otherArray.size(), mask};
 			for (size_type i{0U}; i != guard.size; ++i) {
 				if (otherMask.isSet(i)) {
-					std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.end, std::forward<Array>(otherArray)[i]);
+					std::allocator_traits<allocator_type>::construct(allocator, guard.data + i, std::forward<Array>(otherArray)[i]);
 					mask.set(i);
 				}
 			}
 			return guard;
 		}
 
-		template <typename Array, typename M, typename MA, typename OM, typename OMA> requires std::is_same_v<std::remove_cvref_t<Array>, DynamicArray>
-		[[nodiscard]] constexpr static Guard<M, MA> guard(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const mask::ArrayMask<OM, OMA>& otherMask, Array&& otherArray) {
-			Guard guard{allocator, otherArray.size(), mask};
-			for (size_type i{0U}; i != guard.size; ++i) {
-				if (otherMask.isSet(i)) {
-					std::allocator_traits<allocator_type>::construct(allocator, guard.pointer + guard.end, std::forward<Array>(otherArray)[i]);
-				}
-			}
-			return guard;
-		}
 
 		template <typename Array, typename M, typename MA, typename OM, typename OMA> requires std::is_same_v<std::remove_cvref_t<Array>, DynamicArray>
 		[[nodiscard]] constexpr static DynamicArray clone(allocator_type& allocator, mask::ArrayMask<M, MA>& mask, const mask::ArrayMask<OM, OMA>& otherMask, Array&& otherArray) {
-			return guard(allocator, mask, otherMask, std::forward<Array>(otherArray)).release();
-		}
-
-		template <typename Array, typename M, typename MA, typename OM, typename OMA> requires std::is_same_v<std::remove_cvref_t<Array>, DynamicArray>
-		[[nodiscard]] constexpr static DynamicArray clone(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const mask::ArrayMask<OM, OMA>& otherMask, Array&& otherArray) {
-			return guard(allocator, mask, otherMask, std::forward<Array>(otherArray)).release();
+			return DynamicArray{guard(allocator, mask, otherMask, std::forward<Array>(otherArray))};
 		}
 
 
@@ -165,6 +144,9 @@ namespace koszy::collections::array {
 		}
 
 
+		template <typename M, typename MA>
+		constexpr explicit DynamicArray(Guard<M, MA>&& guard) : start{std::exchange(guard.data, nullptr)}, finish{this->start + std::exchange(guard.size, 0U)} {}
+
 		constexpr explicit DynamicArray(allocator_type&) : start{nullptr}, finish{nullptr} {}
 
 		constexpr DynamicArray(allocator_type& allocator, const size_type n) : start{construct(allocator, n)}, finish{this->start + n} {}
@@ -172,9 +154,9 @@ namespace koszy::collections::array {
 		constexpr DynamicArray(const pointer begin, const pointer end) : start{begin}, finish{end} {}
 
 
-		template <typename M, typename MA>
-		constexpr static DynamicArray copy(allocator_type& allocator, const mask::ArrayMask<M, MA>& mask, const DynamicArray& other) {
-			return clone(allocator, mask, mask, other);
+		template <typename M, typename MA, typename OM, typename OMA>
+		constexpr static DynamicArray copy(allocator_type& allocator, mask::ArrayMask<M, MA>& mask, const mask::ArrayMask<OM, OMA>& otherMask, const DynamicArray& other) {
+			return clone(allocator, mask, otherMask, other);
 		}
 
 
