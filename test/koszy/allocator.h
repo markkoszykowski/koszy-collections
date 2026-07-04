@@ -7,12 +7,15 @@
 #include <stdexcept>
 #include <source_location>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace koszy::collections {
 	struct MemoryResource {
-		std::mutex lock;
-		std::unordered_map<void*, std::size_t> blocks;
+		mutable std::mutex blockLock;
+		mutable std::mutex objectLock;
+		std::unordered_map<const void*, std::size_t> blocks;
+		std::unordered_set<const void*> objects;
 
 		MemoryResource() = default;
 
@@ -26,6 +29,9 @@ namespace koszy::collections {
 
 		~MemoryResource() {
 			if (!this->blocks.empty()) {
+				throw std::logic_error{std::source_location::current().function_name()};
+			}
+			if (!this->objects.empty()) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 		}
@@ -81,10 +87,10 @@ namespace koszy::collections {
 		};
 
 		[[nodiscard]] T* allocate(const std::size_t n) {
-			const std::lock_guard<std::mutex> lock{this->resource->lock};
+			const std::lock_guard<std::mutex> lock{this->resource->blockLock};
 
 			T* const pointer{std::allocator_traits<GlobalAllocator<T>>::allocate(this->allocator, n)};
-			if (!this->resource->blocks.emplace(static_cast<void*>(pointer), n).second) {
+			if (!this->resource->blocks.emplace(static_cast<const void*>(pointer), n).second) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 
@@ -92,14 +98,36 @@ namespace koszy::collections {
 		}
 
 		void deallocate(T* const pointer, const std::size_t n) {
-			const std::lock_guard<std::mutex> lock{this->resource->lock};
+			const std::lock_guard<std::mutex> lock{this->resource->blockLock};
 
-			const std::unordered_map<void*, std::size_t>::node_type value{this->resource->blocks.extract(static_cast<void*>(pointer))};
+			const std::unordered_map<const void*, std::size_t>::node_type value{this->resource->blocks.extract(static_cast<void*>(pointer))};
 			if (value.empty() || value.mapped() != n) {
 				throw std::logic_error{std::source_location::current().function_name()};
 			}
 
 			std::allocator_traits<GlobalAllocator<T>>::deallocate(this->allocator, pointer, n);
+		}
+
+		template <typename... Args>
+		void construct(T* const pointer, Args&&... args) {
+			const std::lock_guard<std::mutex> lock{this->resource->objectLock};
+
+			if (!this->resource->objects.emplace(static_cast<const void*>(pointer)).second) {
+				throw std::logic_error{std::source_location::current().function_name()};
+			}
+
+			std::construct_at(pointer, std::forward<Args>(args)...);
+		}
+
+		void destroy(T* const pointer) {
+			const std::lock_guard<std::mutex> lock{this->resource->objectLock};
+
+			const std::unordered_set<const void*>::node_type value{this->resource->objects.extract(static_cast<void*>(pointer))};
+			if (value.empty()) {
+				throw std::logic_error{std::source_location::current().function_name()};
+			}
+
+			std::destroy_at(pointer);
 		}
 	};
 
@@ -122,6 +150,15 @@ namespace koszy::collections {
 		void deallocate(value_type* const pointer, const std::size_t n) {
 			this->allocator.deallocate(pointer, n);
 		}
+
+		template <typename... Args>
+		void construct(T* const pointer, Args&&... args) {
+			this->allocator.construct(pointer, std::forward<Args>(args)...);
+		}
+
+		void destroy(T* const pointer) {
+			this->allocator.destroy(pointer);
+		}
 	};
 
 	template <typename T>
@@ -142,6 +179,15 @@ namespace koszy::collections {
 
 		void deallocate(value_type* const pointer, const std::size_t n) {
 			this->allocator.deallocate(pointer, n);
+		}
+
+		template <typename... Args>
+		void construct(T* const pointer, Args&&... args) {
+			this->allocator.construct(pointer, std::forward<Args>(args)...);
+		}
+
+		void destroy(T* const pointer) {
+			this->allocator.destroy(pointer);
 		}
 	};
 }

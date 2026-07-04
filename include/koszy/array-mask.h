@@ -213,6 +213,11 @@ namespace koszy::collections::mask {
 		}
 
 
+		template <typename Mask> requires std::is_same_v<std::remove_cvref_t<Mask>, StaticMask>
+		[[nodiscard]] constexpr static StaticMask guard(allocator_type&, Mask&& mask) {
+			return StaticMask{std::forward<Mask>(mask)};
+		}
+
 		template <typename Mask> requires std::is_same_v<std::remove_cvref_t<Mask>, DynamicMask>
 		[[nodiscard]] constexpr static Guard guard(allocator_type& allocator, Mask&& other) {
 			Guard guard{allocator, other.size()};
@@ -269,16 +274,12 @@ namespace koszy::collections::mask {
 		}
 
 		template <typename Mask>
-		constexpr static void copy(allocator_type& allocator, ArrayMask& arrayMask, auto&, const Mask& srcMask, auto) {
-			arrayMask.mask.template emplace<Mask>(clone(allocator, srcMask));
-		}
-
-		constexpr static void copy(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, const StaticMask& srcMask, std::false_type) {
+		constexpr static void copy(ArrayMask& arrayMask, allocator_type& allocator, auto& dstMask, const Mask& srcMask) {
 			destroy(allocator, dstMask);
-			arrayMask.mask.template emplace<StaticMask>(clone(allocator, srcMask));
+			arrayMask.mask.template emplace<std::remove_cvref_t<Mask>>(clone(allocator, srcMask));
 		}
 
-		constexpr static void copy(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, const DynamicMask& srcMask, std::false_type) {
+		constexpr static void copy(ArrayMask& arrayMask, allocator_type& allocator, DynamicMask& dstMask, const DynamicMask& srcMask) {
 			if (dstMask.size() == srcMask.size()) {
 				std::copy(srcMask.start, srcMask.finish, dstMask.start);
 			} else {
@@ -287,15 +288,39 @@ namespace koszy::collections::mask {
 			}
 		}
 
+		template <typename Mask>
+		constexpr static void copy(ArrayMask& arrayMask, allocator_type& dstAllocator, auto& dstMask, const allocator_type& srcAllocator, const Mask& srcMask, auto) {
+			destroy(dstAllocator, dstMask);
+			dstAllocator = srcAllocator;
+			arrayMask.mask.template emplace<std::remove_cvref_t<Mask>>(clone(dstAllocator, srcMask));
+		}
+
+		constexpr static void copy(ArrayMask& arrayMask, allocator_type& dstAllocator, DynamicMask& dstMask, const allocator_type& srcAllocator, const DynamicMask& srcMask, std::true_type) {
+			if (dstMask.size() == srcMask.size()) {
+				dstAllocator = srcAllocator;
+				std::copy(srcMask.start, srcMask.finish, dstMask.start);
+			} else {
+				destroy(dstAllocator, dstMask);
+				dstAllocator = srcAllocator;
+				arrayMask.mask.template emplace<DynamicMask>(clone(dstAllocator, srcMask));
+			}
+		}
+
 		constexpr static void copy(allocator_type& dstAllocator, ArrayMask& dstArrayMask, const allocator_type& srcAllocator, const ArrayMask& srcArrayMask) {
 			std::visit(
 				[&](auto& dstMask, const auto& srcMask) {
 					if constexpr (std::allocator_traits<allocator_type>::propagate_on_container_copy_assignment::value) {
-						destroy(dstAllocator, dstMask);
-						dstAllocator = srcAllocator;
-						copy(dstAllocator, dstArrayMask, dstMask, srcMask, std::true_type{});
+						if constexpr (std::allocator_traits<allocator_type>::is_always_equal::value) {
+							copy(dstArrayMask, dstAllocator, dstMask, srcAllocator, srcMask, std::true_type{});
+						} else {
+							if (srcAllocator == dstAllocator) {
+								copy(dstArrayMask, dstAllocator, dstMask, srcAllocator, srcMask, std::true_type{});
+							} else {
+								copy(dstArrayMask, dstAllocator, dstMask, srcAllocator, srcMask, std::false_type{});
+							}
+						}
 					} else {
-						copy(dstAllocator, dstArrayMask, dstMask, srcMask, std::false_type{});
+						copy(dstArrayMask, dstAllocator, dstMask, srcMask);
 					}
 				},
 				dstArrayMask.mask,
@@ -309,20 +334,18 @@ namespace koszy::collections::mask {
 		}
 
 		template <typename Mask>
-		constexpr static void move(allocator_type&, ArrayMask& arrayMask, auto&, Mask&& srcMask, auto) {
+		constexpr static void move(ArrayMask& arrayMask, allocator_type& allocator, auto& dstMask, Mask&& srcMask, std::true_type) {
+			destroy(allocator, dstMask);
 			arrayMask.mask.template emplace<std::remove_cvref_t<Mask>>(move(std::move(srcMask)));
 		}
 
-		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, StaticMask&& srcMask, std::false_type) {
+		template <typename Mask>
+		constexpr static void move(ArrayMask& arrayMask, allocator_type& allocator, auto& dstMask, Mask&& srcMask, std::false_type) {
 			destroy(allocator, dstMask);
-			arrayMask.mask.template emplace<StaticMask>(move(std::move(srcMask)));
+			arrayMask.mask.template emplace<std::remove_cvref_t<Mask>>(clone(allocator, std::move(srcMask)));
 		}
 
-		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, StaticMask&, DynamicMask&& srcMask, std::false_type) {
-			arrayMask.mask.template emplace<DynamicMask>(clone(allocator, std::move(srcMask)));
-		}
-
-		constexpr static void move(allocator_type& allocator, ArrayMask& arrayMask, DynamicMask& dstMask, DynamicMask&& srcMask, std::false_type) {
+		constexpr static void move(ArrayMask& arrayMask, allocator_type& allocator, DynamicMask& dstMask, DynamicMask&& srcMask, std::false_type) {
 			if (dstMask.size() == srcMask.size()) {
 				std::copy(std::make_move_iterator(srcMask.start), std::make_move_iterator(srcMask.finish), dstMask.start);
 			} else {
@@ -331,22 +354,25 @@ namespace koszy::collections::mask {
 			}
 		}
 
+		template <typename Mask>
+		constexpr static void move(ArrayMask& arrayMask, allocator_type& dstAllocator, auto& dstMask, allocator_type&& srcAllocator, Mask&& srcMask) {
+			destroy(dstAllocator, dstMask);
+			dstAllocator = std::move(srcAllocator);
+			arrayMask.mask.template emplace<std::remove_cvref_t<Mask>>(move(std::move(srcMask)));
+		}
+
 		constexpr static void move(allocator_type& dstAllocator, ArrayMask& dstArrayMask, allocator_type&& srcAllocator, ArrayMask&& srcArrayMask) {
 			std::visit(
 				[&](auto& dstMask, auto&& srcMask) {
 					if constexpr (std::allocator_traits<allocator_type>::propagate_on_container_move_assignment::value) {
-						destroy(dstAllocator, dstMask);
-						dstAllocator = std::move(srcAllocator);
-						move(dstAllocator, dstArrayMask, dstMask, std::move(srcMask), std::true_type{});
+						move(dstArrayMask, dstAllocator, dstMask, std::move(srcAllocator), std::move(srcMask));
 					} else if constexpr (std::allocator_traits<allocator_type>::is_always_equal::value) {
-						destroy(dstAllocator, dstMask);
-						move(dstAllocator, dstArrayMask, dstMask, std::move(srcMask), std::true_type{});
+						move(dstArrayMask, dstAllocator, dstMask, std::move(srcMask), std::true_type{});
 					} else {
-						if (dstAllocator == srcAllocator) {
-							destroy(dstAllocator, dstMask);
-							move(dstAllocator, dstArrayMask, dstMask, std::move(srcMask), std::true_type{});
+						if (srcAllocator == dstAllocator) {
+							move(dstArrayMask, dstAllocator, dstMask, std::move(srcMask), std::true_type{});
 						} else {
-							move(dstAllocator, dstArrayMask, dstMask, std::move(srcMask), std::false_type{});
+							move(dstArrayMask, dstAllocator, dstMask, std::move(srcMask), std::false_type{});
 						}
 					}
 				},
