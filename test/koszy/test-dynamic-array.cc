@@ -168,9 +168,6 @@ TYPED_TEST(DynamicArrayTest, GuardTest) {
 TYPED_TEST(DynamicArrayTest, RuleOfFive) {
 	using ArrayType = TestFixture::ArrayType;
 	using AllocatorType = TestFixture::AllocatorType;
-	using MaskType = TestFixture::MaskType;
-	using MaskAllocatorType = TestFixture::MaskAllocatorType;
-	using ArrayMask = koszy::collections::mask::ArrayMask<MaskType, MaskAllocatorType>;
 	using DynamicArray = koszy::collections::array::DynamicArray<ArrayType, AllocatorType>;
 
 	static_assert(std::is_trivially_copy_constructible_v<DynamicArray>);
