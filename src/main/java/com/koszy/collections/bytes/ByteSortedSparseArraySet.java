@@ -12,7 +12,6 @@ import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Random;
-import java.util.random.RandomGenerator;
 
 public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements Cloneable {
 
@@ -30,7 +29,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 	protected final float f;
 
 	protected final ByteComparator comparator;
-	protected final RandomGenerator random;
+	protected final Random random;
 
 	public ByteSortedSparseArraySet() {
 		this(
@@ -59,7 +58,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 		);
 	}
 
-	public ByteSortedSparseArraySet(final RandomGenerator random) {
+	public ByteSortedSparseArraySet(final Random random) {
 		this(
 				Hash.DEFAULT_INITIAL_SIZE,
 				Hash.DEFAULT_LOAD_FACTOR,
@@ -82,7 +81,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 
 	public ByteSortedSparseArraySet(
 			final int expected,
-			final RandomGenerator random
+			final Random random
 	) {
 		this(
 				expected,
@@ -94,7 +93,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 
 	public ByteSortedSparseArraySet(
 			final ByteComparator comparator,
-			final RandomGenerator random
+			final Random random
 	) {
 		this(
 				Hash.DEFAULT_INITIAL_SIZE,
@@ -107,7 +106,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 	public ByteSortedSparseArraySet(
 			final int expected,
 			final ByteComparator comparator,
-			final RandomGenerator random
+			final Random random
 	) {
 		this(
 				expected,
@@ -121,7 +120,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 			final int expected,
 			final float f,
 			final ByteComparator comparator,
-			final RandomGenerator random
+			final Random random
 	) {
 		if (f <= 0.0F || 1.0F <= f) {
 			throw new IllegalArgumentException("Load factor must be greater than 0 and smaller than 1");
@@ -199,11 +198,14 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 	@Override
 	public boolean contains(final byte k) {
 		final byte[] key = this.key;
-		return switch (this.size) {
-			case 0 -> false;
-			case 1 -> this.compare(k, key[this.first]) == 0;
-			case 2 -> this.compare(k, key[this.first]) == 0 || this.compare(key[this.last], k) == 0;
-			default -> {
+		switch (this.size) {
+			case 0:
+				return false;
+			case 1:
+				return this.compare(k, key[this.first]) == 0;
+			case 2:
+				return this.compare(k, key[this.first]) == 0 || this.compare(key[this.last], k) == 0;
+			default: {
 				final int first = this.first;
 				final int last = this.last;
 
@@ -211,22 +213,22 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 
 				compare = this.compare(k, key[first]);
 				if (compare < 0) { // k < first
-					yield false;
+					return false;
 				} else if (compare == 0) { // k == first
-					yield true;
+					return true;
 				}
 
 				compare = this.compare(key[last], k);
 				if (compare < 0) { // last < k
-					yield false;
+					return false;
 				} else if (compare == 0) { // k == last
-					yield true;
+					return true;
 				}
 
 				final long packed = this.sparseBinarySearch(k);
-				yield (int) packed == (int) (packed >>> Integer.SIZE);
+				return (int) packed == (int) (packed >>> Integer.SIZE);
 			}
-		};
+		}
 	}
 
 	@Override
@@ -236,8 +238,8 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 		final int begin = 0;
 		final int end = this.n - 1;
 
-		return switch (this.size) {
-			case 0 -> {
+		switch (this.size) {
+			case 0: {
 				final int low = begin - 1;
 				final int high = end + 1;
 
@@ -247,9 +249,9 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 					this.resort(HashCommon.arraySize(this.size + 1, this.f));
 				}
 
-				yield true;
+				return true;
 			}
-			case 1 -> {
+			case 1: {
 				final int first = this.first;
 				final int last = this.last;
 
@@ -265,7 +267,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
 					}
 
-					yield true;
+					return true;
 				} else if (compare > 0) { // last < k
 					low = last;
 					high = end + 1;
@@ -275,12 +277,12 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
 					}
 
-					yield true;
+					return true;
 				} else { // k == first == last
-					yield false;
+					return false;
 				}
 			}
-			case 2 -> {
+			case 2: {
 				final int first = this.first;
 				final int last = this.last;
 
@@ -298,9 +300,9 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
 					}
 
-					yield true;
+					return true;
 				} else if (compare == 0) { // k == first
-					yield false;
+					return false;
 				}
 
 				compare = this.compare(key[last], k);
@@ -313,9 +315,9 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
 					}
 
-					yield true;
+					return true;
 				} else if (compare == 0) { // k == last
-					yield false;
+					return false;
 				}
 
 				low = first;
@@ -326,9 +328,9 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 					this.resort(HashCommon.arraySize(this.size + 1, this.f));
 				}
 
-				yield true;
+				return true;
 			}
-			default -> {
+			default: {
 				final int first = this.first;
 				final int last = this.last;
 
@@ -346,9 +348,9 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
 					}
 
-					yield true;
+					return true;
 				} else if (compare == 0) { // k == first
-					yield false;
+					return false;
 				}
 
 				compare = this.compare(key[last], k);
@@ -361,9 +363,9 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
 					}
 
-					yield true;
+					return true;
 				} else if (compare == 0) { // k == last
-					yield false;
+					return false;
 				}
 
 				final long packed = this.sparseBinarySearch(k);
@@ -376,12 +378,12 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 						this.resort(HashCommon.arraySize(this.size + 1, this.f));
 					}
 
-					yield true;
+					return true;
 				} else {
-					yield false;
+					return false;
 				}
 			}
-		};
+		}
 	}
 
 	private int insert(final byte k, final int low, final int high) {
@@ -528,20 +530,22 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 	@Override
 	public boolean remove(final byte k) {
 		final byte[] key = this.key;
-		return switch (this.size) {
-			case 0 -> false;
-			case 1 -> {
+		switch (this.size) {
+			case 0: {
+				return false;
+			}
+			case 1: {
 				final int pos = this.first;
 
 				if (this.compare(key[pos], k) != 0) {
-					yield false;
+					return false;
 				}
 
 				this.removeEntry(pos);
 
-				yield true;
+				return true;
 			}
-			case 2 -> {
+			case 2: {
 				final int first = this.first;
 				final int last = this.last;
 
@@ -550,26 +554,26 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 				pos = first;
 				compare = this.compare(k, key[pos]);
 				if (compare < 0) { // k < first
-					yield false;
+					return false;
 				} else if (compare == 0) { // k == first
 					this.removeEntry(pos);
 
-					yield true;
+					return true;
 				}
 
 				pos = last;
 				compare = this.compare(key[pos], k);
 				if (compare < 0) { // last < k
-					yield false;
+					return false;
 				} else if (compare == 0) { // k == last
 					this.removeEntry(pos);
 
-					yield true;
+					return true;
 				}
 
-				yield false;
+				return false;
 			}
-			default -> {
+			default: {
 				final int first = this.first;
 				final int last = this.last;
 
@@ -578,41 +582,42 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 				pos = first;
 				compare = this.compare(k, key[pos]);
 				if (compare < 0) { // k < first
-					yield false;
+					return false;
 				} else if (compare == 0) { // k == first
 					this.removeEntry(pos);
 
-					yield true;
+					return true;
 				}
 
 				pos = last;
 				compare = this.compare(key[pos], k);
 				if (compare < 0) { // last < k
-					yield false;
+					return false;
 				} else if (compare == 0) { // k == last
 					this.removeEntry(pos);
 
-					yield true;
+					return true;
 				}
 
 				final long packed = this.sparseBinarySearch(k);
 				pos = (int) packed;
 				if (pos != (int) (packed >>> Integer.SIZE)) {
-					yield false;
+					return false;
 				}
 
 				this.removeEntry(pos);
 
-				yield true;
+				return true;
 			}
-		};
+		}
 	}
 
 
 	protected void fixPointers(final int i) {
 		switch (this.size) {
-			case 0 -> this.nulll = this.first = this.last = -1;
-			case 1 -> {
+			case 0:
+				this.nulll = this.first = this.last = -1;
+			case 1: {
 				if (i == this.nulll) {
 					this.nulll = -1;
 				}
@@ -623,7 +628,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 					this.last = this.first;
 				}
 			}
-			default -> {
+			default: {
 				final byte[] key = this.key;
 
 				final int nulll = this.nulll;
@@ -796,7 +801,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 		final int last = this.last;
 
 		final int size = this.size;
-		final RandomGenerator random = this.random;
+		final Random random = this.random;
 
 		int required = size;
 
@@ -879,8 +884,9 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 		SetIterator(final byte from) {
 			final byte[] key = ByteSortedSparseArraySet.this.key;
 			switch (ByteSortedSparseArraySet.this.size) {
-				case 0 -> throw new NoSuchElementException("The key " + from + " does not belong to this set.");
-				case 1 -> {
+				case 0:
+					throw new NoSuchElementException("The key " + from + " does not belong to this set.");
+				case 1: {
 					final int first = ByteSortedSparseArraySet.this.first;
 					final int last = ByteSortedSparseArraySet.this.last;
 
@@ -892,7 +898,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 
 					throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 				}
-				case 2 -> {
+				case 2: {
 					final int first = ByteSortedSparseArraySet.this.first;
 					final int last = ByteSortedSparseArraySet.this.last;
 
@@ -917,7 +923,7 @@ public class ByteSortedSparseArraySet extends AbstractByteSortedSet implements C
 
 					throw new NoSuchElementException("The key " + from + " does not belong to this set.");
 				}
-				default -> {
+				default: {
 					final int nulll = ByteSortedSparseArraySet.this.nulll;
 					final int first = ByteSortedSparseArraySet.this.first;
 					final int last = ByteSortedSparseArraySet.this.last;
