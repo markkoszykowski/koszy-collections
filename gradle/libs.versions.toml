@@ -2,19 +2,30 @@
 agrona = "2.6.1"
 checkstyle = "14.3.0"
 fastutil = "8.5.19"
+git-properties = "4.0.1"
+jacoco = "0.8.15"
+javapoet = "0.20.0"
 jmh = "1.37"
+jspecify = "1.0.1"
 junit = "6.1.3"
+mockito = "5.24.0"
 versions = "0.64.0"
 
 [libraries]
-agrona = { module = "org.agrona:agrona", version.ref = "agrona" }
-fastutil = { module = "it.unimi.dsi:fastutil", version.ref = "fastutil" }
-jmh-annotations = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
-jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
-junit = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
-junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+agrona = { group = "org.agrona", name = "agrona", version.ref = "agrona" }
+dependency-versions = { group = "io.github.ben-manes.versions", name = "io.github.ben-manes.versions.gradle.plugin", version.ref = "versions" }
+fastutil = { group = "it.unimi.dsi", name = "fastutil", version.ref = "fastutil" }
+git-properties = { group = "com.gorylenko.gradle-git-properties", name = "gradle-git-properties", version.ref = "git-properties" }
+javapoet = { group = "com.palantir.javapoet", name = "javapoet", version.ref = "javapoet" }
+jmh-annotations = { group = "org.openjdk.jmh", name = "jmh-generator-annprocess", version.ref = "jmh" }
+jmh-core = { group = "org.openjdk.jmh", name = "jmh-core", version.ref = "jmh" }
+jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
+junit = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+junit-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
+mockito = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 
 [bundles]
 
 [plugins]
+git-properties = { id = "com.gorylenko.gradle-git-properties", version.ref = "git-properties" }
 versions = { id = "io.github.ben-manes.versions", version.ref = "versions" }

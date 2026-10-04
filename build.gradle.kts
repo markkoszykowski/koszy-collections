@@ -1,86 +1,86 @@
-import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
-import com.github.benmanes.gradle.versions.updates.resolutionstrategy.ComponentSelectionWithCurrent
-import java.nio.charset.StandardCharsets
+import com.koszy.collections.generator.Generator
+import com.koszy.collections.generator.OnceGenerator
+import com.koszy.gradle.KoszyGradleUtil
+import com.palantir.javapoet.JavaFile
 
 plugins {
-	id("java")
-	id("idea")
-	id("checkstyle")
-	alias(libs.plugins.versions)
+	id("com.koszy.project")
 }
 
-fun languageVersion(): JavaLanguageVersion {
-	val languageVersion = JavaLanguageVersion.current()
-	if (!languageVersion.canCompileOrRun(JavaLanguageVersion.of(17))) {
-		throw GradleException("Incompatible language version")
+buildscript {
+	dependencies {
+		classpath(com.koszy.gradle.KoszyGradleUtil.includedBuild(project, ":generator"))
 	}
-	return languageVersion
-}
-
-java {
-	toolchain {
-		languageVersion = languageVersion()
-	}
-}
-
-idea {
-	module {
-		isDownloadJavadoc = true
-		isDownloadSources = true
-	}
-}
-
-checkstyle {
-	toolVersion = libs.versions.checkstyle.get()
-}
-
-repositories {
-	mavenLocal()
-	mavenCentral()
 }
 
 dependencies {
+	implementation(KoszyGradleUtil.includedBuild(project, ":util"))
+
 	implementation(libs.fastutil)
 
 	testImplementation(libs.agrona)
-
-	testImplementation(libs.junit)
-	testRuntimeOnly(libs.junit.launcher)
 
 	testAnnotationProcessor(libs.jmh.annotations)
 	testImplementation(libs.jmh.core)
 }
 
-tasks.withType<JavaCompile> {
-	options.compilerArgs.add("-parameters")
-	options.encoding = StandardCharsets.UTF_8.name()
-}
+abstract class GenerateTask @Inject constructor(private val objects: ObjectFactory) : DefaultTask() {
+	init {
+		this.group = LifecycleBasePlugin.BUILD_GROUP
+	}
 
-tasks.compileJava {
-	options.release = 8
-}
+	private val mainDirectory: Provider<Directory> = this.directory(this.project.sourceSets.main)
+	private val testDirectory: Provider<Directory> = this.directory(this.project.sourceSets.test)
 
-tasks.test {
-	useJUnitPlatform()
-}
+	@Input
+	val generators: ListProperty<Generator> = this.objects.listProperty<Generator>().convention(listOf())
 
-// https://github.com/ben-manes/gradle-versions-plugin
+	private fun directory(sourceSet: NamedDomainObjectProvider<SourceSet>): Provider<Directory> {
+		val directory = this.project.layout.buildDirectory.dir("generated")
+			.map { dir -> dir.dir("sources") }
+			.map { dir -> dir.dir("java") }
+			.flatMap { dir -> sourceSet.map { set -> set.name }.map { name -> dir.dir(name) } }
+		sourceSet.configure {
+			this.java.srcDir(directory)
+		}
+		return directory
+	}
 
-fun String.isNonStable(): Boolean {
-	val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { uppercase().contains(it) }
-	val regex = "^[0-9,.v-]+(-r|-jre|-android)?$".toRegex()
-	val isStable = stableKeyword || regex.matches(this)
-	return isStable.not()
-}
-
-tasks.withType<DependencyUpdatesTask> {
-	resolutionStrategy {
-		componentSelection {
-			all {
-				if (candidate.version.isNonStable() && !currentVersion.isNonStable()) {
-					reject("Release candidate")
-				}
+	private fun generate(generators: List<Generator>, directory: Directory, generate: (Generator) -> List<JavaFile>) {
+		generators.forEach { generator ->
+			generate(generator).forEach { source ->
+				source.writeTo(directory.asFile)
 			}
 		}
 	}
+
+	@TaskAction
+	fun generate() {
+		val generators = this.generators.get()
+		this.generate(generators, this.mainDirectory.get()) { it.generateMainSources() }
+		this.generate(generators, this.testDirectory.get()) { it.generateTestSources() }
+	}
+}
+
+val generateSources = tasks.register<GenerateTask>("generateSources") {
+	group = LifecycleBasePlugin.BUILD_GROUP
+
+	generators.addAll(
+		OnceGenerator()
+	)
+}
+
+tasks.compileJava {
+	dependsOn(generateSources)
+}
+
+tasks.compileTestJava {
+	dependsOn(generateSources)
+}
+
+tasks.register("allDependencyUpdates") {
+	description = tasks.dependencyUpdates.map { it.description }.orNull
+	group = HelpTasksPlugin.HELP_GROUP
+
+	gradle.includedBuilds.forEach { dependsOn(it.task(":dependencyUpdates")) }
 }
