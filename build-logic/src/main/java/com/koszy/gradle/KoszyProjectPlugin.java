@@ -1,6 +1,7 @@
 package com.koszy.gradle;
 
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask;
+import com.gorylenko.GenerateGitPropertiesTask;
 import com.gorylenko.GitPropertiesPlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
@@ -22,10 +23,14 @@ import org.gradle.api.plugins.PluginContainer;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
+import org.gradle.internal.Pair;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.IdeaPlugin;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -34,10 +39,14 @@ import org.gradle.testing.jacoco.plugins.JacocoPluginExtension;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -95,11 +104,16 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 
 	public void configure(final Project project, final ExtensionContainer extensions) {
 		extensions.configure(JavaPluginExtension.class, java -> {
-			final JavaLanguageVersion languageVersion = JavaLanguageVersion.current();
-			if (!languageVersion.canCompileOrRun(MINIMUM_JAVA_LANGUAGE_VERSION)) {
-				throw new GradleException("Incompatible Java Language Version: " + languageVersion);
-			}
-			java.toolchain(toolchain -> toolchain.getLanguageVersion().convention(languageVersion));
+			java.toolchain(toolchain -> {
+				final JavaLanguageVersion languageVersion = JavaLanguageVersion.current();
+				if (!languageVersion.canCompileOrRun(MINIMUM_JAVA_LANGUAGE_VERSION)) {
+					throw new GradleException("Incompatible Java Language Version: " + languageVersion);
+				}
+				toolchain.getLanguageVersion().convention(languageVersion);
+			});
+
+//			java.withJavadocJar();
+			java.withSourcesJar();
 		});
 
 		extensions.configure(IdeaModel.class, idea -> {
@@ -107,6 +121,47 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 				module.setDownloadJavadoc(true);
 				module.setDownloadSources(true);
 			});
+		});
+
+		extensions.configure(SourceSetContainer.class, sourceSets -> {
+			final SourceSet main = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+			main.getJava().getSrcDirs().stream()
+					.findFirst()
+					.stream()
+					.map(File::toPath)
+					.flatMap(KoszyGradleUtil.function(Files::list))
+					.filter(Files::isDirectory)
+					.map(folder -> Pair.of(folder, folder))
+					.map(KoszyGradleUtil.<Path, Path, Path>rightFunction(Path::getFileName))
+					.map(KoszyGradleUtil.<Path, Path, String>rightFunction(Path::toString))
+					.map(KoszyGradleUtil.<Path, String, Integer>rightFunction(KoszyGradleUtil::toInteger))
+					.filter(KoszyGradleUtil.rightPredicate(Objects::nonNull))
+					.sorted(Comparator.comparing(Pair::getRight))
+					.forEach(release -> {
+						final SourceSet set = sourceSets.create(SourceSet.MAIN_SOURCE_SET_NAME + release.right);
+						set.getJava().srcDir(release.left);
+						main.getJava().exclude(Path.of(String.valueOf(release.right)).resolve("**").toString());
+						project.getTasks().named(set.getCompileJavaTaskName(), JavaCompile.class).configure(task -> {
+							task.getOptions().getRelease().set(release.right);
+						});
+						final BiConsumer<Jar, Object> configure = (task, source) -> {
+							task.from(source, copy -> {
+								copy.into(Path.of("META-INF").resolve("versions").resolve(String.valueOf(release.right)).toFile());
+							});
+							task.manifest(manifest -> {
+								manifest.attributes(Map.of("Multi-Release", true));
+							});
+						};
+						final Map<String, Object> configurations = Map.of(
+								main.getJarTaskName(), set.getOutput()
+								// main.getSourcesJarTaskName(), set.getAllSource()
+						);
+						for (final Map.Entry<String, Object> configuration : configurations.entrySet()) {
+							project.getTasks().named(configuration.getKey(), Jar.class).configure(task -> {
+								configure.accept(task, configuration.getValue());
+							});
+						}
+					});
 		});
 
 		extensions.configure(CheckstyleExtension.class, checkstyle -> {
@@ -193,6 +248,10 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 		tasks.named(JavaPlugin.TEST_TASK_NAME, Test.class).configure(task -> {
 			task.useJUnitPlatform();
 			task.finalizedBy("jacoco" + KoszyGradleUtil.capitalize(task.getName()) + "Report");
+		});
+
+		tasks.withType(Jar.class).configureEach(task -> {
+			task.dependsOn(GenerateGitPropertiesTask.TASK_NAME);
 		});
 
 		// https://github.com/ben-manes/gradle-versions-plugin

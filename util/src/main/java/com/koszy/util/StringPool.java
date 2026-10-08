@@ -70,4 +70,8 @@ public class StringPool {
 		}
 	}
 
+	private StringPool() {
+		LangUtil.unreachable();
+	}
+
 }

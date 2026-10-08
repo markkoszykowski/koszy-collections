@@ -11,6 +11,7 @@ import org.gradle.api.internal.notations.ProjectDependencyFactory;
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.ExtensionContainer;
+import org.gradle.internal.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class KoszyGradleUtil {
 
@@ -55,6 +57,48 @@ public final class KoszyGradleUtil {
 				throw new RuntimeException(exception);
 			}
 		};
+	}
+
+	public static <T1, T2, R1, R2> Function<? super Pair<T1, T2>, ? extends Pair<R1, R2>> function(
+			final Function<? super T1, ? extends R1> left,
+			final Function<? super T2, ? extends R2> right
+	) {
+		return pair -> Pair.of(left.apply(pair.left), right.apply(pair.right));
+	}
+
+	public static <T1, T2, R1> Function<? super Pair<T1, T2>, ? extends Pair<R1, T2>> leftFunction(
+			final Function<? super T1, ? extends R1> left
+	) {
+		return pair -> Pair.of(left.apply(pair.left), pair.right);
+	}
+
+	public static <T1, T2, R2> Function<? super Pair<T1, T2>, ? extends Pair<T1, R2>> rightFunction(
+			final Function<? super T2, ? extends R2> right
+	) {
+		return pair -> Pair.of(pair.left, right.apply(pair.right));
+	}
+
+	public static <T1, T2> Predicate<? super Pair<T1, T2>> leftPredicate(
+			final Predicate<? super T1> left
+	) {
+		return pair -> left.test(pair.left);
+	}
+
+	public static <T1, T2> Predicate<? super Pair<T1, T2>> rightPredicate(
+			final Predicate<? super T2> right
+	) {
+		return pair -> right.test(pair.right);
+	}
+
+	public static Integer toInteger(final String string) {
+		if (string == null) {
+			return null;
+		}
+		try {
+			return Integer.parseInt(string);
+		} catch (final NumberFormatException exception) {
+			return null;
+		}
 	}
 
 	public static String capitalize(final String string) {

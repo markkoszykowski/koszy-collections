@@ -95,7 +95,7 @@ public final class Strings {
 			try {
 				appendable.append(object.toString());
 			} catch (final IOException exception) {
-				LangUtil.rethrowUnchecked(exception);
+				LangUtil.rethrow(exception);
 			}
 		}
 		return appendable;
@@ -106,7 +106,7 @@ public final class Strings {
 			try {
 				appendable.append(string, offset, offset + length);
 			} catch (final IOException exception) {
-				LangUtil.rethrowUnchecked(exception);
+				LangUtil.rethrow(exception);
 			}
 		}
 		return appendable;
@@ -117,7 +117,7 @@ public final class Strings {
 			try {
 				appendable.append(string);
 			} catch (final IOException exception) {
-				LangUtil.rethrowUnchecked(exception);
+				LangUtil.rethrow(exception);
 			}
 		}
 		return appendable;

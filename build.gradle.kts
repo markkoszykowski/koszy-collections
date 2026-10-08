@@ -78,6 +78,12 @@ tasks.compileTestJava {
 	dependsOn(generateSources)
 }
 
+arrayOf(LifecycleBasePlugin.CLEAN_TASK_NAME, LifecycleBasePlugin.CHECK_TASK_NAME, LifecycleBasePlugin.BUILD_TASK_NAME).forEach { task ->
+	tasks.named(task) {
+		dependsOn(gradle.includedBuilds.map { it.task("${org.gradle.util.Path.ROOT}${task}") })
+	}
+}
+
 tasks.register("allDependencyUpdates") {
 	description = tasks.dependencyUpdates.map { it.description }.orNull
 	group = HelpTasksPlugin.HELP_GROUP

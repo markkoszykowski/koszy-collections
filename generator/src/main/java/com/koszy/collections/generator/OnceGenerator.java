@@ -68,7 +68,7 @@ public final class OnceGenerator implements Generator {
 					.findFirst()
 					.orElseThrow(NoSuchMethodException::new);
 		} catch (final NoSuchMethodException ex) {
-			return LangUtil.rethrowUnchecked(ex);
+			return LangUtil.rethrow(ex);
 		}
 	}
 
@@ -125,7 +125,7 @@ public final class OnceGenerator implements Generator {
 								.beginControlFlow("if ($N == $L)", GeneratorUtil.instance("throwable"), null)
 								.addStatement("return $N", GeneratorUtil.instance("result"))
 								.nextControlFlow("else")
-								.addStatement("return $T.rethrowUnchecked($N)", LangUtil.class, GeneratorUtil.instance("throwable"))
+								.addStatement("return $T.rethrow($N)", LangUtil.class, GeneratorUtil.instance("throwable"))
 								.endControlFlow()
 								.build()
 				)
@@ -202,7 +202,7 @@ public final class OnceGenerator implements Generator {
 								.beginControlFlow("if ($N == $L)", GeneratorUtil.instance("throwable"), null)
 								.addStatement("return $N", GeneratorUtil.instance("result"))
 								.nextControlFlow("else")
-								.addStatement("return $T.rethrowUnchecked($N)", LangUtil.class, GeneratorUtil.instance("throwable"))
+								.addStatement("return $T.rethrow($N)", LangUtil.class, GeneratorUtil.instance("throwable"))
 								.endControlFlow()
 								.build()
 				)

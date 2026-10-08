@@ -10,3 +10,7 @@ dependencies {
 	api(libs.javapoet)
 	api(libs.jspecify)
 }
+
+tasks.jar {
+
+}

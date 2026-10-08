@@ -4,12 +4,12 @@ import org.jspecify.annotations.NonNull;
 
 public final class LangUtil {
 
-	public static <T> @NonNull T rethrowUnchecked(final @NonNull Throwable throwable) {
-		return LangUtil.<RuntimeException, T>rethrow(throwable);
+	public static <T> @NonNull T rethrow(final @NonNull Throwable throwable) {
+		return rethrow0(throwable);
 	}
 
 	@SuppressWarnings(value = {"unchecked"})
-	private static <T extends Throwable, R> @NonNull R rethrow(final @NonNull Throwable throwable) throws T {
+	private static <T extends Throwable, R> @NonNull R rethrow0(final @NonNull Throwable throwable) throws T {
 		throw (T) throwable;
 	}
 
