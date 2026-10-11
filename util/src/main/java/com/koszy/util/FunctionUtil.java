@@ -17,7 +17,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-public final class Functions {
+public final class FunctionUtil {
 
 	@SuppressWarnings(value = {"unchecked"})
 	public static <T> Predicate<T> alwaysTruePredicate() {
@@ -329,7 +329,7 @@ public final class Functions {
 		}
 	}
 
-	private Functions() {
+	private FunctionUtil() {
 		LangUtil.unreachable();
 	}
 

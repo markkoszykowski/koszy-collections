@@ -3,53 +3,68 @@ package com.koszy.gradle;
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask;
 import com.gorylenko.GenerateGitPropertiesTask;
 import com.gorylenko.GitPropertiesPlugin;
-import org.gradle.api.GradleException;
-import org.gradle.api.JavaVersion;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.artifacts.ConfigurationPublications;
+import org.gradle.api.artifacts.ConfigurationVariant;
 import org.gradle.api.artifacts.MinimalExternalModuleDependency;
 import org.gradle.api.artifacts.VersionConstraint;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.attributes.LibraryElements;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.ExtensionContainer;
+import org.gradle.api.plugins.HelpTasksPlugin;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.plugins.JvmTestSuitePlugin;
 import org.gradle.api.plugins.PluginContainer;
+import org.gradle.api.plugins.jvm.JvmTestSuite;
+import org.gradle.api.plugins.jvm.JvmTestSuiteTarget;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskOutputs;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
+import org.gradle.api.tasks.testing.logging.TestLoggingContainer;
+import org.gradle.internal.MutableBoolean;
 import org.gradle.internal.Pair;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.language.base.plugins.LifecycleBasePlugin;
 import org.gradle.plugins.ide.idea.IdeaPlugin;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
+import org.gradle.testing.base.TestSuite;
+import org.gradle.testing.base.TestingExtension;
 import org.gradle.testing.jacoco.plugins.JacocoPlugin;
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension;
 import org.jspecify.annotations.NonNull;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
+import java.util.jar.Attributes;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -57,8 +72,6 @@ import java.util.stream.Stream;
 public final class KoszyProjectPlugin implements Plugin<Project> {
 
 	private static final Logger logger = Logging.getLogger(KoszyProjectPlugin.class);
-
-	public static final JavaLanguageVersion MINIMUM_JAVA_LANGUAGE_VERSION = JavaLanguageVersion.of(JavaVersion.VERSION_17.getMajorVersion());
 
 	public static final String VERSION = "VERSION.txt";
 
@@ -68,12 +81,10 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 	public static final String JUNIT = "junit";
 	public static final String JUNIT_LAUNCHER = "junit.launcher";
 
-	public static final String MOCKITO = "mockito";
+	public static final String MOCKITO_CORE = "mockito.core";
+	public static final String MOCKITO_INLINE = "mockito.inline";
 
 	public static final String AWAITILITY = "awaitility";
-
-	public static final String MOCKITO_AGENT = "mockitoAgent";
-	private static final org.slf4j.Logger log = LoggerFactory.getLogger(KoszyProjectPlugin.class);
 
 	public static Optional<String> version(final VersionConstraint constraint) {
 		return Stream.ofNullable(constraint)
@@ -103,16 +114,10 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 	}
 
 	public void configure(final Project project, final ExtensionContainer extensions) {
-		extensions.configure(JavaPluginExtension.class, java -> {
-			java.toolchain(toolchain -> {
-				final JavaLanguageVersion languageVersion = JavaLanguageVersion.current();
-				if (!languageVersion.canCompileOrRun(MINIMUM_JAVA_LANGUAGE_VERSION)) {
-					throw new GradleException("Incompatible Java Language Version: " + languageVersion);
-				}
-				toolchain.getLanguageVersion().convention(languageVersion);
-			});
+		final ObjectFactory objects = project.getObjects();
+		final JavaToolchainService javaToolchains = extensions.getByType(JavaToolchainService.class);
 
-//			java.withJavadocJar();
+		extensions.configure(JavaPluginExtension.class, java -> {
 			java.withSourcesJar();
 		});
 
@@ -123,46 +128,89 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 			});
 		});
 
+		final MutableBoolean multiRelease = new MutableBoolean(false);
 		extensions.configure(SourceSetContainer.class, sourceSets -> {
-			final SourceSet main = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-			main.getJava().getSrcDirs().stream()
+			final SourceSet mainSources = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+			mainSources.getJava().getSrcDirs().stream()
 					.findFirst()
 					.stream()
 					.map(File::toPath)
 					.flatMap(KoszyGradleUtil.function(Files::list))
 					.filter(Files::isDirectory)
 					.map(folder -> Pair.of(folder, folder))
-					.map(KoszyGradleUtil.<Path, Path, Path>rightFunction(Path::getFileName))
-					.map(KoszyGradleUtil.<Path, Path, String>rightFunction(Path::toString))
-					.map(KoszyGradleUtil.<Path, String, Integer>rightFunction(KoszyGradleUtil::toInteger))
+					.map(KoszyGradleUtil.rightFunction(Path::getFileName))
+					.map(KoszyGradleUtil.rightFunction(Path::toString))
+					.map(KoszyGradleUtil.rightFunction(KoszyGradleUtil::toInteger))
 					.filter(KoszyGradleUtil.rightPredicate(Objects::nonNull))
 					.sorted(Comparator.comparing(Pair::getRight))
+					.peek(_ -> multiRelease.set(true))
 					.forEach(release -> {
 						final SourceSet set = sourceSets.create(SourceSet.MAIN_SOURCE_SET_NAME + release.right);
 						set.getJava().srcDir(release.left);
-						main.getJava().exclude(Path.of(String.valueOf(release.right)).resolve("**").toString());
-						project.getTasks().named(set.getCompileJavaTaskName(), JavaCompile.class).configure(task -> {
-							task.getOptions().getRelease().set(release.right);
+						mainSources.getJava().exclude(Path.of(String.valueOf(release.right)).resolve("**").toString());
+
+						project.getTasks().named(set.getCompileJavaTaskName(), JavaCompile.class).configure(compileJava -> {
+							final CompileOptions options = compileJava.getOptions();
+							options.getRelease().set(release.right);
 						});
-						final BiConsumer<Jar, Object> configure = (task, source) -> {
-							task.from(source, copy -> {
-								copy.into(Path.of("META-INF").resolve("versions").resolve(String.valueOf(release.right)).toFile());
-							});
-							task.manifest(manifest -> {
-								manifest.attributes(Map.of("Multi-Release", true));
-							});
-						};
+
 						final Map<String, Object> configurations = Map.of(
-								main.getJarTaskName(), set.getOutput()
-								// main.getSourcesJarTaskName(), set.getAllSource()
+								mainSources.getJarTaskName(), set.getOutput()
 						);
 						for (final Map.Entry<String, Object> configuration : configurations.entrySet()) {
 							project.getTasks().named(configuration.getKey(), Jar.class).configure(task -> {
-								configure.accept(task, configuration.getValue());
+								task.from(configuration.getValue(), copy -> {
+									copy.into(Path.of("META-INF").resolve("versions").resolve(String.valueOf(release.right)).toFile());
+								});
 							});
 						}
+
+						extensions.configure(TestingExtension.class, testing -> {
+							final NamedDomainObjectContainer<TestSuite> suites = testing.getSuites();
+							suites.named(JvmTestSuitePlugin.DEFAULT_TEST_SUITE_NAME, JvmTestSuite.class).configure(testSuite -> {
+								final NamedDomainObjectContainer<? extends JvmTestSuiteTarget> targets = testSuite.getTargets();
+								targets.register(JavaPlugin.TEST_TASK_NAME + release.right, target -> {
+									target.getTestTask().configure(test -> {
+										test.getJavaLauncher().set(javaToolchains.launcherFor(spec -> {
+											spec.getLanguageVersion().set(JavaLanguageVersion.of(release.right));
+										}));
+									});
+								});
+							});
+						});
 					});
 		});
+		if (multiRelease.get()) {
+			final ConfigurationContainer configurations = project.getConfigurations();
+			final String[] configurationNames = {
+					JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME,
+					JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME,
+			};
+			for (final String configurationName : configurationNames) {
+				configurations.named(configurationName).configure(configuration -> {
+					final ConfigurationPublications outputs = configuration.getOutgoing();
+					final NamedDomainObjectContainer<ConfigurationVariant> variants = outputs.getVariants();
+					final LibraryElements jar = objects.named(LibraryElements.class, LibraryElements.JAR);
+					variants.removeIf(variant -> !Objects.equals(jar, variant.getAttributes().getAttribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE)));
+				});
+			}
+
+			final TaskContainer tasks = project.getTasks();
+			final TaskProvider<Jar> jar = tasks.named(JavaPlugin.JAR_TASK_NAME, Jar.class);
+			jar.configure(task -> {
+				task.manifest(manifest -> {
+					manifest.attributes(Map.of(Attributes.Name.MULTI_RELEASE.toString(), true));
+				});
+			});
+
+			extensions.configure(SourceSetContainer.class, sourceSets -> {
+				final SourceSet mainSources = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+				final SourceSet testSources = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
+				final FileCollection outputs = objects.fileCollection().from(jar.map(Jar::getOutputs).map(TaskOutputs::getFiles));
+				testSources.setCompileClasspath(testSources.getCompileClasspath().minus(mainSources.getOutput()).plus(outputs));
+				testSources.setRuntimeClasspath(testSources.getRuntimeClasspath().minus(mainSources.getOutput()).plus(outputs));
+			});
+		}
 
 		extensions.configure(CheckstyleExtension.class, checkstyle -> {
 			KoszyGradleUtil.libs(project)
@@ -214,14 +262,13 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 						autowire.accept(JavaPlugin.TEST_RUNTIME_ONLY_CONFIGURATION_NAME, library);
 					});
 
-			libs.findLibrary(MOCKITO)
+			libs.findLibrary(MOCKITO_CORE)
 					.ifPresent(library -> {
 						autowire.accept(JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME, library);
-
-						final ConfigurationContainer configurations = project.getConfigurations();
-						final Configuration configuration = configurations.create(MOCKITO_AGENT);
-						configuration.setTransitive(false);
-						dependencies.add(configuration.getName(), library);
+					});
+			libs.findLibrary(MOCKITO_INLINE)
+					.ifPresent(library -> {
+						autowire.accept(JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME, library);
 					});
 
 			libs.findLibrary(AWAITILITY)
@@ -232,6 +279,26 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 	}
 
 	public void configure(final Project project, final TaskContainer tasks) {
+		if (project == project.getRootProject()) {
+			final String[] taskNames = {
+					LifecycleBasePlugin.ASSEMBLE_TASK_NAME,
+					LifecycleBasePlugin.BUILD_TASK_NAME,
+					LifecycleBasePlugin.CHECK_TASK_NAME,
+					LifecycleBasePlugin.CLEAN_TASK_NAME,
+			};
+			for (final String taskName : taskNames) {
+				tasks.named(taskName).configure(task -> {
+					task.dependsOn(
+							project.getGradle()
+									.getIncludedBuilds()
+									.stream()
+									.map(includedBuild -> includedBuild.task(org.gradle.util.Path.ROOT + taskName))
+									.toArray()
+					);
+				});
+			}
+		}
+
 		tasks.withType(JavaCompile.class).configureEach(task -> {
 			final CompileOptions options = task.getOptions();
 			options.getCompilerArgs().add("-parameters");
@@ -239,15 +306,17 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 		});
 
 		tasks.withType(Test.class).configureEach(task -> {
-			final ConfigurationContainer configurations = project.getConfigurations();
-			Optional.ofNullable(configurations.findByName(MOCKITO_AGENT)).ifPresent(configuration -> {
-				final Provider<List<String>> jvmArgs = project.provider(() -> List.of("-javaagent:" + configuration.getAsPath()));
-				task.getJvmArgumentProviders().add(jvmArgs::get);
-			});
-		});
-		tasks.named(JavaPlugin.TEST_TASK_NAME, Test.class).configure(task -> {
-			task.useJUnitPlatform();
 			task.finalizedBy("jacoco" + KoszyGradleUtil.capitalize(task.getName()) + "Report");
+
+			task.useJUnitPlatform();
+
+			task.jvmArgs("-ea");
+
+			final TestLoggingContainer logging = task.getTestLogging();
+			logging.setShowCauses(true);
+			logging.setShowExceptions(true);
+			logging.setShowStackTraces(true);
+			logging.setShowStandardStreams(true);
 		});
 
 		tasks.withType(Jar.class).configureEach(task -> {
@@ -275,6 +344,26 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 				});
 			});
 		});
+
+		if (project == project.getRootProject()) {
+			tasks.register("allDependencyUpdates").configure(task -> {
+				task.setDescription(
+						tasks.withType(DependencyUpdatesTask.class)
+								.stream()
+								.findFirst()
+								.map(DefaultTask::getDescription)
+								.orElse(null)
+				);
+				task.setGroup(HelpTasksPlugin.HELP_GROUP);
+				task.dependsOn(
+						project.getGradle()
+								.getIncludedBuilds()
+								.stream()
+								.map(includedBuild -> includedBuild.task(org.gradle.util.Path.ROOT + "dependencyUpdates"))
+								.toArray()
+				);
+			});
+		}
 	}
 
 	@Override

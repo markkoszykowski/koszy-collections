@@ -9,3 +9,7 @@ dependencies {
 tasks.compileJava {
 	options.release = 8
 }
+
+tasks.compileTestJava {
+	options.release = 8
+}

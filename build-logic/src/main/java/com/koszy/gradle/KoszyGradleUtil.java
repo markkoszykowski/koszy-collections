@@ -5,9 +5,7 @@ import org.gradle.api.UnknownProjectException;
 import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.VersionCatalog;
 import org.gradle.api.artifacts.VersionCatalogsExtension;
-import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.internal.artifacts.DefaultProjectDependencyFactory;
-import org.gradle.api.internal.notations.ProjectDependencyFactory;
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.ExtensionContainer;
@@ -59,32 +57,32 @@ public final class KoszyGradleUtil {
 		};
 	}
 
-	public static <T1, T2, R1, R2> Function<? super Pair<T1, T2>, ? extends Pair<R1, R2>> function(
+	public static <T1, T2, R1, R2> Function<Pair<T1, T2>, Pair<R1, R2>> function(
 			final Function<? super T1, ? extends R1> left,
 			final Function<? super T2, ? extends R2> right
 	) {
 		return pair -> Pair.of(left.apply(pair.left), right.apply(pair.right));
 	}
 
-	public static <T1, T2, R1> Function<? super Pair<T1, T2>, ? extends Pair<R1, T2>> leftFunction(
+	public static <T1, T2, R1> Function<Pair<T1, T2>, Pair<R1, T2>> leftFunction(
 			final Function<? super T1, ? extends R1> left
 	) {
 		return pair -> Pair.of(left.apply(pair.left), pair.right);
 	}
 
-	public static <T1, T2, R2> Function<? super Pair<T1, T2>, ? extends Pair<T1, R2>> rightFunction(
+	public static <T1, T2, R2> Function<Pair<T1, T2>, Pair<T1, R2>> rightFunction(
 			final Function<? super T2, ? extends R2> right
 	) {
 		return pair -> Pair.of(pair.left, right.apply(pair.right));
 	}
 
-	public static <T1, T2> Predicate<? super Pair<T1, T2>> leftPredicate(
+	public static <T1, T2> Predicate<Pair<T1, T2>> leftPredicate(
 			final Predicate<? super T1> left
 	) {
 		return pair -> left.test(pair.left);
 	}
 
-	public static <T1, T2> Predicate<? super Pair<T1, T2>> rightPredicate(
+	public static <T1, T2> Predicate<Pair<T1, T2>> rightPredicate(
 			final Predicate<? super T2> right
 	) {
 		return pair -> right.test(pair.right);
@@ -136,12 +134,12 @@ public final class KoszyGradleUtil {
 				.flatMap(extension -> extension.find(KoszyGradleUtil.LIBS));
 	}
 
-	/// @see DependencyHandler#project(String)
+	/// @see org.gradle.api.artifacts.dsl.DependencyHandler#project(String)
 	public static ProjectDependency includedBuild(final Project project, final String path) {
 		return includedBuild(project, path, null);
 	}
 
-	/// @see DependencyHandler#project(Map)
+	/// @see org.gradle.api.artifacts.dsl.DependencyHandler#project(Map)
 	public static ProjectDependency includedBuild(final Project project, final Map<String, ?> notation) {
 		return includedBuild(project, get(notation, "path"), get(notation, "configuration"));
 	}
@@ -154,7 +152,7 @@ public final class KoszyGradleUtil {
 				.orElseThrow(() -> new UnknownProjectException(String.format("Project with path '%s' could not be found.", path)));
 	}
 
-	/// @see ProjectDependencyFactory.ProjectDependencyMapNotationConverter#parseMap(String, String)
+	/// @see org.gradle.api.internal.notations.ProjectDependencyFactory.ProjectDependencyMapNotationConverter#parseMap(String, String)
 	private static ProjectDependency includedBuild(final DefaultProjectDependencyFactory factory, final String path, final String configuration) {
 		final ProjectDependency dependency = factory.create(org.gradle.util.Path.path(path));
 		if (configuration != null) {

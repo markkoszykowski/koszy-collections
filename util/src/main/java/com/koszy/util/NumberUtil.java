@@ -2,7 +2,7 @@ package com.koszy.util;
 
 import org.jspecify.annotations.NonNull;
 
-public final class Numbers {
+public final class NumberUtil {
 
 	public static byte byteValue(final @NonNull Object object) throws ClassCastException {
 		return ((Number) object).byteValue();
@@ -111,7 +111,7 @@ public final class Numbers {
 		return (int) l;
 	}
 
-	private Numbers() {
+	private NumberUtil() {
 		LangUtil.unreachable();
 	}
 

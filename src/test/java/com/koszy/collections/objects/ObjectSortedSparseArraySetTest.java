@@ -1,9 +1,9 @@
 package com.koszy.collections.objects;
 
+import com.koszy.util.LangUtil;
 import it.unimi.dsi.fastutil.BidirectionalIterator;
 import it.unimi.dsi.fastutil.objects.ObjectAVLTreeSet;
 import it.unimi.dsi.fastutil.objects.ObjectSortedSet;
-import org.agrona.LangUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -52,11 +52,10 @@ class ObjectSortedSparseArraySetTest {
 		} catch (final Throwable expectedThrowable) {
 			if (throwable.isInstance(expectedThrowable)) {
 				Assertions.assertThrows(throwable, () -> method.apply(actual));
-				return;
 			} else {
-				LangUtil.rethrowUnchecked(expectedThrowable);
-				throw new Error();
+				LangUtil.rethrow(expectedThrowable);
 			}
+			return;
 		}
 
 		Assertions.assertEquals(expectedValue, method.apply(actual));

@@ -57,6 +57,7 @@
 
 
 		<!-- See https://checkstyle.org/checks/coding/index.html -->
+		<module name="ArrayTrailingComma"/>
 		<module name="AvoidDoubleBraceInitialization"/>
 		<module name="ConstructorsDeclarationGrouping"/>
 		<module name="DefaultComesLast"/>
@@ -67,8 +68,6 @@
 			<property name="tokens" value="VARIABLE_DEF,PARAMETER_DEF"/>
 		</module>
 		<module name="IllegalInstantiation"/>
-		<module name="NoArrayTrailingComma"/>
-		<module name="NoEnumTrailingComma"/>
 		<module name="PackageDeclaration"/>
 		<module name="ParameterAssignment"/>
 		<module name="RequireThis">

@@ -3,11 +3,11 @@ package com.koszy.util;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-class ClassesTest {
+class ClassUtilTest {
 
 	@Test
 	void name() {
-		Assertions.assertEquals("String", Classes.name(String.class));
+		Assertions.assertEquals("String", ClassUtil.name(String.class));
 	}
 
 }

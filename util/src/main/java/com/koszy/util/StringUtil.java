@@ -2,7 +2,7 @@ package com.koszy.util;
 
 import java.io.IOException;
 
-public final class Strings {
+public final class StringUtil {
 
 	public static final String EMPTY = "";
 
@@ -244,7 +244,7 @@ public final class Strings {
 	}
 
 
-	private Strings() {
+	private StringUtil() {
 		LangUtil.unreachable();
 	}
 

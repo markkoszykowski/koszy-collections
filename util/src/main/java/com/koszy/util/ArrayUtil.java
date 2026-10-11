@@ -1,8 +1,8 @@
 package com.koszy.util;
 
-public final class Arrays {
+public final class ArrayUtil {
 
-	private Arrays() {
+	private ArrayUtil() {
 		LangUtil.unreachable();
 	}
 

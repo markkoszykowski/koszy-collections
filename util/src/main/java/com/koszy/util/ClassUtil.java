@@ -1,6 +1,6 @@
 package com.koszy.util;
 
-public final class Classes {
+public final class ClassUtil {
 
 	public static String name(final Class<?> clazz) {
 		String name;
@@ -15,7 +15,7 @@ public final class Classes {
 		}
 	}
 
-	private Classes() {
+	private ClassUtil() {
 		LangUtil.unreachable();
 	}
 

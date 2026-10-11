@@ -2,18 +2,18 @@ package com.koszy.util;
 
 import org.jspecify.annotations.NonNull;
 
-public final class Enums {
+public final class EnumUtil {
 
 
 	public static <T extends Enum<T>> T valueOf(final CharSequence string, final int offset, final int length, final T[] values) {
-		Require.checkOffsetLength(offset, length, Strings.length(string));
+		Require.checkOffsetLength(offset, length, StringUtil.length(string));
 
 		if (values == null) {
 			return null;
 		}
 
 		for (final T value : values) {
-			if (value != null && Strings.equals(string, offset, length, value.name())) {
+			if (value != null && StringUtil.equals(string, offset, length, value.name())) {
 				return value;
 			}
 		}
@@ -26,22 +26,22 @@ public final class Enums {
 	}
 
 	public static <T extends Enum<T>> T valueOf(final CharSequence string, final T[] values) {
-		return valueOf(string, 0, Strings.length(string), values);
+		return valueOf(string, 0, StringUtil.length(string), values);
 	}
 
 	public static <T extends Enum<T>> T valueOf(final CharSequence string, final @NonNull Class<T> clazz) {
-		return valueOf(string, 0, Strings.length(string), clazz.getEnumConstants());
+		return valueOf(string, 0, StringUtil.length(string), clazz.getEnumConstants());
 	}
 
 	public static <T extends Enum<T>> T valueOfIgnoreCase(final CharSequence string, final int offset, final int length, final T[] values) {
-		Require.checkOffsetLength(offset, length, Strings.length(string));
+		Require.checkOffsetLength(offset, length, StringUtil.length(string));
 
 		if (values == null) {
 			return null;
 		}
 
 		for (final T value : values) {
-			if (value != null && Strings.equalsIgnoreCase(string, offset, length, value.name())) {
+			if (value != null && StringUtil.equalsIgnoreCase(string, offset, length, value.name())) {
 				return value;
 			}
 		}
@@ -54,14 +54,14 @@ public final class Enums {
 	}
 
 	public static <T extends Enum<T>> T valueOfIgnoreCase(final CharSequence string, final T[] values) {
-		return valueOfIgnoreCase(string, 0, Strings.length(string), values);
+		return valueOfIgnoreCase(string, 0, StringUtil.length(string), values);
 	}
 
 	public static <T extends Enum<T>> T valueOfIgnoreCase(final CharSequence string, final @NonNull Class<T> clazz) {
-		return valueOfIgnoreCase(string, 0, Strings.length(string), clazz.getEnumConstants());
+		return valueOfIgnoreCase(string, 0, StringUtil.length(string), clazz.getEnumConstants());
 	}
 
-	private Enums() {
+	private EnumUtil() {
 		LangUtil.unreachable();
 	}
 

@@ -8,20 +8,6 @@ plugins {
 	alias(libs.plugins.versions)
 }
 
-fun languageVersion(): JavaLanguageVersion {
-	val languageVersion = JavaLanguageVersion.current()
-	if (!languageVersion.canCompileOrRun(JavaLanguageVersion.of(17))) {
-		throw GradleException("Incompatible language version")
-	}
-	return languageVersion
-}
-
-java {
-	toolchain {
-		languageVersion = languageVersion()
-	}
-}
-
 idea {
 	module {
 		isDownloadJavadoc = true
@@ -31,6 +17,7 @@ idea {
 
 checkstyle {
 	toolVersion = libs.versions.checkstyle.get()
+	configDirectory = project.rootDir.parentFile.resolve("config").resolve("checkstyle")
 }
 
 repositories {

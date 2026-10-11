@@ -4,7 +4,7 @@ import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
 
-public final class Optionals {
+public final class OptionalUtil {
 
 
 	public static OptionalInt ofNullable(final Integer i) {
@@ -45,7 +45,7 @@ public final class Optionals {
 	}
 
 
-	private Optionals() {
+	private OptionalUtil() {
 		LangUtil.unreachable();
 	}
 

@@ -7,7 +7,7 @@ public class StringPoolTest {
 
 	@Test
 	void test() {
-		Assertions.assertSame(StringPool.valueOf((byte)0), StringPool.valueOf(0L));
+		Assertions.assertSame(StringPool.valueOf((byte) 0), StringPool.valueOf(0L));
 
 		Assertions.assertEquals(StringPool.valueOf(Long.MAX_VALUE), StringPool.valueOf(Long.MAX_VALUE));
 	}

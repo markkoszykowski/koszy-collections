@@ -18,8 +18,6 @@ dependencies {
 
 	implementation(libs.fastutil)
 
-	testImplementation(libs.agrona)
-
 	testAnnotationProcessor(libs.jmh.annotations)
 	testImplementation(libs.jmh.core)
 }
@@ -72,21 +70,12 @@ val generateSources = tasks.register<GenerateTask>("generateSources") {
 
 tasks.compileJava {
 	dependsOn(generateSources)
+
+	options.release = 8
 }
 
 tasks.compileTestJava {
 	dependsOn(generateSources)
-}
 
-arrayOf(LifecycleBasePlugin.CLEAN_TASK_NAME, LifecycleBasePlugin.CHECK_TASK_NAME, LifecycleBasePlugin.BUILD_TASK_NAME).forEach { task ->
-	tasks.named(task) {
-		dependsOn(gradle.includedBuilds.map { it.task("${org.gradle.util.Path.ROOT}${task}") })
-	}
-}
-
-tasks.register("allDependencyUpdates") {
-	description = tasks.dependencyUpdates.map { it.description }.orNull
-	group = HelpTasksPlugin.HELP_GROUP
-
-	gradle.includedBuilds.forEach { dependsOn(it.task(":dependencyUpdates")) }
+	options.release = 8
 }

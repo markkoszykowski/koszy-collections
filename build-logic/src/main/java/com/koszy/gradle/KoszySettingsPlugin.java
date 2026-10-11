@@ -21,7 +21,7 @@ public final class KoszySettingsPlugin implements Plugin<Settings> {
 	private final ObjectFactory objects;
 
 	@Inject
-	public KoszySettingsPlugin(ObjectFactory objects) {
+	public KoszySettingsPlugin(final ObjectFactory objects) {
 		this.objects = objects;
 	}
 
