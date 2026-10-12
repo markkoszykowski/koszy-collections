@@ -70,12 +70,8 @@ val generateSources = tasks.register<GenerateTask>("generateSources") {
 
 tasks.compileJava {
 	dependsOn(generateSources)
-
-	options.release = 8
 }
 
 tasks.compileTestJava {
 	dependsOn(generateSources)
-
-	options.release = 8
 }

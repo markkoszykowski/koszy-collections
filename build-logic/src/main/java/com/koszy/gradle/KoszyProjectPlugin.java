@@ -28,6 +28,7 @@ import org.gradle.api.plugins.JvmTestSuitePlugin;
 import org.gradle.api.plugins.PluginContainer;
 import org.gradle.api.plugins.jvm.JvmTestSuite;
 import org.gradle.api.plugins.jvm.JvmTestSuiteTarget;
+import org.gradle.api.plugins.quality.Checkstyle;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
@@ -150,8 +151,9 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 						mainSources.getJava().exclude(Path.of(String.valueOf(release.right)).resolve("**").toString());
 
 						project.getTasks().named(set.getCompileJavaTaskName(), JavaCompile.class).configure(compileJava -> {
-							final CompileOptions options = compileJava.getOptions();
-							options.getRelease().set(release.right);
+							compileJava.getJavaCompiler().set(javaToolchains.compilerFor(toolchain -> {
+								toolchain.getLanguageVersion().set(JavaLanguageVersion.of(release.right));
+							}));
 						});
 
 						final Map<String, Object> configurations = Map.of(
@@ -171,8 +173,8 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 								final NamedDomainObjectContainer<? extends JvmTestSuiteTarget> targets = testSuite.getTargets();
 								targets.register(JavaPlugin.TEST_TASK_NAME + release.right, target -> {
 									target.getTestTask().configure(test -> {
-										test.getJavaLauncher().set(javaToolchains.launcherFor(spec -> {
-											spec.getLanguageVersion().set(JavaLanguageVersion.of(release.right));
+										test.getJavaLauncher().set(javaToolchains.launcherFor(toolchain -> {
+											toolchain.getLanguageVersion().set(JavaLanguageVersion.of(release.right));
 										}));
 									});
 								});
@@ -279,6 +281,10 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 	}
 
 	public void configure(final Project project, final TaskContainer tasks) {
+		final ObjectFactory objects = project.getObjects();
+		final ExtensionContainer extensions = project.getExtensions();
+		final JavaToolchainService javaToolchains = extensions.getByType(JavaToolchainService.class);
+
 		if (project == project.getRootProject()) {
 			final String[] taskNames = {
 					LifecycleBasePlugin.ASSEMBLE_TASK_NAME,
@@ -292,12 +298,19 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 							project.getGradle()
 									.getIncludedBuilds()
 									.stream()
+									.filter(includedBuild -> !Objects.equals("build-logic", includedBuild.getName()) || Objects.equals(LifecycleBasePlugin.CHECK_TASK_NAME, taskName))
 									.map(includedBuild -> includedBuild.task(org.gradle.util.Path.ROOT + taskName))
 									.toArray()
 					);
 				});
 			}
 		}
+
+		tasks.configureEach(task -> {
+			if (!Objects.equals(LifecycleBasePlugin.CLEAN_TASK_NAME, task.getName())) {
+				task.mustRunAfter(LifecycleBasePlugin.CLEAN_TASK_NAME);
+			}
+		});
 
 		tasks.withType(JavaCompile.class).configureEach(task -> {
 			final CompileOptions options = task.getOptions();
@@ -321,6 +334,12 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 
 		tasks.withType(Jar.class).configureEach(task -> {
 			task.dependsOn(GenerateGitPropertiesTask.TASK_NAME);
+		});
+
+		tasks.withType(Checkstyle.class).configureEach(task -> {
+			task.getJavaLauncher().set(javaToolchains.launcherFor(toolchain -> {
+				toolchain.getLanguageVersion().set(JavaLanguageVersion.current());
+			}));
 		});
 
 		// https://github.com/ben-manes/gradle-versions-plugin

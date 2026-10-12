@@ -6,7 +6,7 @@ class OpenUnsafeTest {
 
 	@Test
 	void test() {
-		System.err.println(OpenUnsafe.theUnsafe());
+		System.err.println(OpenUnsafe.theUnsafe().pageSize());
 	}
 
 }
