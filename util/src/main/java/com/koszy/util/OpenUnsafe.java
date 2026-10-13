@@ -42,8 +42,8 @@ public final class OpenUnsafe {
 			final Field field = Unsafe.class.getDeclaredField("theUnsafe");
 			field.setAccessible(true);
 			return (Unsafe) field.get(null);
-		} catch (final ReflectiveOperationException ex) {
-			return LangUtil.rethrow(ex);
+		} catch (final ReflectiveOperationException exception) {
+			return LangUtil.rethrow(exception);
 		}
 	}
 
@@ -299,7 +299,7 @@ public final class OpenUnsafe {
 		return this.theUnsafe.getIntVolatile(o, offset);
 	}
 
-	public void putIntVolatile(final Object o, final long offset, int x) {
+	public void putIntVolatile(final Object o, final long offset, final int x) {
 		this.theUnsafe.putIntVolatile(o, offset, x);
 	}
 

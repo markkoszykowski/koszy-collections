@@ -19,30 +19,117 @@ public final class Require {
 
 	public static boolean isTrue(final boolean bool) {
 		if (!bool) {
-			throw new RequirementNotSatisfiedException(String.valueOf(bool));
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(bool));
 		}
 		return bool;
 	}
 
 	public static boolean isFalse(final boolean bool) {
 		if (bool) {
-			throw new RequirementNotSatisfiedException(String.valueOf(bool));
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(bool));
 		}
 		return bool;
 	}
 
 	public static boolean notTrue(final boolean bool) {
 		if (bool) {
-			throw new RequirementNotSatisfiedException(String.valueOf(bool));
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(bool));
 		}
 		return bool;
 	}
 
 	public static boolean notFalse(final boolean bool) {
 		if (!bool) {
-			throw new RequirementNotSatisfiedException(String.valueOf(bool));
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(bool));
 		}
 		return bool;
+	}
+
+
+	public static int isNonZero(final int i) {
+		if (i == 0) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(i));
+		}
+		return i;
+	}
+
+	public static long isNonZero(final long l) {
+		if (l == 0L) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(l));
+		}
+		return l;
+	}
+
+	public static int isZero(final int i) {
+		if (i != 0) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(i));
+		}
+		return i;
+	}
+
+	public static long isZero(final long l) {
+		if (l != 0L) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(l));
+		}
+		return l;
+	}
+
+	public static int isPositive(final int i) {
+		if (i < 0) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(i));
+		}
+		return i;
+	}
+
+	public static long isPositive(final long l) {
+		if (l < 0L) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(l));
+		}
+		return l;
+	}
+
+	public static int isNegative(final int i) {
+		if (0 < i) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(i));
+		}
+		return i;
+	}
+
+	public static long isNegative(final long l) {
+		if (0L < l) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(l));
+		}
+		return l;
+	}
+
+
+	public static int isNonPositive(final int i) {
+		if (0 < i) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(i));
+		}
+		return i;
+	}
+
+	public static long isNonPositive(final long l) {
+		if (0L < l) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(l));
+		}
+		return l;
+	}
+
+
+	public static int isNonNegative(final int i) {
+		if (i < 0) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(i));
+		}
+		return i;
+	}
+
+	public static long isNonNegative(final long l) {
+		if (l < 0L) {
+			throw new RequirementNotSatisfiedException(StringPool.valueOf(l));
+		}
+		return l;
 	}
 
 

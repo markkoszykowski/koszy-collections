@@ -36,7 +36,7 @@ public final class FunctionUtil {
 
 	@SuppressWarnings(value = {"unchecked"})
 	public static <T> Predicate<T> neverFalsePredicate() {
-		return (Predicate<T>) FalsePredicate.INSTANCE;
+		return (Predicate<T>) TruePredicate.INSTANCE;
 	}
 
 	@SuppressWarnings(value = {"unchecked"})
@@ -56,7 +56,7 @@ public final class FunctionUtil {
 
 	@SuppressWarnings(value = {"unchecked"})
 	public static <T, U> BiPredicate<T, U> neverFalseBiPredicate() {
-		return (BiPredicate<T, U>) FalseBiPredicate.INSTANCE;
+		return (BiPredicate<T, U>) TrueBiPredicate.INSTANCE;
 	}
 
 
@@ -111,7 +111,7 @@ public final class FunctionUtil {
 	}
 
 	public static BooleanSupplier neverFalseSupplier() {
-		return FalseSupplier.INSTANCE;
+		return TrueSupplier.INSTANCE;
 	}
 
 	@SuppressWarnings(value = {"unchecked"})
@@ -262,6 +262,30 @@ public final class FunctionUtil {
 		@Override
 		public void accept(final Object object) {
 		}
+
+		@Override
+		public IntConsumer andThen(final IntConsumer after) {
+			Require.notNull(after);
+			return after;
+		}
+
+		@Override
+		public LongConsumer andThen(final LongConsumer after) {
+			Require.notNull(after);
+			return after;
+		}
+
+		@Override
+		public DoubleConsumer andThen(final DoubleConsumer after) {
+			Require.notNull(after);
+			return after;
+		}
+
+		@Override
+		public Consumer<Object> andThen(final Consumer<? super Object> after) {
+			Require.notNull(after);
+			return after;
+		}
 	}
 
 	private enum NoOpBiConsumer implements ObjIntConsumer<Object>, ObjLongConsumer<Object>, ObjDoubleConsumer<Object>, BiConsumer<Object, Object> {
@@ -281,6 +305,12 @@ public final class FunctionUtil {
 
 		@Override
 		public void accept(final Object object1, final Object object2) {
+		}
+
+		@Override
+		public BiConsumer<Object, Object> andThen(final BiConsumer<? super Object, ? super Object> after) {
+			Require.notNull(after);
+			return after;
 		}
 	}
 
@@ -318,6 +348,19 @@ public final class FunctionUtil {
 		public Object apply(final Object object) {
 			return null;
 		}
+
+		@Override
+		@SuppressWarnings(value = {"unchecked"})
+		public <V> Function<V, Object> compose(final Function<? super V, ?> before) {
+			Require.notNull(before);
+			return (Function<V, Object>) this;
+		}
+
+		@Override
+		public <V> Function<Object, V> andThen(final Function<? super Object, ? extends V> after) {
+			Require.notNull(after);
+			return t -> after.apply(null);
+		}
 	}
 
 	private enum NullBiFunction implements BiFunction<Object, Object, Object>, BinaryOperator<Object> {
@@ -326,6 +369,12 @@ public final class FunctionUtil {
 		@Override
 		public Object apply(final Object object1, final Object object2) {
 			return null;
+		}
+
+		@Override
+		public <V> BiFunction<Object, Object, V> andThen(final Function<? super Object, ? extends V> after) {
+			Require.notNull(after);
+			return (t, u) -> after.apply(null);
 		}
 	}
 

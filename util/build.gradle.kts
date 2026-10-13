@@ -10,6 +10,8 @@ java {
 
 dependencies {
 	api(libs.jspecify)
+
+	testImplementation(libs.jol.core)
 }
 
 tasks.withType<JavaCompile> {

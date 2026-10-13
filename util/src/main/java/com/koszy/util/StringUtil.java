@@ -69,7 +69,7 @@ public final class StringUtil {
 	public static boolean isAscii(final CharSequence string, final int offset, final int length) {
 		Require.checkOffsetLength(offset, length, length(string));
 
-		for (int i = 0; i < length; ++i) {
+		for (int i = 0; i != length; ++i) {
 			if (!isAscii(string.charAt(offset + i))) {
 				return false;
 			}
@@ -137,7 +137,7 @@ public final class StringUtil {
 		Require.checkOffsetLength(offset, length, length(string));
 
 		int hash = 0;
-		for (int i = 0; i < length; ++i) {
+		for (int i = 0; i != length; ++i) {
 			hash = 31 * hash + string.charAt(offset + i);
 		}
 		return hash;
@@ -154,7 +154,7 @@ public final class StringUtil {
 		Require.checkOffsetLength(offset, length, length(string));
 
 		int hash = 0;
-		for (int i = 0; i < length; ++i) {
+		for (int i = 0; i != length; ++i) {
 			hash = 31 * hash + Character.toUpperCase(string.charAt(offset + i));
 		}
 		return hash;
@@ -177,7 +177,7 @@ public final class StringUtil {
 			return false;
 		}
 
-		for (int i = 0; i < leftLength; ++i) {
+		for (int i = 0; i != leftLength; ++i) {
 			if (left.charAt(leftOffset + i) != right.charAt(rightOffset + i)) {
 				return false;
 			}
@@ -216,7 +216,7 @@ public final class StringUtil {
 			return false;
 		}
 
-		for (int i = 0; i < leftLength; ++i) {
+		for (int i = 0; i != leftLength; ++i) {
 			if (Character.toUpperCase(left.charAt(leftOffset + i)) != Character.toUpperCase(right.charAt(rightOffset + i))) {
 				return false;
 			}

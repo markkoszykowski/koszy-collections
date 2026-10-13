@@ -5,6 +5,7 @@ git-properties = "4.0.1"
 jacoco = "0.8.15"
 javapoet = "0.20.0"
 jmh = "1.37"
+jol = "0.17"
 jspecify = "1.0.1"
 junit = "5.14.4"
 mockito = "4.11.0"
@@ -17,6 +18,7 @@ git-properties = { group = "com.gorylenko.gradle-git-properties", name = "gradle
 javapoet = { group = "com.palantir.javapoet", name = "javapoet", version.ref = "javapoet" }
 jmh-annotations = { group = "org.openjdk.jmh", name = "jmh-generator-annprocess", version.ref = "jmh" }
 jmh-core = { group = "org.openjdk.jmh", name = "jmh-core", version.ref = "jmh" }
+jol-core = { group = "org.openjdk.jol", name = "jol-core", version.ref = "jol" }
 jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
 junit = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
 junit-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }

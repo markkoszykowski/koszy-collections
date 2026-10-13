@@ -2,6 +2,10 @@ package com.koszy.util;
 
 public class StringPool {
 
+	public static String valueOf(final boolean b) {
+		return String.valueOf(b);
+	}
+
 	public static String valueOf(final char c) {
 		return Characters.valueOf(c);
 	}
@@ -30,7 +34,7 @@ public class StringPool {
 		Characters() {
 			this.strings = new String[Character.MAX_VALUE - Character.MIN_VALUE + 1];
 			char c = Character.MIN_VALUE;
-			for (int i = 0; i < this.strings.length; ++i) {
+			for (int i = 0; i != this.strings.length; ++i) {
 				this.strings[i] = String.valueOf(c++).intern();
 			}
 		}
@@ -48,7 +52,7 @@ public class StringPool {
 		Numbers() {
 			this.strings = new String[Short.MAX_VALUE - Short.MIN_VALUE + 1];
 			short s = Short.MIN_VALUE;
-			for (int i = 0; i < this.strings.length; ++i) {
+			for (int i = 0; i != this.strings.length; ++i) {
 				this.strings[i] = String.valueOf(s++).intern();
 			}
 		}
