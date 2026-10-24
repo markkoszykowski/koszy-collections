@@ -9,4 +9,5 @@ plugins {
 }
 
 includeBuild("generator")
+includeBuild("logger")
 includeBuild("util")

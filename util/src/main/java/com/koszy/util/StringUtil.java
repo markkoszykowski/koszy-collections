@@ -4,6 +4,9 @@ import java.io.IOException;
 
 public final class StringUtil {
 
+	public static final byte NULL_BYTE = 0;
+	public static final char NULL_CHAR = 0;
+
 	public static final String EMPTY = "";
 
 	public static boolean isEmpty(final String string) {
@@ -68,7 +71,6 @@ public final class StringUtil {
 
 	public static boolean isAscii(final CharSequence string, final int offset, final int length) {
 		Require.checkOffsetLength(offset, length, length(string));
-
 		for (int i = 0; i != length; ++i) {
 			if (!isAscii(string.charAt(offset + i))) {
 				return false;
@@ -81,13 +83,29 @@ public final class StringUtil {
 		return isAscii(string, 0, length(string));
 	}
 
-	public static byte toAscii(final char c) {
+	public static byte toAsciiByte(final char c) {
 		Require.isTrue(isAscii(c));
 		return (byte) c;
 	}
 
-	public static byte toAscii(final char c, final byte defaultt) {
+	public static byte toAsciiByte(final char c, final byte defaultt) {
 		return isAscii(c) ? (byte) c : defaultt;
+	}
+
+	public static char toAsciiChar(final byte b) {
+		Require.isTrue(isAscii(b));
+		return (char) b;
+	}
+
+	public static char toAsciiChar(final byte b, final char defaultt) {
+		return isAscii(b) ? (char) b : defaultt;
+	}
+
+	public static char toChar(final CharSequence string) {
+		if (string == null || string.length() != 1) {
+			throw new RequirementNotSatisfiedException();
+		}
+		return string.charAt(0);
 	}
 
 	public static <T extends Appendable> T append(final T appendable, final Object object) {
@@ -166,14 +184,15 @@ public final class StringUtil {
 	}
 
 
-	public static boolean equals(
+	private static boolean equals0(
 			final CharSequence left, final int leftOffset, final int leftLength,
 			final CharSequence right, final int rightOffset, final int rightLength
 	) {
-		Require.checkOffsetLength(leftOffset, leftLength, length(left));
-		Require.checkOffsetLength(rightOffset, rightLength, length(right));
-
 		if (leftLength != rightLength) {
+			return false;
+		}
+
+		if ((left == null) != (right == null)) {
 			return false;
 		}
 
@@ -188,31 +207,43 @@ public final class StringUtil {
 
 	public static boolean equals(
 			final CharSequence left, final int leftOffset, final int leftLength,
+			final CharSequence right, final int rightOffset, final int rightLength
+	) {
+		Require.checkOffsetLength(leftOffset, leftLength, length(left));
+		Require.checkOffsetLength(rightOffset, rightLength, length(right));
+		return equals0(left, leftOffset, leftLength, right, rightOffset, rightLength);
+	}
+
+	public static boolean equals(
+			final CharSequence left, final int leftOffset, final int leftLength,
 			final CharSequence right
 	) {
-		return equals(left, leftOffset, leftLength, right, 0, length(right));
+		Require.checkOffsetLength(leftOffset, leftLength, length(left));
+		return equals0(left, leftOffset, leftLength, right, 0, length(right));
 	}
 
 	public static boolean equals(
 			final CharSequence left,
 			final CharSequence right, final int rightOffset, final int rightLength
 	) {
-		return equals(left, 0, length(left), right, rightOffset, rightLength);
+		Require.checkOffsetLength(rightOffset, rightLength, length(right));
+		return equals0(left, 0, length(left), right, rightOffset, rightLength);
 	}
 
 	public static boolean equals(final CharSequence left, final CharSequence right) {
-		return equals(left, 0, length(left), right, 0, length(right));
+		return equals0(left, 0, length(left), right, 0, length(right));
 	}
 
 
-	public static boolean equalsIgnoreCase(
+	public static boolean equalsIgnoreCase0(
 			final CharSequence left, final int leftOffset, final int leftLength,
 			final CharSequence right, final int rightOffset, final int rightLength
 	) {
-		Require.checkOffsetLength(leftOffset, leftLength, length(left));
-		Require.checkOffsetLength(rightOffset, rightLength, length(right));
-
 		if (leftLength != rightLength) {
+			return false;
+		}
+
+		if ((left == null) != (right == null)) {
 			return false;
 		}
 
@@ -227,20 +258,31 @@ public final class StringUtil {
 
 	public static boolean equalsIgnoreCase(
 			final CharSequence left, final int leftOffset, final int leftLength,
+			final CharSequence right, final int rightOffset, final int rightLength
+	) {
+		Require.checkOffsetLength(leftOffset, leftLength, length(left));
+		Require.checkOffsetLength(rightOffset, rightLength, length(right));
+		return equalsIgnoreCase0(left, leftOffset, leftLength, right, rightOffset, rightLength);
+	}
+
+	public static boolean equalsIgnoreCase(
+			final CharSequence left, final int leftOffset, final int leftLength,
 			final CharSequence right
 	) {
-		return equalsIgnoreCase(left, leftOffset, leftLength, right, 0, length(right));
+		Require.checkOffsetLength(leftOffset, leftLength, length(left));
+		return equalsIgnoreCase0(left, leftOffset, leftLength, right, 0, length(right));
 	}
 
 	public static boolean equalsIgnoreCase(
 			final CharSequence left,
 			final CharSequence right, final int rightOffset, final int rightLength
 	) {
-		return equalsIgnoreCase(left, 0, length(left), right, rightOffset, rightLength);
+		Require.checkOffsetLength(rightOffset, rightLength, length(right));
+		return equalsIgnoreCase0(left, 0, length(left), right, rightOffset, rightLength);
 	}
 
 	public static boolean equalsIgnoreCase(final CharSequence left, final CharSequence right) {
-		return equalsIgnoreCase(left, 0, length(left), right, 0, length(right));
+		return equalsIgnoreCase0(left, 0, length(left), right, 0, length(right));
 	}
 
 

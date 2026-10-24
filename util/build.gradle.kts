@@ -9,6 +9,7 @@ java {
 }
 
 dependencies {
+	api(libs.fastutil)
 	api(libs.jspecify)
 
 	testImplementation(libs.jol.core)

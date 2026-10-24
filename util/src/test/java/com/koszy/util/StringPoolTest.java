@@ -3,7 +3,7 @@ package com.koszy.util;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class StringPoolTest {
+class StringPoolTest {
 
 	@Test
 	void test() {

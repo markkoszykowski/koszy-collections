@@ -22,7 +22,7 @@ public final class EnumUtil {
 	}
 
 	public static <T extends Enum<T>> T valueOf(final CharSequence string, final int offset, final int length, final @NonNull Class<T> clazz) {
-		return valueOf(string, offset, length, clazz.getEnumConstants());
+		return valueOf(string, offset, length, Require.notNull(clazz).getEnumConstants());
 	}
 
 	public static <T extends Enum<T>> T valueOf(final CharSequence string, final T[] values) {
@@ -30,7 +30,7 @@ public final class EnumUtil {
 	}
 
 	public static <T extends Enum<T>> T valueOf(final CharSequence string, final @NonNull Class<T> clazz) {
-		return valueOf(string, 0, StringUtil.length(string), clazz.getEnumConstants());
+		return valueOf(string, 0, StringUtil.length(string), Require.notNull(clazz).getEnumConstants());
 	}
 
 	public static <T extends Enum<T>> T valueOfIgnoreCase(final CharSequence string, final int offset, final int length, final T[] values) {
@@ -50,7 +50,7 @@ public final class EnumUtil {
 	}
 
 	public static <T extends Enum<T>> T valueOfIgnoreCase(final CharSequence string, final int offset, final int length, final @NonNull Class<T> clazz) {
-		return valueOfIgnoreCase(string, offset, length, clazz.getEnumConstants());
+		return valueOfIgnoreCase(string, offset, length, Require.notNull(clazz).getEnumConstants());
 	}
 
 	public static <T extends Enum<T>> T valueOfIgnoreCase(final CharSequence string, final T[] values) {
@@ -58,7 +58,7 @@ public final class EnumUtil {
 	}
 
 	public static <T extends Enum<T>> T valueOfIgnoreCase(final CharSequence string, final @NonNull Class<T> clazz) {
-		return valueOfIgnoreCase(string, 0, StringUtil.length(string), clazz.getEnumConstants());
+		return valueOfIgnoreCase(string, 0, StringUtil.length(string), Require.notNull(clazz).getEnumConstants());
 	}
 
 	private EnumUtil() {

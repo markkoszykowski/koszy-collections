@@ -23,7 +23,11 @@
 		<property name="message" value="Line has trailing spaces."/>
 	</module>
 
+	<module name="SuppressWarningsFilter"/>
+
 	<module name="TreeWalker">
+		<module name="SuppressWarningsHolder"/>
+
 		<!-- See https://checkstyle.org/checks/annotation/index.html -->
 		<module name="AnnotationLocation">
 			<property name="allowSamelineSingleParameterlessAnnotation" value="false"/>

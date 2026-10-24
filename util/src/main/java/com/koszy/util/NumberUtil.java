@@ -4,6 +4,39 @@ import org.jspecify.annotations.NonNull;
 
 public final class NumberUtil {
 
+	public static final int BYTE_BITS = Byte.SIZE;
+	public static final int SHORT_BITS = Short.SIZE;
+	public static final int INT_BITS = Integer.SIZE;
+	public static final int LONG_BITS = Long.SIZE;
+
+	public static final int BYTE_BYTES = Byte.BYTES;
+	public static final int SHORT_BYTES = Short.BYTES;
+	public static final int INT_BYTES = Integer.BYTES;
+	public static final int LONG_BYTES = Long.BYTES;
+
+	public static final int BYTE_DIGITS = Math.max(digits(Byte.MIN_VALUE), digits(Byte.MAX_VALUE));
+	public static final int SHORT_DIGITS = Math.max(digits(Short.MIN_VALUE), digits(Short.MAX_VALUE));
+	public static final int INT_DIGITS = Math.max(digits(Integer.MIN_VALUE), digits(Integer.MAX_VALUE));
+	public static final int LONG_DIGITS = Math.max(digits(Long.MIN_VALUE), digits(Long.MAX_VALUE));
+
+
+	public static int digits(final int x) {
+		int digits = 0;
+		for (int remaining = x; remaining != 0; remaining /= 10) {
+			++digits;
+		}
+		return Math.max(1, digits);
+	}
+
+	public static int digits(final long x) {
+		int digits = 0;
+		for (long remaining = x; remaining != 0L; remaining /= 10L) {
+			++digits;
+		}
+		return Math.max(1, digits);
+	}
+
+
 	public static byte byteValue(final @NonNull Object object) throws ClassCastException {
 		return ((Number) object).byteValue();
 	}
@@ -146,45 +179,87 @@ public final class NumberUtil {
 	}
 
 
+	public static boolean isPowerOfTwo(final int x) {
+		return (x & (x - 1)) == 0;
+	}
+
+	public static boolean isPowerOfTwo(final long x) {
+		return (x & (x - 1L)) == 0L;
+	}
+
+
+	public static int nextPowerOfTwo(final int x) {
+		if (Integer.compareUnsigned(1 << INT_BITS - 1, x) < 0) {
+			throw new ArithmeticException("integer overflow");
+		}
+		if (x == 0) {
+			return 1;
+		}
+		int n = x - 1;
+		n |= n >>> (INT_BITS >>> 5);
+		n |= n >>> (INT_BITS >>> 4);
+		n |= n >>> (INT_BITS >>> 3);
+		n |= n >>> (INT_BITS >>> 2);
+		n |= n >>> (INT_BITS >>> 1);
+		return n + 1;
+	}
+
+	public static long nextPowerOfTwo(final long x) {
+		if (Long.compareUnsigned(1L << LONG_BITS - 1, x) < 0) {
+			throw new ArithmeticException("integer overflow");
+		}
+		if (x == 0L) {
+			return 1L;
+		}
+		long n = x - 1L;
+		n |= n >>> (LONG_BITS >>> 6);
+		n |= n >>> (LONG_BITS >>> 5);
+		n |= n >>> (LONG_BITS >>> 4);
+		n |= n >>> (LONG_BITS >>> 3);
+		n |= n >>> (LONG_BITS >>> 2);
+		n |= n >>> (LONG_BITS >>> 1);
+		return n + 1L;
+	}
+
 	public static short s(final byte b0, final byte b1) {
-		return (short) ((Byte.toUnsignedInt(b0) << Byte.SIZE) | Byte.toUnsignedInt(b1));
+		return (short) ((Byte.toUnsignedInt(b0) << BYTE_BITS) | Byte.toUnsignedInt(b1));
 	}
 
 	public static int i(final byte b0, final byte b1, final byte b2, final byte b3) {
-		return (Byte.toUnsignedInt(b0) << (3 * Byte.SIZE)) | (Byte.toUnsignedInt(b1) << (2 * Byte.SIZE)) | (Byte.toUnsignedInt(b2) << Byte.SIZE) | Byte.toUnsignedInt(b3);
+		return (Byte.toUnsignedInt(b0) << (3 * BYTE_BITS)) | (Byte.toUnsignedInt(b1) << (2 * BYTE_BITS)) | (Byte.toUnsignedInt(b2) << BYTE_BITS) | Byte.toUnsignedInt(b3);
 	}
 
 	public static int i(final short s0, final short s1) {
-		return (Short.toUnsignedInt(s0) << Short.SIZE) | Short.toUnsignedInt(s1);
+		return (Short.toUnsignedInt(s0) << SHORT_BITS) | Short.toUnsignedInt(s1);
 	}
 
 	public static long l(
 			final byte b0, final byte b1, final byte b2, final byte b3,
 			final byte b4, final byte b5, final byte b6, final byte b7
 	) {
-		return (Byte.toUnsignedLong(b0) << (7 * Byte.SIZE)) | (Byte.toUnsignedLong(b1) << (6 * Byte.SIZE)) | (Byte.toUnsignedLong(b2) << (5 * Byte.SIZE)) | (Byte.toUnsignedLong(b3) << (4 * Byte.SIZE)) |
-				(Byte.toUnsignedLong(b4) << (3 * Byte.SIZE)) | (Byte.toUnsignedLong(b5) << (2 * Byte.SIZE)) | (Byte.toUnsignedLong(b6) << Byte.SIZE) | Byte.toUnsignedLong(b7);
+		return (Byte.toUnsignedLong(b0) << (7 * BYTE_BITS)) | (Byte.toUnsignedLong(b1) << (6 * BYTE_BITS)) | (Byte.toUnsignedLong(b2) << (5 * BYTE_BITS)) | (Byte.toUnsignedLong(b3) << (4 * BYTE_BITS)) |
+				(Byte.toUnsignedLong(b4) << (3 * BYTE_BITS)) | (Byte.toUnsignedLong(b5) << (2 * BYTE_BITS)) | (Byte.toUnsignedLong(b6) << BYTE_BITS) | Byte.toUnsignedLong(b7);
 	}
 
 	public static long l(final short s0, final short s1, final short s2, final short s3) {
-		return (Short.toUnsignedLong(s0) << (3 * Short.SIZE)) | (Short.toUnsignedLong(s1) << (2 * Short.SIZE)) | (Short.toUnsignedLong(s2) << Short.SIZE) | Short.toUnsignedLong(s3);
+		return (Short.toUnsignedLong(s0) << (3 * SHORT_BITS)) | (Short.toUnsignedLong(s1) << (2 * SHORT_BITS)) | (Short.toUnsignedLong(s2) << SHORT_BITS) | Short.toUnsignedLong(s3);
 	}
 
 	public static long l(final int i0, final int i1) {
-		return (Integer.toUnsignedLong(i0) << Integer.SIZE) | Integer.toUnsignedLong(i1);
+		return (Integer.toUnsignedLong(i0) << INT_BITS) | Integer.toUnsignedLong(i1);
 	}
 
 
 	public static byte b0(final short s) {
-		return (byte) (s >>> Byte.SIZE);
+		return (byte) (s >>> BYTE_BITS);
 	}
 
 	public static byte b0(final int i) {
-		return (byte) (i >>> (Byte.SIZE * 3));
+		return (byte) (i >>> (BYTE_BITS * 3));
 	}
 
 	public static byte b0(final long l) {
-		return (byte) (l >>> (Byte.SIZE * 7));
+		return (byte) (l >>> (BYTE_BITS * 7));
 	}
 
 	public static byte b1(final short s) {
@@ -192,19 +267,19 @@ public final class NumberUtil {
 	}
 
 	public static byte b1(final int i) {
-		return (byte) (i >>> (Byte.SIZE * 2));
+		return (byte) (i >>> (BYTE_BITS * 2));
 	}
 
 	public static byte b1(final long l) {
-		return (byte) (l >>> (Byte.SIZE * 6));
+		return (byte) (l >>> (BYTE_BITS * 6));
 	}
 
 	public static byte b2(final int i) {
-		return (byte) (i >>> Byte.SIZE);
+		return (byte) (i >>> BYTE_BITS);
 	}
 
 	public static byte b2(final long l) {
-		return (byte) (l >>> (Byte.SIZE * 5));
+		return (byte) (l >>> (BYTE_BITS * 5));
 	}
 
 	public static byte b3(final int i) {
@@ -212,19 +287,19 @@ public final class NumberUtil {
 	}
 
 	public static byte b3(final long l) {
-		return (byte) (l >>> (Byte.SIZE * 4));
+		return (byte) (l >>> (BYTE_BITS * 4));
 	}
 
 	public static byte b4(final long l) {
-		return (byte) (l >>> (Byte.SIZE * 3));
+		return (byte) (l >>> (BYTE_BITS * 3));
 	}
 
 	public static byte b5(final long l) {
-		return (byte) (l >>> (Byte.SIZE * 2));
+		return (byte) (l >>> (BYTE_BITS * 2));
 	}
 
 	public static byte b6(final long l) {
-		return (byte) (l >>> Byte.SIZE);
+		return (byte) (l >>> BYTE_BITS);
 	}
 
 	public static byte b7(final long l) {
@@ -232,11 +307,11 @@ public final class NumberUtil {
 	}
 
 	public static short s0(final int i) {
-		return (short) (i >>> Short.SIZE);
+		return (short) (i >>> SHORT_BITS);
 	}
 
 	public static short s0(final long l) {
-		return (short) (l >>> (Short.SIZE * 3));
+		return (short) (l >>> (SHORT_BITS * 3));
 	}
 
 	public static short s1(final int i) {
@@ -244,11 +319,11 @@ public final class NumberUtil {
 	}
 
 	public static short s1(final long l) {
-		return (short) (l >>> (Short.SIZE * 2));
+		return (short) (l >>> (SHORT_BITS * 2));
 	}
 
 	public static short s2(final long l) {
-		return (short) (l >>> Short.SIZE);
+		return (short) (l >>> SHORT_BITS);
 	}
 
 	public static short s3(final long l) {
@@ -256,7 +331,7 @@ public final class NumberUtil {
 	}
 
 	public static int i0(final long l) {
-		return (int) (l >>> Integer.SIZE);
+		return (int) (l >>> INT_BITS);
 	}
 
 	public static int i1(final long l) {

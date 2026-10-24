@@ -1,5 +1,6 @@
 package com.koszy.util;
 
+import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
@@ -37,6 +38,16 @@ public final class FunctionUtil {
 	@SuppressWarnings(value = {"unchecked"})
 	public static <T> Predicate<T> neverFalsePredicate() {
 		return (Predicate<T>) TruePredicate.INSTANCE;
+	}
+
+	@SuppressWarnings(value = {"unchecked"})
+	public static <T> Predicate<T> isNullPredicate() {
+		return (Predicate<T>) IsNullPredicate.INSTANCE;
+	}
+
+	@SuppressWarnings(value = {"unchecked"})
+	public static <T> Predicate<T> nonNullPredicate() {
+		return (Predicate<T>) NonNullPredicate.INSTANCE;
 	}
 
 	@SuppressWarnings(value = {"unchecked"})
@@ -137,6 +148,17 @@ public final class FunctionUtil {
 	@SuppressWarnings(value = {"unchecked"})
 	public static <T> BinaryOperator<T> nullBinaryOperator() {
 		return (BinaryOperator<T>) NullBiFunction.INSTANCE;
+	}
+
+
+	public static <T> Supplier<T> supplier(final Callable<? extends T> callable) {
+		return () -> {
+			try {
+				return callable.call();
+			} catch (final Exception exception) {
+				return LangUtil.rethrow(exception);
+			}
+		};
 	}
 
 
@@ -241,6 +263,58 @@ public final class FunctionUtil {
 		@Override
 		public BiPredicate<Object, Object> negate() {
 			return TrueBiPredicate.INSTANCE;
+		}
+	}
+
+	private enum IsNullPredicate implements Predicate<Object> {
+		INSTANCE;
+
+		@Override
+		public boolean test(final Object object) {
+			return object == null;
+		}
+
+		@Override
+		public Predicate<Object> and(final Predicate<? super Object> other) {
+			Require.notNull(other);
+			return t -> t == null && other.test(t);
+		}
+
+		@Override
+		public Predicate<Object> or(final Predicate<? super Object> other) {
+			Require.notNull(other);
+			return t -> t == null || other.test(t);
+		}
+
+		@Override
+		public Predicate<Object> negate() {
+			return NonNullPredicate.INSTANCE;
+		}
+	}
+
+	private enum NonNullPredicate implements Predicate<Object> {
+		INSTANCE;
+
+		@Override
+		public boolean test(final Object object) {
+			return object != null;
+		}
+
+		@Override
+		public Predicate<Object> and(final Predicate<? super Object> other) {
+			Require.notNull(other);
+			return t -> t != null && other.test(t);
+		}
+
+		@Override
+		public Predicate<Object> or(final Predicate<? super Object> other) {
+			Require.notNull(other);
+			return t -> t != null || other.test(t);
+		}
+
+		@Override
+		public Predicate<Object> negate() {
+			return IsNullPredicate.INSTANCE;
 		}
 	}
 

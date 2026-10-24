@@ -39,9 +39,7 @@ public final class OpenUnsafe {
 
 	private static Unsafe getUnsafe() {
 		try {
-			final Field field = Unsafe.class.getDeclaredField("theUnsafe");
-			field.setAccessible(true);
-			return (Unsafe) field.get(null);
+			return ReflectionUtil.get(ReflectionUtil.access(Unsafe.class.getDeclaredField("theUnsafe")));
 		} catch (final ReflectiveOperationException exception) {
 			return LangUtil.rethrow(exception);
 		}

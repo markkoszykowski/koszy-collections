@@ -53,6 +53,7 @@ import org.gradle.testing.base.TestSuite;
 import org.gradle.testing.base.TestingExtension;
 import org.gradle.testing.jacoco.plugins.JacocoPlugin;
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension;
+import org.gradle.util.internal.TextUtil;
 import org.jspecify.annotations.NonNull;
 
 import java.io.File;
@@ -60,6 +61,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -136,6 +138,7 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 					.findFirst()
 					.stream()
 					.map(File::toPath)
+					.filter(Files::isDirectory)
 					.flatMap(KoszyGradleUtil.function(Files::list))
 					.filter(Files::isDirectory)
 					.map(folder -> Pair.of(folder, folder))
@@ -146,9 +149,24 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 					.sorted(Comparator.comparing(Pair::getRight))
 					.peek(_ -> multiRelease.set(true))
 					.forEach(release -> {
-						final SourceSet set = sourceSets.create(SourceSet.MAIN_SOURCE_SET_NAME + release.right);
+						final String name = SourceSet.MAIN_SOURCE_SET_NAME + release.right;
+						final SourceSet set = sourceSets.create(name);
 						set.getJava().srcDir(release.left);
 						mainSources.getJava().exclude(Path.of(String.valueOf(release.right)).resolve("**").toString());
+
+						final List<String> configurations = List.of(
+								JavaPlugin.ANNOTATION_PROCESSOR_CONFIGURATION_NAME,
+								JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
+								JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
+								JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME,
+								JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
+								JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME
+						);
+						for (final String configuration : configurations) {
+							project.getConfigurations().named(TextUtil.toLowerCamelCase(name + " " + configuration)).configure(c -> {
+								c.extendsFrom(project.getConfigurations().named(configuration));
+							});
+						}
 
 						project.getTasks().named(set.getCompileJavaTaskName(), JavaCompile.class).configure(compileJava -> {
 							compileJava.getJavaCompiler().set(javaToolchains.compilerFor(toolchain -> {
@@ -156,12 +174,12 @@ public final class KoszyProjectPlugin implements Plugin<Project> {
 							}));
 						});
 
-						final Map<String, Object> configurations = Map.of(
+						final Map<String, Object> tasks = Map.of(
 								mainSources.getJarTaskName(), set.getOutput()
 						);
-						for (final Map.Entry<String, Object> configuration : configurations.entrySet()) {
-							project.getTasks().named(configuration.getKey(), Jar.class).configure(task -> {
-								task.from(configuration.getValue(), copy -> {
+						for (final Map.Entry<String, Object> task : tasks.entrySet()) {
+							project.getTasks().named(task.getKey(), Jar.class).configure(t -> {
+								t.from(task.getValue(), copy -> {
 									copy.into(Path.of("META-INF").resolve("versions").resolve(String.valueOf(release.right)).toFile());
 								});
 							});

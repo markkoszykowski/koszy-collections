@@ -31,6 +31,146 @@ public final class ClassUtil {
 		}
 	}
 
+
+	public static Class<?> typeof(final boolean value) {
+		return boolean.class;
+	}
+
+	public static Class<?> typeof(final char value) {
+		return char.class;
+	}
+
+	public static Class<?> typeof(final byte value) {
+		return byte.class;
+	}
+
+	public static Class<?> typeof(final short value) {
+		return short.class;
+	}
+
+	public static Class<?> typeof(final int value) {
+		return int.class;
+	}
+
+	public static Class<?> typeof(final long value) {
+		return long.class;
+	}
+
+	public static Class<?> typeof(final float value) {
+		return float.class;
+	}
+
+	public static Class<?> typeof(final double value) {
+		return double.class;
+	}
+
+	public static Class<?> typeof(final Object object) {
+		return object == null ? null : object.getClass();
+	}
+
+
+	public static boolean isBoolean(final Class<?> clazz) {
+		return Objects.equals(boolean.class, clazz) || Objects.equals(Boolean.class, clazz);
+	}
+
+	public static boolean isChar(final Class<?> clazz) {
+		return Objects.equals(char.class, clazz) || Objects.equals(Character.class, clazz);
+	}
+
+	public static boolean isByte(final Class<?> clazz) {
+		return Objects.equals(byte.class, clazz) || Objects.equals(Byte.class, clazz);
+	}
+
+	public static boolean isShort(final Class<?> clazz) {
+		return Objects.equals(short.class, clazz) || Objects.equals(Short.class, clazz);
+	}
+
+	public static boolean isInt(final Class<?> clazz) {
+		return Objects.equals(int.class, clazz) || Objects.equals(Integer.class, clazz);
+	}
+
+	public static boolean isLong(final Class<?> clazz) {
+		return Objects.equals(long.class, clazz) || Objects.equals(Long.class, clazz);
+	}
+
+	public static boolean isFloat(final Class<?> clazz) {
+		return Objects.equals(float.class, clazz) || Objects.equals(Float.class, clazz);
+	}
+
+	public static boolean isDouble(final Class<?> clazz) {
+		return Objects.equals(double.class, clazz) || Objects.equals(Double.class, clazz);
+	}
+
+	public static boolean assignable(final Class<?> excepted, final Class<?> actual) {
+		if (Objects.equals(excepted, actual)) {
+			return true;
+		}
+		if (excepted == null || actual == null) {
+			return true;
+		}
+		if (isBoolean(excepted) && isBoolean(actual)) {
+			return true;
+		}
+		if (isChar(excepted) && isChar(actual)) {
+			return true;
+		}
+		if (isByte(excepted) && isByte(actual)) {
+			return true;
+		}
+		if (isShort(excepted) && isShort(actual)) {
+			return true;
+		}
+		if (isInt(excepted) && isInt(actual)) {
+			return true;
+		}
+		if (isLong(excepted) && isLong(actual)) {
+			return true;
+		}
+		if (isFloat(excepted) && isFloat(actual)) {
+			return true;
+		}
+		if (isDouble(excepted) && isDouble(actual)) {
+			return true;
+		}
+		return excepted.isAssignableFrom(actual);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final boolean value) {
+		return isBoolean(clazz);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final char value) {
+		return isChar(clazz);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final byte value) {
+		return isByte(clazz);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final short value) {
+		return isShort(clazz);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final int value) {
+		return isInt(clazz);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final long value) {
+		return isLong(clazz);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final float value) {
+		return isFloat(clazz);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final double value) {
+		return isDouble(clazz);
+	}
+
+	public static boolean assignable(final Class<?> clazz, final Object object) {
+		return assignable(clazz, typeof(object));
+	}
+
 	private static int objectHeaderSize0() {
 		try {
 			return NumberUtil.toIntExact(OpenUnsafe.theUnsafe().objectFieldOffset(HeaderSize.class.getDeclaredField("b")));
@@ -88,6 +228,12 @@ public final class ClassUtil {
 					return new ObjectAlignment3();
 				case 4:
 					return new ObjectAlignment4();
+				case 5:
+					return new ObjectAlignment5();
+				case 6:
+					return new ObjectAlignment6();
+				case 7:
+					return new ObjectAlignment7();
 				default:
 					throw new IllegalStateException();
 			}
@@ -102,9 +248,9 @@ public final class ClassUtil {
 			}
 			return x;
 		};
-		for (int c = 0; c != 100_000; ++c) {
-			final Object o1 = instantiate.apply(random.nextInt(5));
-			final Object o2 = instantiate.apply(random.nextInt(5));
+		for (int c = 0; c != (1L << 16); ++c) {
+			final Object o1 = instantiate.apply(random.nextInt(8));
+			final Object o2 = instantiate.apply(random.nextInt(8));
 			final long diff = Math.abs(address.applyAsLong(o1) - address.applyAsLong(o2));
 			min = min == -1L ? diff : gcd.applyAsLong(min, diff);
 		}
@@ -184,6 +330,10 @@ public final class ClassUtil {
 		return NumberUtil.align(size, OBJECT_ALIGNMENT);
 	}
 
+	public static Field[] fields(final Class<?> clazz) {
+		return clazz == null ? null : ArrayUtil.concat(Field[]::new, clazz.getDeclaredFields(), clazz.getFields());
+	}
+
 	private static final class HeaderSize {
 		private byte b;
 	}
@@ -196,14 +346,26 @@ public final class ClassUtil {
 	}
 
 	private static final class ObjectAlignment2 {
-		private int i;
+		private char c;
 	}
 
 	private static final class ObjectAlignment3 {
-		private long l;
+		private byte b;
 	}
 
 	private static final class ObjectAlignment4 {
+		private short s;
+	}
+
+	private static final class ObjectAlignment5 {
+		private int i;
+	}
+
+	private static final class ObjectAlignment6 {
+		private long l;
+	}
+
+	private static final class ObjectAlignment7 {
 		private Object o;
 	}
 
