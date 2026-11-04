@@ -4,21 +4,28 @@ import org.jspecify.annotations.NonNull;
 
 public final class NumberUtil {
 
+	public static final int CHAR_BITS = Character.SIZE;
 	public static final int BYTE_BITS = Byte.SIZE;
 	public static final int SHORT_BITS = Short.SIZE;
 	public static final int INT_BITS = Integer.SIZE;
 	public static final int LONG_BITS = Long.SIZE;
+	public static final int FLOAT_BITS = Float.SIZE;
+	public static final int DOUBLE_BITS = Double.SIZE;
 
+	public static final int CHAR_BYTES = Character.BYTES;
 	public static final int BYTE_BYTES = Byte.BYTES;
 	public static final int SHORT_BYTES = Short.BYTES;
 	public static final int INT_BYTES = Integer.BYTES;
 	public static final int LONG_BYTES = Long.BYTES;
+	public static final int FLOAT_BYTES = Float.BYTES;
+	public static final int DOUBLE_BYTES = Double.BYTES;
 
 	public static final int BYTE_DIGITS = Math.max(digits(Byte.MIN_VALUE), digits(Byte.MAX_VALUE));
 	public static final int SHORT_DIGITS = Math.max(digits(Short.MIN_VALUE), digits(Short.MAX_VALUE));
 	public static final int INT_DIGITS = Math.max(digits(Integer.MIN_VALUE), digits(Integer.MAX_VALUE));
 	public static final int LONG_DIGITS = Math.max(digits(Long.MIN_VALUE), digits(Long.MAX_VALUE));
 
+	public static final int CACHE_LINE_LENGTH = 64;
 
 	public static int digits(final int x) {
 		int digits = 0;
@@ -189,7 +196,7 @@ public final class NumberUtil {
 
 
 	public static int nextPowerOfTwo(final int x) {
-		if (Integer.compareUnsigned(1 << INT_BITS - 1, x) < 0) {
+		if (Integer.compareUnsigned(1 << (INT_BITS - 1), x) < 0) {
 			throw new ArithmeticException("integer overflow");
 		}
 		if (x == 0) {
@@ -205,7 +212,7 @@ public final class NumberUtil {
 	}
 
 	public static long nextPowerOfTwo(final long x) {
-		if (Long.compareUnsigned(1L << LONG_BITS - 1, x) < 0) {
+		if (Long.compareUnsigned(1L << (LONG_BITS - 1), x) < 0) {
 			throw new ArithmeticException("integer overflow");
 		}
 		if (x == 0L) {
@@ -220,6 +227,21 @@ public final class NumberUtil {
 		n |= n >>> (LONG_BITS >>> 1);
 		return n + 1L;
 	}
+
+	public static int log2Exact(final int x) {
+		if (!isPowerOfTwo(x)) {
+			throw new ArithmeticException(x + " not a power of 2");
+		}
+		return Integer.numberOfTrailingZeros(x);
+	}
+
+	public static int log2Exact(final long x) {
+		if (!isPowerOfTwo(x)) {
+			throw new ArithmeticException(x + " not a power of 2");
+		}
+		return Long.numberOfTrailingZeros(x);
+	}
+
 
 	public static short s(final byte b0, final byte b1) {
 		return (short) ((Byte.toUnsignedInt(b0) << BYTE_BITS) | Byte.toUnsignedInt(b1));
@@ -433,6 +455,17 @@ public final class NumberUtil {
 		return max;
 	}
 
+	public static int max(final int[] xs) {
+		if (ArrayUtil.length(xs) == 0) {
+			throw new IllegalArgumentException();
+		}
+		int max = xs[0];
+		for (int i = 1; i != xs.length; ++i) {
+			max = Math.max(max, xs[i]);
+		}
+		return max;
+	}
+
 
 	public static long max(final long x1, final long x2) {
 		return Math.max(x1, x2);
@@ -491,6 +524,17 @@ public final class NumberUtil {
 			for (final long x : xs) {
 				max = Math.max(max, x);
 			}
+		}
+		return max;
+	}
+
+	public static long max(final long[] xs) {
+		if (ArrayUtil.length(xs) == 0) {
+			throw new IllegalArgumentException();
+		}
+		long max = xs[0];
+		for (int i = 1; i != xs.length; ++i) {
+			max = Math.max(max, xs[i]);
 		}
 		return max;
 	}
@@ -557,6 +601,17 @@ public final class NumberUtil {
 		return min;
 	}
 
+	public static int min(final int[] xs) {
+		if (ArrayUtil.length(xs) == 0) {
+			throw new IllegalArgumentException();
+		}
+		int min = xs[0];
+		for (int i = 1; i != xs.length; ++i) {
+			min = Math.min(min, xs[i]);
+		}
+		return min;
+	}
+
 
 	public static long min(final long x1, final long x2) {
 		return Math.min(x1, x2);
@@ -615,6 +670,17 @@ public final class NumberUtil {
 			for (final long x : xs) {
 				min = Math.min(min, x);
 			}
+		}
+		return min;
+	}
+
+	public static long min(final long[] xs) {
+		if (ArrayUtil.length(xs) == 0) {
+			throw new IllegalArgumentException();
+		}
+		long min = xs[0];
+		for (int i = 1; i != xs.length; ++i) {
+			min = Math.min(min, xs[i]);
 		}
 		return min;
 	}

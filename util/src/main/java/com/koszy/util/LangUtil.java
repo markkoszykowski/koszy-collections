@@ -20,6 +20,13 @@ public final class LangUtil {
 		throw new Unreachable();
 	}
 
+	private static final class Todo extends Error {
+	}
+
+	public static <T> @NonNull T todo() {
+		throw new Todo();
+	}
+
 	private LangUtil() {
 		unreachable();
 	}

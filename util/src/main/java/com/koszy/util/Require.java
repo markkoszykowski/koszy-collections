@@ -4,14 +4,14 @@ public final class Require {
 
 	public static <T> T isNull(final T t) {
 		if (t != null) {
-			throw new RequirementNotSatisfiedException(String.valueOf(t));
+			throw new RequirementNotSatisfiedException(ArrayUtil.deepToString(t));
 		}
 		return t;
 	}
 
-	public static <T> T notNull(final T t) {
+	public static <T> T nonNull(final T t) {
 		if (t == null) {
-			throw new RequirementNotSatisfiedException(String.valueOf(t));
+			throw new RequirementNotSatisfiedException(ArrayUtil.deepToString(t));
 		}
 		return t;
 	}

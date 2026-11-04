@@ -1,9 +1,17 @@
 package com.koszy.logger;
 
-import java.nio.ByteBuffer;
+import org.slf4j.event.Level;
 
 interface Appender {
 
-	void append(long time, byte[] thread, int level, byte[] logger, ByteBuffer message, ByteBuffer throwable);
+	void append(Level level, String format);
+
+	void append(Level level, String format, Object arg);
+
+	void append(Level level, String format, Throwable throwable);
+
+	void append(Level level, String format, Object arg1, Object arg2);
+
+	void append(Level level, String format, Object... args);
 
 }

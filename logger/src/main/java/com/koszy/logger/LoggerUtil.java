@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-final class LoggerUtil {
+public final class LoggerUtil {
 
 	static final byte[] EMPTY = new byte[0];
 	static final byte[][] LEVELS;
@@ -53,6 +53,9 @@ final class LoggerUtil {
 
 	/// @see org.slf4j.helpers.MessageFormatter#arrayFormat(String, Object[], Throwable)
 	static CharSequence format(final String format, final Object[] args, final int length, final Set<Object> dejaVu, final StringBuilder builder) {
+		if (format == null) {
+			return null;
+		}
 		int start = 0;
 		int end;
 		for (int i = 0; i != length; ++i) {
@@ -85,7 +88,7 @@ final class LoggerUtil {
 		return builder;
 	}
 
-	static StringBuilder indent(final StringBuilder builder, final int indent) {
+	public static StringBuilder indent(final StringBuilder builder, final int indent) {
 		for (int i = 0; i != indent; ++i) {
 			builder.append('\t');
 		}
@@ -93,7 +96,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#toString(boolean[])
-	static StringBuilder append(final boolean[] array, final StringBuilder builder) {
+	public static StringBuilder append(final boolean[] array, final StringBuilder builder) {
 		String prefix = null;
 		builder.append('[');
 		for (final boolean element : array) {
@@ -110,7 +113,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#toString(char[])
-	static StringBuilder append(final char[] array, final StringBuilder builder) {
+	public static StringBuilder append(final char[] array, final StringBuilder builder) {
 		String prefix = null;
 		builder.append('[');
 		for (final char element : array) {
@@ -127,7 +130,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#toString(byte[])
-	static StringBuilder append(final byte[] array, final StringBuilder builder) {
+	public static StringBuilder append(final byte[] array, final StringBuilder builder) {
 		String prefix = null;
 		builder.append('[');
 		for (final byte element : array) {
@@ -144,7 +147,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#toString(short[])
-	static StringBuilder append(final short[] array, final StringBuilder builder) {
+	public static StringBuilder append(final short[] array, final StringBuilder builder) {
 		String prefix = null;
 		builder.append('[');
 		for (final short element : array) {
@@ -161,7 +164,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#toString(int[])
-	static StringBuilder append(final int[] array, final StringBuilder builder) {
+	public static StringBuilder append(final int[] array, final StringBuilder builder) {
 		String prefix = null;
 		builder.append('[');
 		for (final int element : array) {
@@ -178,7 +181,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#toString(long[])
-	static StringBuilder append(final long[] array, final StringBuilder builder) {
+	public static StringBuilder append(final long[] array, final StringBuilder builder) {
 		String prefix = null;
 		builder.append('[');
 		for (final long element : array) {
@@ -195,7 +198,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#toString(float[])
-	static StringBuilder append(final float[] array, final StringBuilder builder) {
+	public static StringBuilder append(final float[] array, final StringBuilder builder) {
 		String prefix = null;
 		builder.append('[');
 		for (final float element : array) {
@@ -212,7 +215,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#toString(double[])
-	static StringBuilder append(final double[] array, final StringBuilder builder) {
+	public static StringBuilder append(final double[] array, final StringBuilder builder) {
 		String prefix = null;
 		builder.append('[');
 		for (final double element : array) {
@@ -229,7 +232,7 @@ final class LoggerUtil {
 	}
 
 	/// @see java.util.Arrays#deepToString(Object[])
-	static StringBuilder append(final Object[] array, final StringBuilder builder, final Set<Object> dejaVu) {
+	public static StringBuilder append(final Object[] array, final StringBuilder builder, final Set<Object> dejaVu) {
 		dejaVu.add(array);
 
 		builder.append('[');
@@ -250,7 +253,7 @@ final class LoggerUtil {
 		return builder;
 	}
 
-	static StringBuilder append(final Object object, final Set<Object> dejaVu, final StringBuilder builder) {
+	public static StringBuilder append(final Object object, final Set<Object> dejaVu, final StringBuilder builder) {
 		if (object == null) {
 			return builder.append((Object) null);
 		}
@@ -298,15 +301,26 @@ final class LoggerUtil {
 				return builder.append((double) object);
 			} else if (object instanceof CharSequence) {
 				return builder.append((CharSequence) object);
+			} else if (object instanceof Formattable) {
+				((Formattable) object).format(builder);
+				return builder;
 			} else {
 				return builder.append(object);
 			}
 		}
 	}
 
-	static StringBuilder append(final Throwable throwable, final Set<? super Throwable> dejaVu, final StringBuilder builder) {
+	static CharSequence format(final Throwable throwable, final Set<? super Throwable> dejaVu, final StringBuilder builder) {
 		try {
-			return append(throwable, dejaVu, builder, null, 0, null);
+			return throwable == null ? null : append(throwable, dejaVu, builder, null, 0, null);
+		} finally {
+			dejaVu.clear();
+		}
+	}
+
+	public static StringBuilder append(final Throwable throwable, final Set<? super Throwable> dejaVu, final StringBuilder builder) {
+		try {
+			return throwable == null ? builder.append((Object) null) : append(throwable, dejaVu, builder, null, 0, null);
 		} finally {
 			dejaVu.clear();
 		}

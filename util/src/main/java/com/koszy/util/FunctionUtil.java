@@ -172,13 +172,13 @@ public final class FunctionUtil {
 
 		@Override
 		public Predicate<Object> and(final Predicate<? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return other;
 		}
 
 		@Override
 		public Predicate<Object> or(final Predicate<? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return this;
 		}
 
@@ -198,13 +198,13 @@ public final class FunctionUtil {
 
 		@Override
 		public Predicate<Object> and(final Predicate<? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return this;
 		}
 
 		@Override
 		public Predicate<Object> or(final Predicate<? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return other;
 		}
 
@@ -224,13 +224,13 @@ public final class FunctionUtil {
 
 		@Override
 		public BiPredicate<Object, Object> and(final BiPredicate<? super Object, ? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return other;
 		}
 
 		@Override
 		public BiPredicate<Object, Object> or(final BiPredicate<? super Object, ? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return this;
 		}
 
@@ -250,13 +250,13 @@ public final class FunctionUtil {
 
 		@Override
 		public BiPredicate<Object, Object> and(final BiPredicate<? super Object, ? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return this;
 		}
 
 		@Override
 		public BiPredicate<Object, Object> or(final BiPredicate<? super Object, ? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return other;
 		}
 
@@ -276,13 +276,13 @@ public final class FunctionUtil {
 
 		@Override
 		public Predicate<Object> and(final Predicate<? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return t -> t == null && other.test(t);
 		}
 
 		@Override
 		public Predicate<Object> or(final Predicate<? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return t -> t == null || other.test(t);
 		}
 
@@ -302,13 +302,13 @@ public final class FunctionUtil {
 
 		@Override
 		public Predicate<Object> and(final Predicate<? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return t -> t != null && other.test(t);
 		}
 
 		@Override
 		public Predicate<Object> or(final Predicate<? super Object> other) {
-			Require.notNull(other);
+			Require.nonNull(other);
 			return t -> t != null || other.test(t);
 		}
 
@@ -339,25 +339,25 @@ public final class FunctionUtil {
 
 		@Override
 		public IntConsumer andThen(final IntConsumer after) {
-			Require.notNull(after);
+			Require.nonNull(after);
 			return after;
 		}
 
 		@Override
 		public LongConsumer andThen(final LongConsumer after) {
-			Require.notNull(after);
+			Require.nonNull(after);
 			return after;
 		}
 
 		@Override
 		public DoubleConsumer andThen(final DoubleConsumer after) {
-			Require.notNull(after);
+			Require.nonNull(after);
 			return after;
 		}
 
 		@Override
 		public Consumer<Object> andThen(final Consumer<? super Object> after) {
-			Require.notNull(after);
+			Require.nonNull(after);
 			return after;
 		}
 	}
@@ -383,7 +383,7 @@ public final class FunctionUtil {
 
 		@Override
 		public BiConsumer<Object, Object> andThen(final BiConsumer<? super Object, ? super Object> after) {
-			Require.notNull(after);
+			Require.nonNull(after);
 			return after;
 		}
 	}
@@ -426,13 +426,13 @@ public final class FunctionUtil {
 		@Override
 		@SuppressWarnings(value = {"unchecked"})
 		public <V> Function<V, Object> compose(final Function<? super V, ?> before) {
-			Require.notNull(before);
+			Require.nonNull(before);
 			return (Function<V, Object>) this;
 		}
 
 		@Override
 		public <V> Function<Object, V> andThen(final Function<? super Object, ? extends V> after) {
-			Require.notNull(after);
+			Require.nonNull(after);
 			return t -> after.apply(null);
 		}
 	}
@@ -447,7 +447,7 @@ public final class FunctionUtil {
 
 		@Override
 		public <V> BiFunction<Object, Object, V> andThen(final Function<? super Object, ? extends V> after) {
-			Require.notNull(after);
+			Require.nonNull(after);
 			return (t, u) -> after.apply(null);
 		}
 	}

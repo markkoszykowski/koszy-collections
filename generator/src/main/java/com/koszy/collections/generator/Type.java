@@ -28,9 +28,9 @@ public enum Type {
 			final TypeName type,
 			final boolean generic
 	) {
-		this.prefix = Require.notNull(prefix);
-		this.clazz = Require.notNull(clazz);
-		this.type = Require.notNull(type);
+		this.prefix = Require.nonNull(prefix);
+		this.clazz = Require.nonNull(clazz);
+		this.type = Require.nonNull(type);
 		this.generic = generic;
 	}
 

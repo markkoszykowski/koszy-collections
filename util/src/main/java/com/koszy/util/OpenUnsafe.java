@@ -50,20 +50,9 @@ public final class OpenUnsafe {
 	private OpenUnsafe() {
 	}
 
-	public int getInt(final Object o, final long offset) {
-		return this.theUnsafe.getInt(o, offset);
-	}
 
-	public void putInt(final Object o, final long offset, final int x) {
-		this.theUnsafe.putInt(o, offset, x);
-	}
-
-	public Object getObject(final Object o, final long offset) {
-		return this.theUnsafe.getObject(o, offset);
-	}
-
-	public void putObject(final Object o, final long offset, final Object x) {
-		this.theUnsafe.putObject(o, offset, x);
+	public boolean unalignedAccess() {
+		return false;
 	}
 
 	public boolean getBoolean(final Object o, final long offset) {
@@ -72,6 +61,32 @@ public final class OpenUnsafe {
 
 	public void putBoolean(final Object o, final long offset, final boolean x) {
 		this.theUnsafe.putBoolean(o, offset, x);
+	}
+
+	public char getChar(final Object o, final long offset) {
+		return this.theUnsafe.getChar(o, offset);
+	}
+
+	public char getCharUnaligned(final Object o, final long offset) {
+		if (SystemUtil.BIG_ENDIAN) {
+			return (char) NumberUtil.s(this.theUnsafe.getByte(o, offset), this.theUnsafe.getByte(o, offset + 1));
+		} else {
+			return (char) NumberUtil.s(this.theUnsafe.getByte(o, offset + 1), this.theUnsafe.getByte(o, offset));
+		}
+	}
+
+	public void putChar(final Object o, final long offset, final char x) {
+		this.theUnsafe.putChar(o, offset, x);
+	}
+
+	public void putCharUnaligned(final Object o, final long offset, final char x) {
+		if (SystemUtil.BIG_ENDIAN) {
+			this.theUnsafe.putByte(o, offset, NumberUtil.b0((short) x));
+			this.theUnsafe.putByte(o, offset + 1, NumberUtil.b1((short) x));
+		} else {
+			this.theUnsafe.putByte(o, offset, NumberUtil.b1((short) x));
+			this.theUnsafe.putByte(o, offset + 1, NumberUtil.b0((short) x));
+		}
 	}
 
 	public byte getByte(final Object o, final long offset) {
@@ -86,24 +101,100 @@ public final class OpenUnsafe {
 		return this.theUnsafe.getShort(o, offset);
 	}
 
+	public short getShortUnaligned(final Object o, final long offset) {
+		if (SystemUtil.BIG_ENDIAN) {
+			return NumberUtil.s(this.theUnsafe.getByte(o, offset), this.theUnsafe.getByte(o, offset + 1));
+		} else {
+			return NumberUtil.s(this.theUnsafe.getByte(o, offset + 1), this.theUnsafe.getByte(o, offset));
+		}
+	}
+
 	public void putShort(final Object o, final long offset, final short x) {
 		this.theUnsafe.putShort(o, offset, x);
 	}
 
-	public char getChar(final Object o, final long offset) {
-		return this.theUnsafe.getChar(o, offset);
+	public void putShortUnaligned(final Object o, final long offset, final short x) {
+		if (SystemUtil.BIG_ENDIAN) {
+			this.theUnsafe.putByte(o, offset, NumberUtil.b0(x));
+			this.theUnsafe.putByte(o, offset + 1, NumberUtil.b1(x));
+		} else {
+			this.theUnsafe.putByte(o, offset, NumberUtil.b1(x));
+			this.theUnsafe.putByte(o, offset + 1, NumberUtil.b0(x));
+		}
 	}
 
-	public void putChar(final Object o, final long offset, final char x) {
-		this.theUnsafe.putChar(o, offset, x);
+	public int getInt(final Object o, final long offset) {
+		return this.theUnsafe.getInt(o, offset);
+	}
+
+	public int getIntUnaligned(final Object o, final long offset) {
+		if (SystemUtil.BIG_ENDIAN) {
+			return NumberUtil.i(this.theUnsafe.getByte(o, offset), this.theUnsafe.getByte(o, offset + 1), this.theUnsafe.getByte(o, offset + 2), this.theUnsafe.getByte(o, offset + 3));
+		} else {
+			return NumberUtil.i(this.theUnsafe.getByte(o, offset + 3), this.theUnsafe.getByte(o, offset + 2), this.theUnsafe.getByte(o, offset + 1), this.theUnsafe.getByte(o, offset));
+		}
+	}
+
+	public void putInt(final Object o, final long offset, final int x) {
+		this.theUnsafe.putInt(o, offset, x);
+	}
+
+	public void putIntUnaligned(final Object o, final long offset, final int x) {
+		if (SystemUtil.BIG_ENDIAN) {
+			this.theUnsafe.putByte(o, offset, NumberUtil.b0(x));
+			this.theUnsafe.putByte(o, offset + 1, NumberUtil.b1(x));
+			this.theUnsafe.putByte(o, offset + 2, NumberUtil.b2(x));
+			this.theUnsafe.putByte(o, offset + 3, NumberUtil.b3(x));
+		} else {
+			this.theUnsafe.putByte(o, offset, NumberUtil.b3(x));
+			this.theUnsafe.putByte(o, offset + 1, NumberUtil.b2(x));
+			this.theUnsafe.putByte(o, offset + 2, NumberUtil.b1(x));
+			this.theUnsafe.putByte(o, offset + 3, NumberUtil.b0(x));
+		}
 	}
 
 	public long getLong(final Object o, final long offset) {
 		return this.theUnsafe.getLong(o, offset);
 	}
 
+	public long getLongUnaligned(final Object o, final long offset) {
+		if (SystemUtil.BIG_ENDIAN) {
+			return NumberUtil.l(
+					this.theUnsafe.getByte(o, offset), this.theUnsafe.getByte(o, offset + 1), this.theUnsafe.getByte(o, offset + 2), this.theUnsafe.getByte(o, offset + 3),
+					this.theUnsafe.getByte(o, offset + 4), this.theUnsafe.getByte(o, offset + 5), this.theUnsafe.getByte(o, offset + 6), this.theUnsafe.getByte(o, offset + 7)
+			);
+		} else {
+			return NumberUtil.l(
+					this.theUnsafe.getByte(o, offset + 7), this.theUnsafe.getByte(o, offset + 6), this.theUnsafe.getByte(o, offset + 5), this.theUnsafe.getByte(o, offset + 4),
+					this.theUnsafe.getByte(o, offset + 3), this.theUnsafe.getByte(o, offset + 2), this.theUnsafe.getByte(o, offset + 1), this.theUnsafe.getByte(o, offset)
+			);
+		}
+	}
+
 	public void putLong(final Object o, final long offset, final long x) {
 		this.theUnsafe.putLong(o, offset, x);
+	}
+
+	public void putLongUnaligned(final Object o, final long offset, final long x) {
+		if (SystemUtil.BIG_ENDIAN) {
+			this.theUnsafe.putByte(o, offset, NumberUtil.b0(x));
+			this.theUnsafe.putByte(o, offset + 1, NumberUtil.b1(x));
+			this.theUnsafe.putByte(o, offset + 2, NumberUtil.b2(x));
+			this.theUnsafe.putByte(o, offset + 3, NumberUtil.b3(x));
+			this.theUnsafe.putByte(o, offset + 4, NumberUtil.b4(x));
+			this.theUnsafe.putByte(o, offset + 5, NumberUtil.b5(x));
+			this.theUnsafe.putByte(o, offset + 6, NumberUtil.b6(x));
+			this.theUnsafe.putByte(o, offset + 7, NumberUtil.b7(x));
+		} else {
+			this.theUnsafe.putByte(o, offset, NumberUtil.b7(x));
+			this.theUnsafe.putByte(o, offset + 1, NumberUtil.b6(x));
+			this.theUnsafe.putByte(o, offset + 2, NumberUtil.b5(x));
+			this.theUnsafe.putByte(o, offset + 3, NumberUtil.b4(x));
+			this.theUnsafe.putByte(o, offset + 4, NumberUtil.b3(x));
+			this.theUnsafe.putByte(o, offset + 5, NumberUtil.b2(x));
+			this.theUnsafe.putByte(o, offset + 6, NumberUtil.b1(x));
+			this.theUnsafe.putByte(o, offset + 7, NumberUtil.b0(x));
+		}
 	}
 
 	public float getFloat(final Object o, final long offset) {
@@ -120,6 +211,14 @@ public final class OpenUnsafe {
 
 	public void putDouble(final Object o, final long offset, final double x) {
 		this.theUnsafe.putDouble(o, offset, x);
+	}
+
+	public Object getObject(final Object o, final long offset) {
+		return this.theUnsafe.getObject(o, offset);
+	}
+
+	public void putObject(final Object o, final long offset, final Object x) {
+		this.theUnsafe.putObject(o, offset, x);
 	}
 
 
@@ -273,100 +372,126 @@ public final class OpenUnsafe {
 	}
 
 
-	public boolean compareAndSwapObject(final Object o, final long offset, final Object expected, final Object x) {
-		return this.theUnsafe.compareAndSwapObject(o, offset, expected, x);
-	}
-
-	public boolean compareAndSwapInt(final Object o, final long offset, final int expected, final int x) {
-		return this.theUnsafe.compareAndSwapInt(o, offset, expected, x);
-	}
-
-	public boolean compareAndSwapLong(final Object o, final long offset, final long expected, final long x) {
-		return this.theUnsafe.compareAndSwapLong(o, offset, expected, x);
-	}
-
-	public Object getObjectVolatile(final Object o, final long offset) {
-		return this.theUnsafe.getObjectVolatile(o, offset);
-	}
-
-	public void putObjectVolatile(final Object o, final long offset, final Object x) {
-		this.theUnsafe.putObjectVolatile(o, offset, x);
-	}
-
-	public int getIntVolatile(final Object o, final long offset) {
-		return this.theUnsafe.getIntVolatile(o, offset);
-	}
-
-	public void putIntVolatile(final Object o, final long offset, final int x) {
-		this.theUnsafe.putIntVolatile(o, offset, x);
-	}
-
-	public boolean getBooleanVolatile(final Object o, final long offset) {
+	public boolean getBooleanSeqCst(final Object o, final long offset) {
 		return this.theUnsafe.getBooleanVolatile(o, offset);
 	}
 
-	public void putBooleanVolatile(final Object o, final long offset, final boolean x) {
+	public void putBooleanSeqCst(final Object o, final long offset, final boolean x) {
 		this.theUnsafe.putBooleanVolatile(o, offset, x);
 	}
 
-	public byte getByteVolatile(final Object o, final long offset) {
-		return this.theUnsafe.getByteVolatile(o, offset);
-	}
-
-	public void putByteVolatile(final Object o, final long offset, final byte x) {
-		this.theUnsafe.putByteVolatile(o, offset, x);
-	}
-
-	public short getShortVolatile(final Object o, final long offset) {
-		return this.theUnsafe.getShortVolatile(o, offset);
-	}
-
-	public void putShortVolatile(final Object o, final long offset, final short x) {
-		this.theUnsafe.putShortVolatile(o, offset, x);
-	}
-
-	public char getCharVolatile(final Object o, final long offset) {
+	public char getCharSeqCst(final Object o, final long offset) {
 		return this.theUnsafe.getCharVolatile(o, offset);
 	}
 
-	public void putCharVolatile(final Object o, final long offset, final char x) {
+	public void putCharSeqCst(final Object o, final long offset, final char x) {
 		this.theUnsafe.putCharVolatile(o, offset, x);
 	}
 
-	public long getLongVolatile(final Object o, final long offset) {
+	public byte getByteSeqCst(final Object o, final long offset) {
+		return this.theUnsafe.getByteVolatile(o, offset);
+	}
+
+	public void putByteSeqCst(final Object o, final long offset, final byte x) {
+		this.theUnsafe.putByteVolatile(o, offset, x);
+	}
+
+	public short getShortSeqCst(final Object o, final long offset) {
+		return this.theUnsafe.getShortVolatile(o, offset);
+	}
+
+	public void putShortSeqCst(final Object o, final long offset, final short x) {
+		this.theUnsafe.putShortVolatile(o, offset, x);
+	}
+
+	public int getIntSeqCst(final Object o, final long offset) {
+		return this.theUnsafe.getIntVolatile(o, offset);
+	}
+
+	public void putIntSeqCst(final Object o, final long offset, final int x) {
+		this.theUnsafe.putIntVolatile(o, offset, x);
+	}
+
+	public long getLongSeqCst(final Object o, final long offset) {
 		return this.theUnsafe.getLongVolatile(o, offset);
 	}
 
-	public void putLongVolatile(final Object o, final long offset, final long x) {
+	public void putLongSeqCst(final Object o, final long offset, final long x) {
 		this.theUnsafe.putLongVolatile(o, offset, x);
 	}
 
-	public float getFloatVolatile(final Object o, final long offset) {
+	public float getFloatSeqCst(final Object o, final long offset) {
 		return this.theUnsafe.getFloatVolatile(o, offset);
 	}
 
-	public void putFloatVolatile(final Object o, final long offset, final float x) {
+	public void putFloatSeqCst(final Object o, final long offset, final float x) {
 		this.theUnsafe.putFloatVolatile(o, offset, x);
 	}
 
-	public double getDoubleVolatile(final Object o, final long offset) {
+	public double getDoubleSeqCst(final Object o, final long offset) {
 		return this.theUnsafe.getDoubleVolatile(o, offset);
 	}
 
-	public void putDoubleVolatile(final Object o, final long offset, final double x) {
+	public void putDoubleSeqCst(final Object o, final long offset, final double x) {
 		this.theUnsafe.putDoubleVolatile(o, offset, x);
 	}
 
-	public void putOrderedObject(final Object o, final long offset, final Object x) {
-		this.theUnsafe.putOrderedObject(o, offset, x);
+	public Object getObjectSeqCst(final Object o, final long offset) {
+		return this.theUnsafe.getObjectVolatile(o, offset);
 	}
 
-	public void putOrderedInt(final Object o, final long offset, final int x) {
+	public void putObjectSeqCst(final Object o, final long offset, final Object x) {
+		this.theUnsafe.putObjectVolatile(o, offset, x);
+	}
+
+
+	public int getIntAcquire(final Object o, final long offset) {
+		return this.theUnsafe.getIntVolatile(o, offset);
+	}
+
+	public void putIntRelease(final Object o, final long offset, final int x) {
 		this.theUnsafe.putOrderedInt(o, offset, x);
 	}
 
-	public void putOrderedLong(final Object o, final long offset, final long x) {
+	public long getLongAcquire(final Object o, final long offset) {
+		return this.theUnsafe.getLongVolatile(o, offset);
+	}
+
+	public void putLongRelease(final Object o, final long offset, final long x) {
 		this.theUnsafe.putOrderedLong(o, offset, x);
+	}
+
+	public Object getObjectAcquire(final Object o, final long offset) {
+		return this.theUnsafe.getObjectVolatile(o, offset);
+	}
+
+	public void putObjectRelease(final Object o, final long offset, final Object x) {
+		this.theUnsafe.putOrderedObject(o, offset, x);
+	}
+
+
+	public int getIntRelaxed(final Object o, final long offset) {
+		return this.theUnsafe.getIntVolatile(o, offset);
+	}
+
+	public void putIntRelaxed(final Object o, final long offset, final int x) {
+		this.theUnsafe.putOrderedInt(o, offset, x);
+	}
+
+	public long getLongRelaxed(final Object o, final long offset) {
+		return this.theUnsafe.getLongVolatile(o, offset);
+	}
+
+	public void putLongRelaxed(final Object o, final long offset, final long x) {
+		this.theUnsafe.putOrderedLong(o, offset, x);
+	}
+
+	public Object getObjectRelaxed(final Object o, final long offset) {
+		return this.theUnsafe.getObjectVolatile(o, offset);
+	}
+
+	public void putObjectRelaxed(final Object o, final long offset, final Object x) {
+		this.theUnsafe.putOrderedObject(o, offset, x);
 	}
 
 
@@ -383,6 +508,19 @@ public final class OpenUnsafe {
 	}
 
 
+	public boolean compareAndSwapInt(final Object o, final long offset, final int expected, final int x) {
+		return this.theUnsafe.compareAndSwapInt(o, offset, expected, x);
+	}
+
+	public boolean compareAndSwapLong(final Object o, final long offset, final long expected, final long x) {
+		return this.theUnsafe.compareAndSwapLong(o, offset, expected, x);
+	}
+
+	public boolean compareAndSwapObject(final Object o, final long offset, final Object expected, final Object x) {
+		return this.theUnsafe.compareAndSwapObject(o, offset, expected, x);
+	}
+
+
 	public int getAndAddInt(final Object o, final long offset, final int delta) {
 		return this.theUnsafe.getAndAddInt(o, offset, delta);
 	}
@@ -390,6 +528,7 @@ public final class OpenUnsafe {
 	public long getAndAddLong(final Object o, final long offset, final long delta) {
 		return this.theUnsafe.getAndAddLong(o, offset, delta);
 	}
+
 
 	public int getAndSetInt(final Object o, final long offset, final int newValue) {
 		return this.theUnsafe.getAndSetInt(o, offset, newValue);

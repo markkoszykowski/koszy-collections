@@ -9,7 +9,7 @@ public final class ServiceProvider implements SLF4JServiceProvider {
 
 	@Override
 	public ILoggerFactory getLoggerFactory() {
-		return LoggerFactory.INSTANCE;
+		return null;
 	}
 
 	@Override

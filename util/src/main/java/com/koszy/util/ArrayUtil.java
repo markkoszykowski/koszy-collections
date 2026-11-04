@@ -95,7 +95,7 @@ public final class ArrayUtil {
 
 	/// @see java.util.Arrays#hashCode(Object[])
 	public static <T> int hash(final ToIntFunction<? super T> hash, final T[] array) {
-		Require.notNull(hash);
+		Require.nonNull(hash);
 
 		if (array == null) {
 			return 0;
@@ -110,7 +110,7 @@ public final class ArrayUtil {
 
 	/// @see java.util.Arrays#equals(Object[], Object[])
 	public static <T> boolean equals(final BiPredicate<? super T, ? super T> equals, final T[] left, final T[] right) {
-		Require.notNull(equals);
+		Require.nonNull(equals);
 
 		if (left == right) {
 			return true;
@@ -132,6 +132,30 @@ public final class ArrayUtil {
 		}
 
 		return true;
+	}
+
+	public static String deepToString(final Object object) {
+		if (object instanceof boolean[]) {
+			return Arrays.toString((boolean[]) object);
+		} else if (object instanceof char[]) {
+			return Arrays.toString((char[]) object);
+		} else if (object instanceof byte[]) {
+			return Arrays.toString((byte[]) object);
+		} else if (object instanceof short[]) {
+			return Arrays.toString((short[]) object);
+		} else if (object instanceof int[]) {
+			return Arrays.toString((int[]) object);
+		} else if (object instanceof long[]) {
+			return Arrays.toString((long[]) object);
+		} else if (object instanceof float[]) {
+			return Arrays.toString((float[]) object);
+		} else if (object instanceof double[]) {
+			return Arrays.toString((double[]) object);
+		} else if (object instanceof Object[]) {
+			return Arrays.deepToString((Object[]) object);
+		} else {
+			return Objects.toString(object);
+		}
 	}
 
 	public static int deepHashCode(final Object object) {

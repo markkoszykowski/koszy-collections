@@ -25,7 +25,7 @@ class Marker implements org.slf4j.Marker {
 
 	@Override
 	public void add(final org.slf4j.Marker reference) {
-		Require.notNull(reference);
+		Require.nonNull(reference);
 
 	}
 

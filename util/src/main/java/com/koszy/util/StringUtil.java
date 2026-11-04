@@ -57,31 +57,121 @@ public final class StringUtil {
 		return string == null ? null : string.length() == 0 ? EMPTY : string.toString();
 	}
 
-	public static int length(final CharSequence string) {
+	private static int length0(final CharSequence string) {
 		return string == null ? 0 : string.length();
 	}
+
+	public static int length(final CharSequence string) {
+		return string == null ? 0 : Require.isNonNegative(string.length());
+	}
+
+
+	public static void check(final CharSequence string, final int begin, final int end) {
+		Require.checkBeginEnd(begin, end, length0(string));
+	}
+
+	public static void check(final char[] string, final int offset, final int length) {
+		Require.checkOffsetLength(offset, length, ArrayUtil.length(string));
+	}
+
 
 	public static boolean isAscii(final byte b) {
 		return 0 <= b;
 	}
 
 	public static boolean isAscii(final char c) {
-		return c < 128;
+		return c < 0x80;
 	}
 
-	public static boolean isAscii(final CharSequence string, final int offset, final int length) {
-		Require.checkOffsetLength(offset, length, length(string));
-		for (int i = 0; i != length; ++i) {
-			if (!isAscii(string.charAt(offset + i))) {
+
+	public static boolean isLatin1(final byte b) {
+		return true;
+	}
+
+	public static boolean isLatin1(final char c) {
+		return c <= 0xFF;
+	}
+
+
+	private static boolean isAscii0(final CharSequence string, final int begin, final int end) {
+		for (int i = begin; i != end; ++i) {
+			if (!isAscii(string.charAt(i))) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	public static boolean isAscii(final CharSequence string) {
-		return isAscii(string, 0, length(string));
+	public static boolean isAscii(final CharSequence string, final int begin, final int end) {
+		Require.checkBeginEnd(begin, end, length0(string));
+		return isAscii0(string, begin, end);
 	}
+
+	public static boolean isAscii(final CharSequence string) {
+		return isAscii0(string, 0, length(string));
+	}
+
+
+	private static boolean isAscii0(final char[] string, final int offset, final int length) {
+		final int begin = offset;
+		final int end = begin + length;
+		for (int i = begin; i != end; ++i) {
+			if (!isAscii(string[i])) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static boolean isAscii(final char[] string, final int offset, final int length) {
+		Require.checkOffsetLength(offset, length, ArrayUtil.length(string));
+		return isAscii0(string, offset, length);
+	}
+
+	public static boolean isAscii(final char[] string) {
+		return isAscii0(string, 0, ArrayUtil.length(string));
+	}
+
+
+	private static boolean isLatin10(final CharSequence string, final int begin, final int end) {
+		for (int i = begin; i != end; ++i) {
+			if (!isLatin1(string.charAt(i))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static boolean isLatin1(final CharSequence string, final int begin, final int end) {
+		Require.checkBeginEnd(begin, end, length0(string));
+		return isLatin10(string, begin, end);
+	}
+
+	public static boolean isLatin1(final CharSequence string) {
+		return isLatin10(string, 0, length(string));
+	}
+
+
+	private static boolean isLatin10(final char[] string, final int offset, final int length) {
+		final int begin = offset;
+		final int end = begin + length;
+		for (int i = begin; i != end; ++i) {
+			if (!isLatin1(string[i])) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static boolean isLatin1(final char[] string, final int offset, final int length) {
+		Require.checkOffsetLength(offset, length, ArrayUtil.length(string));
+		return isLatin10(string, offset, length);
+	}
+
+	public static boolean isLatin1(final char[] string) {
+		return isLatin10(string, 0, ArrayUtil.length(string));
+	}
+
 
 	public static byte toAsciiByte(final char c) {
 		Require.isTrue(isAscii(c));
@@ -92,6 +182,17 @@ public final class StringUtil {
 		return isAscii(c) ? (byte) c : defaultt;
 	}
 
+
+	public static byte toLatin1Byte(final char c) {
+		Require.isTrue(isLatin1(c));
+		return (byte) c;
+	}
+
+	public static byte toLatin1Byte(final char c, final byte defaultt) {
+		return isLatin1(c) ? (byte) c : defaultt;
+	}
+
+
 	public static char toAsciiChar(final byte b) {
 		Require.isTrue(isAscii(b));
 		return (char) b;
@@ -101,10 +202,19 @@ public final class StringUtil {
 		return isAscii(b) ? (char) b : defaultt;
 	}
 
+
+	public static char toLatin1Char(final byte b) {
+		Require.isTrue(isLatin1(b));
+		return (char) (b & 0xFF);
+	}
+
+	public static char toLatin1Char(final byte b, final char defaultt) {
+		return isLatin1(b) ? (char) (b & 0xFF) : defaultt;
+	}
+
+
 	public static char toChar(final CharSequence string) {
-		if (string == null || string.length() != 1) {
-			throw new RequirementNotSatisfiedException();
-		}
+		Require.isTrue(string != null && string.length() == 1);
 		return string.charAt(0);
 	}
 
@@ -151,44 +261,52 @@ public final class StringUtil {
 	}
 
 	/// @see String#hashCode()
-	public static int hashCode(final CharSequence string, final int offset, final int length) {
-		Require.checkOffsetLength(offset, length, length(string));
-
+	private static int hashCode0(final CharSequence string, final int begin, final int end) {
 		int hash = 0;
-		for (int i = 0; i != length; ++i) {
-			hash = 31 * hash + string.charAt(offset + i);
+		for (int i = begin; i != end; ++i) {
+			hash = 31 * hash + string.charAt(i);
 		}
 		return hash;
+	}
+
+	/// @see String#hashCode()
+	public static int hashCode(final CharSequence string, final int begin, final int end) {
+		Require.checkBeginEnd(begin, end, length0(string));
+		return hashCode0(string, begin, end);
 	}
 
 	/// @see String#hashCode()
 	public static int hashCode(final CharSequence string) {
-		return hashCode(string, 0, length(string));
+		return hashCode0(string, 0, length(string));
 	}
 
 
 	/// @see String#hashCode()
-	public static int hashCodeIgnoreCase(final CharSequence string, final int offset, final int length) {
-		Require.checkOffsetLength(offset, length, length(string));
-
+	private static int hashCodeIgnoreCase0(final CharSequence string, final int begin, final int end) {
 		int hash = 0;
-		for (int i = 0; i != length; ++i) {
-			hash = 31 * hash + Character.toUpperCase(string.charAt(offset + i));
+		for (int i = begin; i != end; ++i) {
+			hash = 31 * hash + Character.toUpperCase(string.charAt(i));
 		}
 		return hash;
 	}
 
 	/// @see String#hashCode()
+	public static int hashCodeIgnoreCase(final CharSequence string, final int begin, final int end) {
+		Require.checkBeginEnd(begin, end, length0(string));
+		return hashCodeIgnoreCase0(string, begin, end);
+	}
+
+	/// @see String#hashCode()
 	public static int hashCodeIgnoreCase(final CharSequence string) {
-		return hashCodeIgnoreCase(string, 0, length(string));
+		return hashCodeIgnoreCase0(string, 0, length(string));
 	}
 
 
 	private static boolean equals0(
-			final CharSequence left, final int leftOffset, final int leftLength,
-			final CharSequence right, final int rightOffset, final int rightLength
+			final CharSequence left, final int leftBegin, final int leftEnd,
+			final CharSequence right, final int rightBegin, final int rightEnd
 	) {
-		if (leftLength != rightLength) {
+		if ((leftEnd - leftBegin) != (rightEnd - rightBegin)) {
 			return false;
 		}
 
@@ -196,8 +314,8 @@ public final class StringUtil {
 			return false;
 		}
 
-		for (int i = 0; i != leftLength; ++i) {
-			if (left.charAt(leftOffset + i) != right.charAt(rightOffset + i)) {
+		for (int i = leftBegin, j = rightBegin; i != leftEnd && j != rightEnd; ++i, ++j) {
+			if (left.charAt(i) != right.charAt(i)) {
 				return false;
 			}
 		}
@@ -206,28 +324,28 @@ public final class StringUtil {
 	}
 
 	public static boolean equals(
-			final CharSequence left, final int leftOffset, final int leftLength,
-			final CharSequence right, final int rightOffset, final int rightLength
+			final CharSequence left, final int leftBegin, final int leftEnd,
+			final CharSequence right, final int rightBegin, final int rightEnd
 	) {
-		Require.checkOffsetLength(leftOffset, leftLength, length(left));
-		Require.checkOffsetLength(rightOffset, rightLength, length(right));
-		return equals0(left, leftOffset, leftLength, right, rightOffset, rightLength);
+		Require.checkBeginEnd(leftBegin, leftEnd, length0(left));
+		Require.checkBeginEnd(rightBegin, rightEnd, length0(right));
+		return equals0(left, leftBegin, leftEnd, right, rightBegin, rightEnd);
 	}
 
 	public static boolean equals(
-			final CharSequence left, final int leftOffset, final int leftLength,
+			final CharSequence left, final int leftBegin, final int leftEnd,
 			final CharSequence right
 	) {
-		Require.checkOffsetLength(leftOffset, leftLength, length(left));
-		return equals0(left, leftOffset, leftLength, right, 0, length(right));
+		Require.checkBeginEnd(leftBegin, leftEnd, length0(left));
+		return equals0(left, leftBegin, leftEnd, right, 0, length(right));
 	}
 
 	public static boolean equals(
 			final CharSequence left,
-			final CharSequence right, final int rightOffset, final int rightLength
+			final CharSequence right, final int rightBegin, final int rightEnd
 	) {
-		Require.checkOffsetLength(rightOffset, rightLength, length(right));
-		return equals0(left, 0, length(left), right, rightOffset, rightLength);
+		Require.checkBeginEnd(rightBegin, rightEnd, length0(right));
+		return equals0(left, 0, length(left), right, rightBegin, rightEnd);
 	}
 
 	public static boolean equals(final CharSequence left, final CharSequence right) {
@@ -236,10 +354,10 @@ public final class StringUtil {
 
 
 	public static boolean equalsIgnoreCase0(
-			final CharSequence left, final int leftOffset, final int leftLength,
-			final CharSequence right, final int rightOffset, final int rightLength
+			final CharSequence left, final int leftBegin, final int leftEnd,
+			final CharSequence right, final int rightBegin, final int rightEnd
 	) {
-		if (leftLength != rightLength) {
+		if ((leftEnd - leftBegin) != (rightEnd - rightBegin)) {
 			return false;
 		}
 
@@ -247,8 +365,8 @@ public final class StringUtil {
 			return false;
 		}
 
-		for (int i = 0; i != leftLength; ++i) {
-			if (Character.toUpperCase(left.charAt(leftOffset + i)) != Character.toUpperCase(right.charAt(rightOffset + i))) {
+		for (int i = leftBegin, j = rightBegin; i != leftEnd && j != rightEnd; ++i) {
+			if (Character.toUpperCase(left.charAt(i)) != Character.toUpperCase(right.charAt(i))) {
 				return false;
 			}
 		}
@@ -257,28 +375,28 @@ public final class StringUtil {
 	}
 
 	public static boolean equalsIgnoreCase(
-			final CharSequence left, final int leftOffset, final int leftLength,
-			final CharSequence right, final int rightOffset, final int rightLength
+			final CharSequence left, final int leftBegin, final int leftEnd,
+			final CharSequence right, final int rightBegin, final int rightEnd
 	) {
-		Require.checkOffsetLength(leftOffset, leftLength, length(left));
-		Require.checkOffsetLength(rightOffset, rightLength, length(right));
-		return equalsIgnoreCase0(left, leftOffset, leftLength, right, rightOffset, rightLength);
+		Require.checkBeginEnd(leftBegin, leftEnd, length0(left));
+		Require.checkBeginEnd(rightBegin, rightEnd, length0(right));
+		return equalsIgnoreCase0(left, leftBegin, leftEnd, right, rightBegin, rightEnd);
 	}
 
 	public static boolean equalsIgnoreCase(
-			final CharSequence left, final int leftOffset, final int leftLength,
+			final CharSequence left, final int leftBegin, final int leftEnd,
 			final CharSequence right
 	) {
-		Require.checkOffsetLength(leftOffset, leftLength, length(left));
-		return equalsIgnoreCase0(left, leftOffset, leftLength, right, 0, length(right));
+		Require.checkBeginEnd(leftBegin, leftEnd, length0(left));
+		return equalsIgnoreCase0(left, leftBegin, leftEnd, right, 0, length(right));
 	}
 
 	public static boolean equalsIgnoreCase(
 			final CharSequence left,
-			final CharSequence right, final int rightOffset, final int rightLength
+			final CharSequence right, final int rightBegin, final int rightEnd
 	) {
-		Require.checkOffsetLength(rightOffset, rightLength, length(right));
-		return equalsIgnoreCase0(left, 0, length(left), right, rightOffset, rightLength);
+		Require.checkBeginEnd(rightBegin, rightEnd, length0(right));
+		return equalsIgnoreCase0(left, 0, length(left), right, rightBegin, rightEnd);
 	}
 
 	public static boolean equalsIgnoreCase(final CharSequence left, final CharSequence right) {

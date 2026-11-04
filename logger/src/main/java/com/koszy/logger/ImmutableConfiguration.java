@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.slf4j.event.Level;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 final class ImmutableConfiguration implements Configuration {
@@ -25,7 +26,7 @@ final class ImmutableConfiguration implements Configuration {
 	}
 
 	static Map<String, Level> clone(final Map<String, Level> levels) {
-		return levels == null ? null : Collections.unmodifiableMap(new Object2ObjectOpenHashMap<>(levels));
+		return levels == null ? null : Collections.unmodifiableMap(new HashMap<>(levels));
 	}
 
 	final Level level;

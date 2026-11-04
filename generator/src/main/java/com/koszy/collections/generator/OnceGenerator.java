@@ -184,7 +184,7 @@ public final class OnceGenerator implements Generator {
 						MethodSpec.constructorBuilder()
 								.addModifiers(Modifier.PRIVATE)
 								.addParameter(supplierWildcard(type, supplier, parameter), "supplier", Modifier.FINAL)
-								.addStatement("$N = $T.notNull($N)", GeneratorUtil.instance("supplier"), Require.class, "supplier")
+								.addStatement("$N = $T.nonNull($N)", GeneratorUtil.instance("supplier"), Require.class, "supplier")
 								.build()
 				)
 				.addMethod(
@@ -257,7 +257,7 @@ public final class OnceGenerator implements Generator {
 						MethodSpec.constructorBuilder()
 								.addModifiers(Modifier.PRIVATE)
 								.addParameter(supplierWildcard(type, supplier, parameter), "supplier", Modifier.FINAL)
-								.addStatement("$N = $T.notNull($N)", GeneratorUtil.instance("supplier"), Require.class, "supplier")
+								.addStatement("$N = $T.nonNull($N)", GeneratorUtil.instance("supplier"), Require.class, "supplier")
 								.build()
 				)
 				.addMethod(

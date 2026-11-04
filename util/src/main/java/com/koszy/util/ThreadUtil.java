@@ -3,7 +3,7 @@ package com.koszy.util;
 public final class ThreadUtil {
 
 	public static <T> T handle(final InterruptedException exception) {
-		Require.notNull(exception);
+		Require.nonNull(exception);
 		Thread.currentThread().interrupt();
 		return LangUtil.rethrow(exception);
 	}

@@ -101,17 +101,17 @@ public final class ObjectUtil {
 			}
 			final Class<?> clazz = object.getClass();
 			if (!Cloneable.class.isAssignableFrom(clazz)) {
-				return LangUtil.rethrow(new CloneNotSupportedException(String.valueOf(object)));
+				return LangUtil.rethrow(new CloneNotSupportedException(ArrayUtil.deepToString(object)));
 			}
 			final Method method = clazz.getMethod("clone");
 			if (!Modifier.isPublic(method.getModifiers())) {
-				return LangUtil.rethrow(new CloneNotSupportedException(String.valueOf(object)));
+				return LangUtil.rethrow(new CloneNotSupportedException(ArrayUtil.deepToString(object)));
 			}
 			return (T) method.invoke(object);
 		} catch (final InvocationTargetException exception) {
 			return LangUtil.rethrow(exception.getTargetException());
 		} catch (final ReflectiveOperationException exception) {
-			final CloneNotSupportedException unsupported = new CloneNotSupportedException(String.valueOf(object));
+			final CloneNotSupportedException unsupported = new CloneNotSupportedException(ArrayUtil.deepToString(object));
 			unsupported.addSuppressed(exception);
 			return LangUtil.rethrow(unsupported);
 		}

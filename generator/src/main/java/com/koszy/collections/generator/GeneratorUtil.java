@@ -18,7 +18,7 @@ public final class GeneratorUtil {
 	}
 
 	public static String instance(final String name) {
-		return String.format("%s.%s", "this", Require.notNull(name));
+		return String.format("%s.%s", "this", Require.nonNull(name));
 	}
 
 	public static AnnotationSpec generated(final Class<?> clazz) {

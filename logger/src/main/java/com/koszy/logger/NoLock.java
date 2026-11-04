@@ -30,7 +30,7 @@ public enum NoLock implements Lock {
 
 	@Override
 	public boolean tryLock(final long time, final TimeUnit unit) {
-		Require.notNull(unit);
+		Require.nonNull(unit);
 		return true;
 	}
 

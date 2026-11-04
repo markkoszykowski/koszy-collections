@@ -94,7 +94,7 @@ final class LoggerFactory implements ILoggerFactory {
 
 	@Override
 	public Logger getLogger(final String name) {
-		Require.notNull(name);
+		Require.nonNull(name);
 
 		com.koszy.logger.Logger logger = this.cache.get(name);
 		if (logger != null) {
