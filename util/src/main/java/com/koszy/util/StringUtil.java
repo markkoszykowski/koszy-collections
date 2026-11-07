@@ -315,7 +315,7 @@ public final class StringUtil {
 		}
 
 		for (int i = leftBegin, j = rightBegin; i != leftEnd && j != rightEnd; ++i, ++j) {
-			if (left.charAt(i) != right.charAt(i)) {
+			if (left.charAt(i) != right.charAt(j)) {
 				return false;
 			}
 		}
@@ -365,8 +365,8 @@ public final class StringUtil {
 			return false;
 		}
 
-		for (int i = leftBegin, j = rightBegin; i != leftEnd && j != rightEnd; ++i) {
-			if (Character.toUpperCase(left.charAt(i)) != Character.toUpperCase(right.charAt(i))) {
+		for (int i = leftBegin, j = rightBegin; i != leftEnd && j != rightEnd; ++i, ++j) {
+			if (Character.toUpperCase(left.charAt(i)) != Character.toUpperCase(right.charAt(j))) {
 				return false;
 			}
 		}

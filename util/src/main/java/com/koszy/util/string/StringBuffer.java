@@ -59,18 +59,6 @@ public final class StringBuffer implements MutableCharSequence {
 	}
 
 	@Override
-	public StringBuffer append(final byte b) {
-		this.buffer.append(b);
-		return this;
-	}
-
-	@Override
-	public StringBuffer append(final short s) {
-		this.buffer.append(s);
-		return this;
-	}
-
-	@Override
 	public StringBuffer append(final int i) {
 		this.buffer.append(i);
 		return this;

@@ -38,6 +38,12 @@ class NumberUtilTest {
 
 		Assertions.assertEquals(8, NumberUtil.digits(-12345678));
 		Assertions.assertEquals(8, NumberUtil.digits(-12345678L));
+
+		Assertions.assertEquals(10, NumberUtil.digits(Integer.MAX_VALUE));
+		Assertions.assertEquals(19, NumberUtil.digits(Long.MAX_VALUE));
+
+		Assertions.assertEquals(10, NumberUtil.digits(Integer.MIN_VALUE));
+		Assertions.assertEquals(19, NumberUtil.digits(Long.MAX_VALUE));
 	}
 
 }

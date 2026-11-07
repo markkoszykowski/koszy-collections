@@ -2,6 +2,7 @@ package com.koszy.util.string;
 
 import com.koszy.util.ArrayUtil;
 import com.koszy.util.LangUtil;
+import com.koszy.util.NumberFormatUtil;
 import com.koszy.util.NumberUtil;
 import com.koszy.util.Require;
 import com.koszy.util.StringUtil;
@@ -9,10 +10,13 @@ import com.koszy.util.SystemUtil;
 import com.koszy.util.buffer.DirectBuffer;
 import com.koszy.util.buffer.UnsafeBuffer;
 
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 public class UnsafeCharSequence implements MutableCharSequence {
+
+	private static final UnsafeBuffer EMPTY = new UnsafeBuffer();
 
 	private static UnsafeBuffer buffer(final int capacity) {
 		return new UnsafeBuffer(new byte[capacity]);
@@ -36,37 +40,29 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 	public UnsafeCharSequence() {
 		this.encoding = Encoding.LATIN1;
-		this.buffer = new UnsafeBuffer();
+		this.buffer = EMPTY;
 		this.length = 0;
 	}
 
 	public UnsafeCharSequence(final int capacity) {
 		Require.isNonNegative(capacity);
 		this.encoding = Encoding.LATIN1;
-		this.buffer = capacity == 0 ? new UnsafeBuffer() : buffer(Encoding.size(capacity));
+		this.buffer = capacity == 0 ? EMPTY : buffer(Encoding.size(capacity));
 		this.length = 0;
 	}
 
 	public UnsafeCharSequence(final CharSequence string) {
-		if (StringUtil.length(string) == 0) {
-			this.encoding = Encoding.LATIN1;
-			this.buffer = new UnsafeBuffer();
-			this.length = 0;
-		} else {
-			final int length = string.length();
+		this.encoding = Encoding.LATIN1;
+		this.buffer = EMPTY;
+		this.length = 0;
 
-			this.encoding = Encoding.LATIN1;
-			this.buffer = buffer(Encoding.size(length));
-			this.length = 0;
-
-			this.encoding.append(this, string);
-		}
+		this.encoding.append(this, string);
 	}
 
 	public UnsafeCharSequence(final UnsafeCharSequence string) {
 		if (StringUtil.length(string) == 0) {
 			this.encoding = Encoding.LATIN1;
-			this.buffer = new UnsafeBuffer();
+			this.buffer = EMPTY;
 			this.length = 0;
 		} else {
 			final Encoding encoding = string.encoding;
@@ -86,16 +82,6 @@ public class UnsafeCharSequence implements MutableCharSequence {
 	@Override
 	public UnsafeCharSequence append(final boolean b) {
 		return this.encoding.append(this, b);
-	}
-
-	@Override
-	public UnsafeCharSequence append(final byte b) {
-		return this.encoding.append(this, b);
-	}
-
-	@Override
-	public UnsafeCharSequence append(final short s) {
-		return this.encoding.append(this, s);
 	}
 
 	@Override
@@ -139,7 +125,7 @@ public class UnsafeCharSequence implements MutableCharSequence {
 	public UnsafeCharSequence append(final CharSequence string, final int begin, final int end) {
 		return string instanceof UnsafeCharSequence ?
 				this.encoding.append(this, (UnsafeCharSequence) string, begin, end) :
-				this.encoding.append(this, string == null ? "null" : string, begin, end);
+				this.encoding.append(this, string, begin, end);
 	}
 
 	@Override
@@ -153,15 +139,11 @@ public class UnsafeCharSequence implements MutableCharSequence {
 	}
 
 	public UnsafeCharSequence append(final UnsafeCharSequence string) {
-		return string == null ?
-				this.encoding.append(this, (CharSequence) null) :
-				this.encoding.append(this, string);
+		return this.encoding.append(this, string);
 	}
 
 	public UnsafeCharSequence append(final UnsafeCharSequence string, final int begin, final int end) {
-		return string == null ?
-				this.encoding.append(this, "null", begin, end) :
-				this.encoding.append(this, string, begin, end);
+		return this.encoding.append(this, string, begin, end);
 	}
 
 	@Override
@@ -225,14 +207,6 @@ public class UnsafeCharSequence implements MutableCharSequence {
 				return StandardCharsets.ISO_8859_1;
 			}
 
-			public void reverse(final UnsafeBuffer buffer, final int begin, final int end) {
-				for (int i = begin, j = end - NumberUtil.BYTE_BYTES; i < j; i += NumberUtil.BYTE_BYTES, j -= NumberUtil.BYTE_BYTES) {
-					final byte temp = buffer.getByte(i);
-					buffer.putByte(i, buffer.getByte(j));
-					buffer.putByte(j, temp);
-				}
-			}
-
 			@Override
 			public UnsafeCharSequence reserve(final UnsafeCharSequence string, final int capacity) {
 				Require.isNonNegative(capacity);
@@ -274,129 +248,26 @@ public class UnsafeCharSequence implements MutableCharSequence {
 				return string;
 			}
 
-			public UnsafeCharSequence zero(final UnsafeCharSequence string) {
-				UnsafeBuffer buffer = string.buffer;
-				int length = string.length;
-
-				buffer = expand(buffer, length, NumberUtil.BYTE_BYTES);
-				buffer.putByte(length, (byte) '0');
-				length += NumberUtil.BYTE_BYTES;
-
-				string.buffer = buffer;
-				string.length = length;
-				return string;
-			}
-
-			@Override
-			public UnsafeCharSequence append(final UnsafeCharSequence string, final byte b) {
-				if (b == 0) {
-					return this.zero(string);
-				}
-
-				UnsafeBuffer buffer = string.buffer;
-				int length = string.length;
-
-				// TODO
-				final int digits = NumberUtil.digits(b) + (b < 0 ? 1 :0);
-				buffer = expand(buffer, length, digits);
-				final int start;
-				byte remainder = b;
-				if (remainder < 0) {
-					buffer.putByte(length, (byte) '-');
-					length += NumberUtil.BYTE_BYTES;
-
-					start = length;
-
-					buffer.putByte(length, (byte) (-(remainder % 10) + '0'));
-					length += NumberUtil.BYTE_BYTES;
-
-					remainder /= -10;
-				} else {
-					start = length;
-				}
-				while (remainder != 0) {
-					buffer.putByte(length, (byte) ((remainder % 10) + '0'));
-					length += NumberUtil.BYTE_BYTES;
-
-					remainder /= 10;
-				}
-				this.reverse(buffer, start, length);
-
-				string.buffer = buffer;
-				string.length = length;
-				return string;
-			}
-
-			@Override
-			public UnsafeCharSequence append(final UnsafeCharSequence string, final short s) {
-				if (s == 0) {
-					return this.zero(string);
-				}
-
-				UnsafeBuffer buffer = string.buffer;
-				int length = string.length;
-
-				buffer = expand(buffer, length, NumberUtil.BYTE_BYTES + NumberUtil.BYTE_DIGITS);
-				final int start;
-				short remainder = s;
-				if (remainder < 0) {
-					buffer.putByte(length, (byte) '-');
-					length += NumberUtil.BYTE_BYTES;
-
-					start = length;
-
-					buffer.putByte(length, (byte) (-(remainder % 10) + '0'));
-					length += NumberUtil.BYTE_BYTES;
-
-					remainder /= -10;
-				} else {
-					start = length;
-				}
-				while (remainder != 0) {
-					buffer.putByte(length, (byte) ((remainder % 10) + '0'));
-					length += NumberUtil.BYTE_BYTES;
-
-					remainder /= 10;
-				}
-				this.reverse(buffer, start, length);
-
-				string.buffer = buffer;
-				string.length = length;
-				return string;
-			}
-
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final int i) {
-				if (i == 0) {
-					return this.zero(string);
-				}
-
 				UnsafeBuffer buffer = string.buffer;
 				int length = string.length;
 
-				buffer = expand(buffer, length, NumberUtil.BYTE_BYTES + NumberUtil.BYTE_DIGITS);
-				final int start;
+				final int additional = NumberFormatUtil.length(i);
+
+				buffer = expand(buffer, length, additional);
+				int index = length + additional;
 				int remainder = i;
-				if (remainder < 0) {
-					buffer.putByte(length, (byte) '-');
-					length += NumberUtil.BYTE_BYTES;
-
-					start = length;
-
-					buffer.putByte(length, (byte) (-(remainder % 10) + '0'));
-					length += NumberUtil.BYTE_BYTES;
-
-					remainder /= -10;
-				} else {
-					start = length;
-				}
-				while (remainder != 0) {
-					buffer.putByte(length, (byte) ((remainder % 10) + '0'));
+				do {
+					buffer.putByte(--index, (byte) ((remainder % 10) + '0'));
 					length += NumberUtil.BYTE_BYTES;
 
 					remainder /= 10;
+				} while (remainder != 0);
+				if (i < 0) {
+					buffer.putByte(--index, (byte) '-');
+					length += NumberUtil.BYTE_BYTES;
 				}
-				this.reverse(buffer, start, length);
 
 				string.buffer = buffer;
 				string.length = length;
@@ -405,36 +276,24 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final long l) {
-				if (l == 0L) {
-					return this.zero(string);
-				}
-
 				UnsafeBuffer buffer = string.buffer;
 				int length = string.length;
 
-				buffer = expand(buffer, length, NumberUtil.BYTE_BYTES + NumberUtil.BYTE_DIGITS);
-				final int start;
+				final int additional = NumberFormatUtil.length(l);
+
+				buffer = expand(buffer, length, additional);
+				int index = length + additional;
 				long remainder = l;
-				if (remainder < 0L) {
-					buffer.putByte(length, (byte) '-');
-					length += NumberUtil.BYTE_BYTES;
-
-					start = length;
-
-					buffer.putByte(length, (byte) (-(remainder % 10L) + '0'));
-					length += NumberUtil.BYTE_BYTES;
-
-					remainder /= -10L;
-				} else {
-					start = length;
-				}
-				while (remainder != 0L) {
-					buffer.putByte(length, (byte) ((remainder % 10L) + '0'));
+				do {
+					buffer.putByte(--index, (byte) ((remainder % 10L) + '0'));
 					length += NumberUtil.BYTE_BYTES;
 
 					remainder /= 10L;
+				} while (remainder != 0L);
+				if (l < 0L) {
+					buffer.putByte(--index, (byte) '-');
+					length += NumberUtil.BYTE_BYTES;
 				}
-				this.reverse(buffer, start, length);
 
 				string.buffer = buffer;
 				string.length = length;
@@ -443,12 +302,14 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final float f) {
-				return LangUtil.todo();
+				NumberFormatUtil.append(f, string);
+				return string;
 			}
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final double d) {
-				return LangUtil.todo();
+				NumberFormatUtil.append(d, string);
+				return string;
 			}
 
 			@Override
@@ -495,6 +356,38 @@ public class UnsafeCharSequence implements MutableCharSequence {
 				return string;
 			}
 
+			public UnsafeCharSequence nulll(final UnsafeCharSequence string, final int begin, final int end) {
+				Require.checkBeginEnd(begin, end, 4);
+
+				UnsafeBuffer buffer = string.buffer;
+				int length = string.length;
+
+				buffer = expand(buffer, length, end - begin);
+				for (int i = begin; i != end; ++i) {
+					final byte b;
+					switch (i) {
+						case 0:
+							b = 'n';
+							break;
+						case 1:
+							b = 'u';
+							break;
+						case 2:
+						case 3:
+							b = 'l';
+							break;
+						default:
+							return LangUtil.unreachable();
+					}
+					buffer.putByte(length, b);
+					length += NumberUtil.BYTE_BYTES;
+				}
+
+				string.buffer = buffer;
+				string.length = length;
+				return string;
+			}
+
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final CharSequence chars) {
 				if (chars == null) {
@@ -517,7 +410,7 @@ public class UnsafeCharSequence implements MutableCharSequence {
 						length += NumberUtil.BYTE_BYTES;
 					} else {
 						encoding = UTF16;
-						buffer = inflate(buffer, length, length - i);
+						buffer = inflate(buffer, length, size - i);
 						length <<= INFLATE;
 
 						buffer.putCharUnaligned(length, c);
@@ -533,6 +426,10 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final CharSequence chars, final int begin, final int end) {
+				if (chars == null) {
+					return this.nulll(string, begin, end);
+				}
+
 				Require.checkBeginEnd(begin, end, chars.length());
 
 				Encoding encoding = string.encoding;
@@ -550,7 +447,7 @@ public class UnsafeCharSequence implements MutableCharSequence {
 						length += NumberUtil.BYTE_BYTES;
 					} else {
 						encoding = UTF16;
-						buffer = inflate(buffer, length, length - i);
+						buffer = inflate(buffer, length, end - i);
 						length <<= INFLATE;
 
 						buffer.putCharUnaligned(length, c);
@@ -584,7 +481,7 @@ public class UnsafeCharSequence implements MutableCharSequence {
 						length += NumberUtil.BYTE_BYTES;
 					} else {
 						encoding = UTF16;
-						buffer = inflate(buffer, length, length - i);
+						buffer = inflate(buffer, length, size - i);
 						length <<= INFLATE;
 
 						buffer.putCharUnaligned(length, c);
@@ -619,7 +516,7 @@ public class UnsafeCharSequence implements MutableCharSequence {
 						length += NumberUtil.BYTE_BYTES;
 					} else {
 						encoding = UTF16;
-						buffer = inflate(buffer, length, length - i);
+						buffer = inflate(buffer, length, end - i);
 						length <<= INFLATE;
 
 						buffer.putCharUnaligned(length, c);
@@ -635,6 +532,10 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final UnsafeCharSequence chars) {
+				if (chars == null) {
+					return this.nulll(string);
+				}
+
 				Encoding thisEncoding = string.encoding;
 				UnsafeBuffer thisBuffer = string.buffer;
 				int thisLength = string.length;
@@ -661,6 +562,10 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final UnsafeCharSequence chars, final int begin, final int end) {
+				if (chars == null) {
+					return this.nulll(string, begin, end);
+				}
+
 				Require.checkBeginEnd(begin, end, chars.length());
 
 				Encoding thisEncoding = string.encoding;
@@ -710,16 +615,6 @@ public class UnsafeCharSequence implements MutableCharSequence {
 				return SystemUtil.BIG_ENDIAN ? StandardCharsets.UTF_16BE : StandardCharsets.UTF_16LE;
 			}
 
-
-			public void reverse(final UnsafeBuffer buffer, final int begin, final int end) {
-				for (int i = begin, j = end - NumberUtil.CHAR_BYTES; i < j; i += NumberUtil.CHAR_BYTES, j -= NumberUtil.CHAR_BYTES) {
-					final char temp = buffer.getChar(i);
-					buffer.putCharUnaligned(i, buffer.getChar(j));
-					buffer.putCharUnaligned(j, temp);
-				}
-			}
-
-
 			@Override
 			public UnsafeCharSequence reserve(final UnsafeCharSequence string, final int capacity) {
 				Require.isNonNegative(capacity);
@@ -761,127 +656,26 @@ public class UnsafeCharSequence implements MutableCharSequence {
 				return string;
 			}
 
-			public UnsafeCharSequence zero(final UnsafeCharSequence string) {
-				UnsafeBuffer buffer = string.buffer;
-				int length = string.length;
-
-				buffer = expand(buffer, length, NumberUtil.CHAR_BYTES);
-				buffer.putCharUnaligned(length, '0');
-				length += NumberUtil.CHAR_BYTES;
-
-				string.buffer = buffer;
-				string.length = length;
-				return string;
-			}
-
-			@Override
-			public UnsafeCharSequence append(final UnsafeCharSequence string, final byte b) {
-				if (b == 0) {
-					return this.zero(string);
-				}
-
-				UnsafeBuffer buffer = string.buffer;
-				int length = string.length;
-
-				buffer = expand(buffer, length, NumberUtil.CHAR_BYTES + (NumberUtil.BYTE_DIGITS << INFLATE));
-				final int start;
-				byte remainder = b;
-				if (remainder < 0) {
-					buffer.putCharUnaligned(length, '-');
-					length += NumberUtil.CHAR_BYTES;
-
-					start = length;
-
-					buffer.putCharUnaligned(length, (char) (-(remainder % 10) + '0'));
-					length += NumberUtil.CHAR_BYTES;
-
-					remainder /= -10;
-				} else {
-					start = length;
-				}
-				while (remainder != 0) {
-					buffer.putCharUnaligned(length, (char) ((remainder % 10) + '0'));
-					length += NumberUtil.CHAR_BYTES;
-
-					remainder /= 10;
-				}
-				this.reverse(buffer, start, length);
-
-				string.buffer = buffer;
-				string.length = length;
-				return string;
-			}
-
-			@Override
-			public UnsafeCharSequence append(final UnsafeCharSequence string, final short s) {
-				if (s == 0) {
-					return this.zero(string);
-				}
-
-				UnsafeBuffer buffer = string.buffer;
-				int length = string.length;
-
-				buffer = expand(buffer, length, NumberUtil.CHAR_BYTES + (NumberUtil.BYTE_DIGITS << INFLATE));
-				final int start;
-				short remainder = s;
-				if (remainder < 0) {
-					buffer.putCharUnaligned(length, '-');
-					length += NumberUtil.CHAR_BYTES;
-
-					start = length;
-
-					buffer.putCharUnaligned(length, (char) (-(remainder % 10) + '0'));
-					length += NumberUtil.CHAR_BYTES;
-
-					remainder /= -10;
-				} else {
-					start = length;
-				}
-				while (remainder != 0) {
-					buffer.putCharUnaligned(length, (char) ((remainder % 10) + '0'));
-					length += NumberUtil.CHAR_BYTES;
-
-					remainder /= 10;
-				}
-				this.reverse(buffer, start, length);
-
-				string.buffer = buffer;
-				string.length = length;
-				return string;
-			}
-
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final int i) {
-				if (i == 0) {
-					return this.zero(string);
-				}
-
 				UnsafeBuffer buffer = string.buffer;
 				int length = string.length;
 
-				buffer = expand(buffer, length, NumberUtil.CHAR_BYTES + (NumberUtil.BYTE_DIGITS << INFLATE));
-				final int start;
+				final int additional = NumberFormatUtil.length(i);
+
+				buffer = expand(buffer, length, additional);
+				int index = length + additional;
 				int remainder = i;
-				if (remainder < 0) {
-					buffer.putCharUnaligned(length, '-');
-					length += NumberUtil.CHAR_BYTES;
-
-					start = length;
-
-					buffer.putCharUnaligned(length, (char) (-(remainder % 10) + '0'));
-					length += NumberUtil.CHAR_BYTES;
-
-					remainder /= -10;
-				} else {
-					start = length;
-				}
-				while (remainder != 0) {
-					buffer.putCharUnaligned(length, (char) ((remainder % 10) + '0'));
+				do {
+					buffer.putCharUnaligned(--index, (char) ((remainder % 10) + '0'));
 					length += NumberUtil.CHAR_BYTES;
 
 					remainder /= 10;
+				} while (remainder != 0);
+				if (i < 0) {
+					buffer.putCharUnaligned(--index, '-');
+					length += NumberUtil.CHAR_BYTES;
 				}
-				this.reverse(buffer, start, length);
 
 				string.buffer = buffer;
 				string.length = length;
@@ -890,36 +684,24 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final long l) {
-				if (l == 0L) {
-					return this.zero(string);
-				}
-
 				UnsafeBuffer buffer = string.buffer;
 				int length = string.length;
 
-				buffer = expand(buffer, length, NumberUtil.CHAR_BYTES + (NumberUtil.BYTE_DIGITS << INFLATE));
-				final int start;
+				final int additional = NumberFormatUtil.length(l);
+
+				buffer = expand(buffer, length, additional);
+				int index = length + additional;
 				long remainder = l;
-				if (remainder < 0L) {
-					buffer.putCharUnaligned(length, '-');
-					length += NumberUtil.CHAR_BYTES;
-
-					start = length;
-
-					buffer.putCharUnaligned(length, (char) (-(remainder % 10) + '0'));
-					length += NumberUtil.CHAR_BYTES;
-
-					remainder /= -10L;
-				} else {
-					start = length;
-				}
-				while (remainder != 0L) {
-					buffer.putCharUnaligned(length, (char) ((remainder % 10L) + '0'));
+				do {
+					buffer.putCharUnaligned(--index, (char) ((remainder % 10L) + '0'));
 					length += NumberUtil.CHAR_BYTES;
 
 					remainder /= 10L;
+				} while (remainder != 0L);
+				if (l < 0L) {
+					buffer.putCharUnaligned(--index, '-');
+					length += NumberUtil.CHAR_BYTES;
 				}
-				this.reverse(buffer, start, length);
 
 				string.buffer = buffer;
 				string.length = length;
@@ -969,6 +751,38 @@ public class UnsafeCharSequence implements MutableCharSequence {
 				return string;
 			}
 
+			public UnsafeCharSequence nulll(final UnsafeCharSequence string, final int begin, final int end) {
+				Require.checkBeginEnd(begin, end, 4);
+
+				UnsafeBuffer buffer = string.buffer;
+				int length = string.length;
+
+				buffer = expand(buffer, length, (end - begin) << INFLATE);
+				for (int i = begin; i != end; ++i) {
+					final char c;
+					switch (i) {
+						case 0:
+							c = 'n';
+							break;
+						case 1:
+							c = 'u';
+							break;
+						case 2:
+						case 3:
+							c = 'l';
+							break;
+						default:
+							return LangUtil.unreachable();
+					}
+					buffer.putCharUnaligned(length, c);
+					length += NumberUtil.CHAR_BYTES;
+				}
+
+				string.buffer = buffer;
+				string.length = length;
+				return string;
+			}
+
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final CharSequence chars) {
 				if (chars == null) {
@@ -992,6 +806,10 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final CharSequence chars, final int begin, final int end) {
+				if (chars == null) {
+					return this.nulll(string, begin, end);
+				}
+
 				Require.checkBeginEnd(begin, end, chars.length());
 
 				UnsafeBuffer buffer = string.buffer;
@@ -1051,6 +869,10 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final UnsafeCharSequence chars) {
+				if (chars == null) {
+					return this.nulll(string);
+				}
+
 				final Encoding thisEncoding = string.encoding;
 				UnsafeBuffer thisBuffer = string.buffer;
 				int thisLength = string.length;
@@ -1077,6 +899,10 @@ public class UnsafeCharSequence implements MutableCharSequence {
 
 			@Override
 			public UnsafeCharSequence append(final UnsafeCharSequence string, final UnsafeCharSequence chars, final int begin, final int end) {
+				if (chars == null) {
+					return this.nulll(string, begin, end);
+				}
+
 				Require.checkBeginEnd(begin, end, chars.length());
 
 				final Encoding thisEncoding = string.encoding;
@@ -1141,7 +967,7 @@ public class UnsafeCharSequence implements MutableCharSequence {
 		}
 
 		public static UnsafeBuffer inflate(final UnsafeBuffer buffer, final int length, final int additional) {
-			final int size = Math.addExact(inflate(length), inflate(additional));
+			final int size = inflate(Math.addExact(length, additional));
 			if (size <= buffer.capacity()) {
 				for (int i = length; i != 0; --i) {
 					final int index = i - 1;
@@ -1170,10 +996,6 @@ public class UnsafeCharSequence implements MutableCharSequence {
 		public abstract UnsafeCharSequence reserve(UnsafeCharSequence string, int capacity);
 
 		public abstract UnsafeCharSequence append(UnsafeCharSequence string, boolean b);
-
-		public abstract UnsafeCharSequence append(UnsafeCharSequence string, byte b);
-
-		public abstract UnsafeCharSequence append(UnsafeCharSequence string, short s);
 
 		public abstract UnsafeCharSequence append(UnsafeCharSequence string, int i);
 

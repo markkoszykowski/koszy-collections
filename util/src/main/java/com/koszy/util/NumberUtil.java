@@ -29,18 +29,20 @@ public final class NumberUtil {
 
 	public static int digits(final int x) {
 		int digits = 0;
-		for (int remaining = x; remaining != 0; remaining /= 10) {
+		int remainder = x;
+		do {
 			++digits;
-		}
-		return Math.max(1, digits);
+		} while ((remainder /= 10) != 0);
+		return digits;
 	}
 
 	public static int digits(final long x) {
 		int digits = 0;
-		for (long remaining = x; remaining != 0L; remaining /= 10L) {
+		long remainder = x;
+		do {
 			++digits;
-		}
-		return Math.max(1, digits);
+		} while ((remainder /= 10L) != 0L);
+		return digits;
 	}
 
 

@@ -59,18 +59,6 @@ public final class StringBuilder implements MutableCharSequence {
 	}
 
 	@Override
-	public StringBuilder append(final byte b) {
-		this.builder.append(b);
-		return this;
-	}
-
-	@Override
-	public StringBuilder append(final short s) {
-		this.builder.append(s);
-		return this;
-	}
-
-	@Override
 	public StringBuilder append(final int i) {
 		this.builder.append(i);
 		return this;
@@ -111,7 +99,7 @@ public final class StringBuilder implements MutableCharSequence {
 	@Override
 	public StringBuilder append(final CharSequence string, final int begin, final int end) {
 		if (string instanceof String) {
-			this.builder.append((String) string, begin, end);
+			this.builder.append(string, begin, end);
 		} else if (string instanceof StringBuilder) {
 			this.builder.append(((StringBuilder) string).builder, begin, end);
 		} else if (string instanceof StringBuffer) {

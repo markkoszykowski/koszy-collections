@@ -9,10 +9,6 @@ public interface MutableCharSequence extends CharSequence, Appendable {
 
 	MutableCharSequence appendCodePoint(int c);
 
-	MutableCharSequence append(byte b);
-
-	MutableCharSequence append(short s);
-
 	MutableCharSequence append(int i);
 
 	MutableCharSequence append(long l);

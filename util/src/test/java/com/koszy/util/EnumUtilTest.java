@@ -18,11 +18,11 @@ class EnumUtilTest {
 		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOf("ONE", TestEnum.class));
 		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOf("TWO", TestEnum.class));
 
-		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOf(" ONE ", 1, 3, TestEnum.values()));
-		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOf(" TWO ", 1, 3, TestEnum.values()));
+		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOf(" ONE ", 1, 4, TestEnum.values()));
+		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOf(" TWO ", 1, 4, TestEnum.values()));
 
-		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOf(" ONE ", 1, 3, TestEnum.class));
-		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOf(" TWO ", 1, 3, TestEnum.class));
+		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOf(" ONE ", 1, 4, TestEnum.class));
+		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOf(" TWO ", 1, 4, TestEnum.class));
 
 		Assertions.assertNull(EnumUtil.valueOf(null, TestEnum.values()));
 		Assertions.assertNull(EnumUtil.valueOf("", TestEnum.values()));
@@ -36,18 +36,18 @@ class EnumUtilTest {
 
 		Assertions.assertNull(EnumUtil.valueOf(null, 0, 0, TestEnum.values()));
 		Assertions.assertNull(EnumUtil.valueOf("", 0, 0, TestEnum.values()));
-		Assertions.assertNull(EnumUtil.valueOf(" one ", 1, 3, TestEnum.values()));
-		Assertions.assertNull(EnumUtil.valueOf(" two ", 1, 3, TestEnum.values()));
+		Assertions.assertNull(EnumUtil.valueOf(" one ", 1, 4, TestEnum.values()));
+		Assertions.assertNull(EnumUtil.valueOf(" two ", 1, 4, TestEnum.values()));
 
 		Assertions.assertNull(EnumUtil.valueOf(null, 0, 0, TestEnum.class));
 		Assertions.assertNull(EnumUtil.valueOf("", 0, 0, TestEnum.class));
-		Assertions.assertNull(EnumUtil.valueOf(" one ", 1, 3, TestEnum.class));
-		Assertions.assertNull(EnumUtil.valueOf(" two ", 1, 3, TestEnum.class));
+		Assertions.assertNull(EnumUtil.valueOf(" one ", 1, 4, TestEnum.class));
+		Assertions.assertNull(EnumUtil.valueOf(" two ", 1, 4, TestEnum.class));
 
 		Assertions.assertNull(EnumUtil.valueOf("ONE", (TestEnum[]) null));
 		Assertions.assertNull(EnumUtil.valueOf("TWO", (TestEnum[]) null));
-		Assertions.assertNull(EnumUtil.valueOf(" ONE ", 1, 3, (TestEnum[]) null));
-		Assertions.assertNull(EnumUtil.valueOf(" TWO ", 1, 3, (TestEnum[]) null));
+		Assertions.assertNull(EnumUtil.valueOf(" ONE ", 1, 4, (TestEnum[]) null));
+		Assertions.assertNull(EnumUtil.valueOf(" TWO ", 1, 4, (TestEnum[]) null));
 
 		Assertions.assertThrows(RequirementNotSatisfiedException.class, () -> EnumUtil.valueOf(null, (Class<TestEnum>) null));
 		Assertions.assertThrows(RequirementNotSatisfiedException.class, () -> EnumUtil.valueOf(null, 0, 0, (Class<TestEnum>) null));
@@ -83,15 +83,15 @@ class EnumUtilTest {
 		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase("one", TestEnum.class));
 		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase("two", TestEnum.class));
 
-		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase(" ONE ", 1, 3, TestEnum.values()));
-		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase(" TWO ", 1, 3, TestEnum.values()));
-		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase(" one ", 1, 3, TestEnum.values()));
-		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase(" two ", 1, 3, TestEnum.values()));
+		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase(" ONE ", 1, 4, TestEnum.values()));
+		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase(" TWO ", 1, 4, TestEnum.values()));
+		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase(" one ", 1, 4, TestEnum.values()));
+		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase(" two ", 1, 4, TestEnum.values()));
 
-		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase(" ONE ", 1, 3, TestEnum.class));
-		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase(" TWO ", 1, 3, TestEnum.class));
-		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase(" one ", 1, 3, TestEnum.class));
-		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase(" two ", 1, 3, TestEnum.class));
+		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase(" ONE ", 1, 4, TestEnum.class));
+		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase(" TWO ", 1, 4, TestEnum.class));
+		Assertions.assertEquals(TestEnum.ONE, EnumUtil.valueOfIgnoreCase(" one ", 1, 4, TestEnum.class));
+		Assertions.assertEquals(TestEnum.TWO, EnumUtil.valueOfIgnoreCase(" two ", 1, 4, TestEnum.class));
 
 		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(null, TestEnum.values()));
 		Assertions.assertNull(EnumUtil.valueOfIgnoreCase("", TestEnum.values()));
@@ -105,18 +105,18 @@ class EnumUtilTest {
 
 		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(null, 0, 0, TestEnum.values()));
 		Assertions.assertNull(EnumUtil.valueOfIgnoreCase("", 0, 0, TestEnum.values()));
-		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" 111 ", 1, 3, TestEnum.values()));
-		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" 222 ", 1, 3, TestEnum.values()));
+		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" 111 ", 1, 4, TestEnum.values()));
+		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" 222 ", 1, 4, TestEnum.values()));
 
 		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(null, 0, 0, TestEnum.class));
 		Assertions.assertNull(EnumUtil.valueOfIgnoreCase("", 0, 0, TestEnum.class));
-		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" 111 ", 1, 3, TestEnum.class));
-		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" 222 ", 1, 3, TestEnum.class));
+		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" 111 ", 1, 4, TestEnum.class));
+		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" 222 ", 1, 4, TestEnum.class));
 
 		Assertions.assertNull(EnumUtil.valueOfIgnoreCase("ONE", (TestEnum[]) null));
 		Assertions.assertNull(EnumUtil.valueOfIgnoreCase("TWO", (TestEnum[]) null));
-		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" ONE ", 1, 3, (TestEnum[]) null));
-		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" TWO ", 1, 3, (TestEnum[]) null));
+		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" ONE ", 1, 4, (TestEnum[]) null));
+		Assertions.assertNull(EnumUtil.valueOfIgnoreCase(" TWO ", 1, 4, (TestEnum[]) null));
 
 		Assertions.assertThrows(RequirementNotSatisfiedException.class, () -> EnumUtil.valueOfIgnoreCase(null, (Class<TestEnum>) null));
 		Assertions.assertThrows(RequirementNotSatisfiedException.class, () -> EnumUtil.valueOfIgnoreCase(null, 0, 0, (Class<TestEnum>) null));
