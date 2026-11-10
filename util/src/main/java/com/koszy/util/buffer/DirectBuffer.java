@@ -1,7 +1,14 @@
 package com.koszy.util.buffer;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.ShortBuffer;
 
 public interface DirectBuffer extends Comparable<DirectBuffer> {
 
@@ -15,26 +22,77 @@ public interface DirectBuffer extends Comparable<DirectBuffer> {
 
 	void wrap(byte[] array, int offset, int length);
 
+	void wrap(char[] array);
+
+	void wrap(char[] array, int offset, int length);
+
+	void wrap(short[] array);
+
+	void wrap(short[] array, int offset, int length);
+
+	void wrap(int[] array);
+
+	void wrap(int[] array, int offset, int length);
+
+	void wrap(long[] array);
+
+	void wrap(long[] array, int offset, int length);
+
+	void wrap(float[] array);
+
+	void wrap(float[] array, int offset, int length);
+
+	void wrap(double[] array);
+
+	void wrap(double[] array, int offset, int length);
+
+
 	void wrap(ByteBuffer buffer);
 
 	void wrap(ByteBuffer buffer, int offset, int length);
+
+	void wrap(CharBuffer buffer);
+
+	void wrap(CharBuffer buffer, int offset, int length);
+
+	void wrap(ShortBuffer buffer);
+
+	void wrap(ShortBuffer buffer, int offset, int length);
+
+	void wrap(IntBuffer buffer);
+
+	void wrap(IntBuffer buffer, int offset, int length);
+
+	void wrap(LongBuffer buffer);
+
+	void wrap(LongBuffer buffer, int offset, int length);
+
+	void wrap(FloatBuffer buffer);
+
+	void wrap(FloatBuffer buffer, int offset, int length);
+
+	void wrap(DoubleBuffer buffer);
+
+	void wrap(DoubleBuffer buffer, int offset, int length);
+
 
 	void wrap(DirectBuffer buffer);
 
 	void wrap(DirectBuffer buffer, int offset, int length);
 
+
 	void wrap(long address, int length);
 
 
-	ByteBuffer buffer();
+	Buffer buffer();
 
 	long address();
 
-	byte[] array();
+	Object array();
 
-	int capacity();
+	long capacity();
 
-	int adjustment();
+	long adjustment();
 
 
 	void check(int index);

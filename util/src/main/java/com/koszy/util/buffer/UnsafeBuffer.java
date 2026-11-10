@@ -1,22 +1,23 @@
 package com.koszy.util.buffer;
 
-import com.koszy.util.ArrayUtil;
 import com.koszy.util.BufferUtil;
+import com.koszy.util.ClassUtil;
 import com.koszy.util.NumberUtil;
 import com.koszy.util.OpenUnsafe;
 import com.koszy.util.Require;
-import com.koszy.util.SystemUtil;
 
+import java.lang.reflect.Array;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 public class UnsafeBuffer extends AbstractMutableDirectBuffer implements AtomicBuffer {
 
-	private ByteBuffer buffer;
-	private int adjustment;
+	private Buffer buffer;
+	private long adjustment;
 
 
 	public UnsafeBuffer() {
-		this.wrap(ArrayUtil.EMPTY_BYTES);
+		this.wrap(0L, 0);
 	}
 
 	public UnsafeBuffer(final byte[] buffer) {
@@ -51,9 +52,9 @@ public class UnsafeBuffer extends AbstractMutableDirectBuffer implements AtomicB
 	@Override
 	public void wrap(final byte[] array) {
 		this.buffer = null;
-		this.address = BufferUtil.ARRAY_BASE_OFFSET;
+		this.address = BufferUtil.BYTE_ARRAY_BASE_OFFSET;
 		this.array = array;
-		this.capacity = array.length;
+		this.capacity = BufferUtil.BYTE_ARRAY_SCALE * array.length;
 		this.adjustment = 0;
 	}
 
@@ -63,10 +64,136 @@ public class UnsafeBuffer extends AbstractMutableDirectBuffer implements AtomicB
 			Require.checkOffsetLength(offset, length, array.length);
 		}
 		this.buffer = null;
-		this.address = BufferUtil.ARRAY_BASE_OFFSET + offset;
+		this.address = BufferUtil.BYTE_ARRAY_BASE_OFFSET + (BufferUtil.BYTE_ARRAY_SCALE * offset);
 		this.array = array;
-		this.capacity = length;
-		this.adjustment = offset;
+		this.capacity = BufferUtil.BYTE_ARRAY_SCALE * length;
+		this.adjustment = BufferUtil.BYTE_ARRAY_SCALE * offset;
+	}
+
+	@Override
+	public void wrap(final char[] array) {
+		this.buffer = null;
+		this.address = BufferUtil.CHAR_ARRAY_BASE_OFFSET;
+		this.array = array;
+		this.capacity = BufferUtil.CHAR_ARRAY_SCALE * array.length;
+		this.adjustment = 0;
+	}
+
+	@Override
+	public void wrap(final char[] array, final int offset, final int length) {
+		if (SHOULD_BOUNDS_CHECK) {
+			Require.checkOffsetLength(offset, length, array.length);
+		}
+		this.buffer = null;
+		this.address = BufferUtil.CHAR_ARRAY_BASE_OFFSET + (BufferUtil.CHAR_ARRAY_SCALE * offset);
+		this.array = array;
+		this.capacity = BufferUtil.CHAR_ARRAY_SCALE * length;
+		this.adjustment = BufferUtil.CHAR_ARRAY_SCALE * offset;
+	}
+
+	@Override
+	public void wrap(final short[] array) {
+		this.buffer = null;
+		this.address = BufferUtil.SHORT_ARRAY_BASE_OFFSET;
+		this.array = array;
+		this.capacity = BufferUtil.SHORT_ARRAY_SCALE * array.length;
+		this.adjustment = 0;
+	}
+
+	@Override
+	public void wrap(final short[] array, final int offset, final int length) {
+		if (SHOULD_BOUNDS_CHECK) {
+			Require.checkOffsetLength(offset, length, array.length);
+		}
+		this.buffer = null;
+		this.address = BufferUtil.SHORT_ARRAY_BASE_OFFSET + (BufferUtil.SHORT_ARRAY_SCALE * offset);
+		this.array = array;
+		this.capacity = BufferUtil.SHORT_ARRAY_SCALE * length;
+		this.adjustment = BufferUtil.SHORT_ARRAY_SCALE * offset;
+	}
+
+	@Override
+	public void wrap(final int[] array) {
+		this.buffer = null;
+		this.address = BufferUtil.INT_ARRAY_BASE_OFFSET;
+		this.array = array;
+		this.capacity = BufferUtil.INT_ARRAY_SCALE * array.length;
+		this.adjustment = 0;
+	}
+
+	@Override
+	public void wrap(final int[] array, final int offset, final int length) {
+		if (SHOULD_BOUNDS_CHECK) {
+			Require.checkOffsetLength(offset, length, array.length);
+		}
+		this.buffer = null;
+		this.address = BufferUtil.INT_ARRAY_BASE_OFFSET + (BufferUtil.INT_ARRAY_SCALE * offset);
+		this.array = array;
+		this.capacity = BufferUtil.INT_ARRAY_SCALE * length;
+		this.adjustment = BufferUtil.INT_ARRAY_SCALE * offset;
+	}
+
+	@Override
+	public void wrap(final long[] array) {
+		this.buffer = null;
+		this.address = BufferUtil.LONG_ARRAY_BASE_OFFSET;
+		this.array = array;
+		this.capacity = BufferUtil.LONG_ARRAY_SCALE * array.length;
+		this.adjustment = 0;
+	}
+
+	@Override
+	public void wrap(final long[] array, final int offset, final int length) {
+		if (SHOULD_BOUNDS_CHECK) {
+			Require.checkOffsetLength(offset, length, array.length);
+		}
+		this.buffer = null;
+		this.address = BufferUtil.LONG_ARRAY_BASE_OFFSET + (BufferUtil.LONG_ARRAY_SCALE * offset);
+		this.array = array;
+		this.capacity = BufferUtil.LONG_ARRAY_SCALE * length;
+		this.adjustment = BufferUtil.LONG_ARRAY_SCALE * offset;
+	}
+
+	@Override
+	public void wrap(final float[] array) {
+		this.buffer = null;
+		this.address = OpenUnsafe.ARRAY_FLOAT_BASE_OFFSET;
+		this.array = array;
+		this.capacity = (long) array.length * OpenUnsafe.ARRAY_FLOAT_INDEX_SCALE;
+		this.adjustment = 0;
+	}
+
+	@Override
+	public void wrap(final float[] array, final int offset, final int length) {
+		if (SHOULD_BOUNDS_CHECK) {
+			Require.checkOffsetLength(offset, length, array.length);
+		}
+		this.buffer = null;
+		this.address = OpenUnsafe.ARRAY_FLOAT_BASE_OFFSET + ((long) offset * OpenUnsafe.ARRAY_FLOAT_INDEX_SCALE);
+		this.array = array;
+		this.capacity = (long) length * OpenUnsafe.ARRAY_FLOAT_INDEX_SCALE;
+		this.adjustment = (long) offset * OpenUnsafe.ARRAY_FLOAT_INDEX_SCALE;
+	}
+
+	@Override
+	public void wrap(final double[] array) {
+		this.buffer = null;
+		this.address = OpenUnsafe.ARRAY_DOUBLE_BASE_OFFSET;
+		this.array = array;
+		this.capacity = (long) array.length * OpenUnsafe.ARRAY_DOUBLE_INDEX_SCALE;
+		this.adjustment = 0;
+	}
+
+	@Override
+	public void wrap(final double[] array, final int offset, final int length) {
+		if (SHOULD_BOUNDS_CHECK) {
+			Require.checkOffsetLength(offset, length, array.length);
+		}
+		this.buffer = null;
+		this.address = OpenUnsafe.ARRAY_DOUBLE_BASE_OFFSET + ((long) offset * OpenUnsafe.ARRAY_DOUBLE_INDEX_SCALE);
+		this.array = array;
+		this.capacity = (long) length * OpenUnsafe.ARRAY_DOUBLE_INDEX_SCALE;
+		this.adjustment = (long) offset * OpenUnsafe.ARRAY_DOUBLE_INDEX_SCALE;
 	}
 
 	@Override
@@ -78,7 +205,7 @@ public class UnsafeBuffer extends AbstractMutableDirectBuffer implements AtomicB
 			this.array = null;
 			this.adjustment = 0;
 		} else {
-			this.address = BufferUtil.ARRAY_BASE_OFFSET + BufferUtil.offset(buffer);
+			this.address = OpenUnsafe.ARRAY_BYTE_BASE_OFFSET + BufferUtil.offset(buffer);
 			this.array = BufferUtil.array(buffer);
 			this.adjustment = BufferUtil.offset(buffer);
 		}
@@ -90,13 +217,13 @@ public class UnsafeBuffer extends AbstractMutableDirectBuffer implements AtomicB
 			Require.checkOffsetLength(offset, length, buffer.capacity());
 		}
 		this.buffer = buffer;
-		this.capacity = length;
+		this.capacity = (long) length * OpenUnsafe.ARRAY_BYTE_INDEX_SCALE;
 		if (buffer.isDirect()) {
 			this.address = BufferUtil.address(buffer) + offset;
 			this.array = null;
-			this.adjustment = offset;
+			this.adjustment = (long) offset * OpenUnsafe.ARRAY_BYTE_INDEX_SCALE;
 		} else {
-			this.address = BufferUtil.ARRAY_BASE_OFFSET + BufferUtil.offset(buffer) + offset;
+			this.address = OpenUnsafe.ARRAY_BYTE_BASE_OFFSET + (long) (BufferUtil.offset(buffer) + offset) * OpenUnsafe.ARRAY_BYTE_INDEX_SCALE;
 			this.array = BufferUtil.array(buffer);
 			this.adjustment = BufferUtil.offset(buffer) + offset;
 		}
@@ -134,7 +261,7 @@ public class UnsafeBuffer extends AbstractMutableDirectBuffer implements AtomicB
 
 
 	@Override
-	public ByteBuffer buffer() {
+	public Buffer buffer() {
 		return this.buffer;
 	}
 
@@ -403,13 +530,12 @@ public class UnsafeBuffer extends AbstractMutableDirectBuffer implements AtomicB
 		return unsafe.getAndAddLong(this.array, this.address + index, delta);
 	}
 
-
 	@Override
 	public String toString() {
 		return "UnsafeBuffer{" +
 				"buffer=" + this.buffer +
 				", address=0x" + Long.toHexString(this.address) +
-				", array=" + (null == this.array ? "null" : ("byte[" + this.array.length + "]")) +
+				", array=" + (null == this.array ? "null" : (ClassUtil.name(this.array.getClass().getComponentType()) + "[" + Array.getLength(this.array) + "]")) +
 				", capacity=" + this.capacity +
 				'}';
 	}

@@ -13,8 +13,8 @@ import java.util.Objects;
 public abstract class AbstractMutableDirectBuffer implements MutableDirectBuffer {
 
 	protected long address;
-	protected byte[] array;
-	protected int capacity;
+	protected Object array;
+	protected long capacity;
 
 	protected AbstractMutableDirectBuffer() {
 	}
@@ -25,12 +25,12 @@ public abstract class AbstractMutableDirectBuffer implements MutableDirectBuffer
 	}
 
 	@Override
-	public byte[] array() {
+	public Object array() {
 		return this.array;
 	}
 
 	@Override
-	public int capacity() {
+	public long capacity() {
 		return this.capacity;
 	}
 
@@ -43,7 +43,7 @@ public abstract class AbstractMutableDirectBuffer implements MutableDirectBuffer
 	public void setMemory(final int index, final int length, final byte value) {
 		this.putCheck(index, length);
 
-		final byte[] array = this.array;
+		final Object array = this.array;
 		final long offset = this.address + index;
 
 		final OpenUnsafe unsafe = OpenUnsafe.theUnsafe();
@@ -584,7 +584,7 @@ public abstract class AbstractMutableDirectBuffer implements MutableDirectBuffer
 		final OpenUnsafe unsafe = OpenUnsafe.theUnsafe();
 
 		final long address = this.address;
-		final byte[] array = this.array;
+		final Object array = this.array;
 		final int capacity = this.capacity;
 
 		int hash = 0;
@@ -619,8 +619,8 @@ public abstract class AbstractMutableDirectBuffer implements MutableDirectBuffer
 
 		final long thisAddress = this.address;
 		final long thatAddress = that.address;
-		final byte[] thisArray = this.array;
-		final byte[] thatArray = that.array;
+		final Object thisArray = this.array;
+		final Object thatArray = that.array;
 
 		int i = 0;
 		for (final int end = length & -NumberUtil.LONG_BYTES; i < end; i += NumberUtil.LONG_BYTES) {
@@ -646,8 +646,8 @@ public abstract class AbstractMutableDirectBuffer implements MutableDirectBuffer
 
 		final long thisAddress = this.address;
 		final long thatAddress = that.address();
-		final byte[] thisArray = this.array;
-		final byte[] thatArray = that.array();
+		final Object thisArray = this.array;
+		final Object thatArray = that.array();
 		final int thisCapacity = this.capacity;
 		final int thatCapacity = that.capacity();
 
